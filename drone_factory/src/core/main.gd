@@ -1,14 +1,29 @@
 extends Node
-## Корневой узел игры. На первом этапе только проверяет, что проект запускается.
-## По мере развития сюда подключаются мир, системы и UI.
+## Корневой узел игры: собирает мир, системы и интерфейс.
 
-@onready var _label: Label = $BootLabel
+## Пока камеры нет, показываем фиксированное окно вокруг старта.
+const BOOTSTRAP_VIEW_SIZE := Vector2(720, 1280)
+
+var world: GameWorld = null
 
 
 func _ready() -> void:
-	print("[Drone Factory] boot ok, engine=", Engine.get_version_info().string)
-	print("[Drone Factory] world=%dx%d cells, tile=%dpx" % [
-		Constants.WORLD_SIZE, Constants.WORLD_SIZE, Constants.TILE_SIZE,
+	Log.info("Drone Factory %s, движок %s" % [
+		ProjectSettings.get_setting("application/config/version", "?"),
+		Engine.get_version_info().string,
 	])
-	if is_instance_valid(_label):
-		_label.text = "Drone Factory\nболванка проекта"
+
+	world = GameWorld.new()
+	world.name = "World"
+	add_child(world)
+
+	var seed_value: int = int(Time.get_unix_time_from_system())
+	var start: Vector2i = world.new_game(seed_value)
+
+	var center: Vector2 = Grid.cell_to_world_center(start)
+	world.update_view(Rect2(center - BOOTSTRAP_VIEW_SIZE * 0.5, BOOTSTRAP_VIEW_SIZE))
+	world.terrain_renderer.flush_pending()
+
+	Log.info("Мир готов: старт %s, загружено чанков %d" % [
+		start, world.terrain_renderer.loaded_chunk_count(),
+	])

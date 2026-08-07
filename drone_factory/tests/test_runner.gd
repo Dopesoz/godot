@@ -12,18 +12,26 @@ const CASES_DIR: String = "res://tests/cases"
 const WATCHDOG_SECONDS: float = 120.0
 
 var _elapsed: float = 0.0
+var _started: bool = false
 var _finished: bool = false
 
 
+## Тесты запускаются на первом кадре, а не в _initialize(): до первой итерации
+## корневое окно ещё не находится в дереве, и добавленные узлы не получают
+## _ready() — половина проверок работала бы с недоинициализированными сценами.
 func _process(delta: float) -> bool:
 	_elapsed += delta
+	if not _started:
+		_started = true
+		_run_all()
+		return false
 	if not _finished and _elapsed > WATCHDOG_SECONDS:
 		printerr("ПАДЕНИЕ: раннер не завершился за %.0f с" % WATCHDOG_SECONDS)
 		quit(1)
 	return false
 
 
-func _initialize() -> void:
+func _run_all() -> void:
 	var files: PackedStringArray = _list_case_scripts()
 	files.sort()
 
