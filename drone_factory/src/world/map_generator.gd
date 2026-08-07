@@ -1,0 +1,194 @@
+class_name MapGenerator
+extends RefCounted
+
+## Генерация мира из одного сида.
+##
+## Ключевое решение по производительности: шум считается не поэлементно из
+## GDScript, а целыми картами через Noise.get_image() — это C++ и потоки.
+## Затем идёт ОДИН проход по байтам. Поэлементный get_noise_2d() на 262144
+## клетки × 5 слоёв — это миллион вызовов из скрипта и секунды ожидания на
+## телефоне; здесь же весь мир собирается за десятки миллисекунд.
+
+## --- Пороги рельефа (значения шума 0..255 из карты L8) ---------------------
+
+const WATER_LEVEL: int = 78
+const SAND_LEVEL: int = 92
+const ROCK_LEVEL: int = 186
+## Ниже этого значения влажности — земля, выше — трава.
+const DIRT_MOISTURE: int = 118
+
+## --- Руда ------------------------------------------------------------------
+
+const ORE_THRESHOLD: int = 168
+const ORE_AMOUNT_MIN: int = 120
+const ORE_AMOUNT_MAX: int = 2400
+
+## Радиус гарантированно ровной площадки вокруг точки старта.
+const START_CLEAR_RADIUS: int = 10
+## Куда докладываются стартовые залежи, если их не сгенерировал шум.
+const START_PATCH_OFFSETS: Dictionary[int, Vector2i] = {
+	TileTypes.Ore.IRON: Vector2i(-14, -6),
+	TileTypes.Ore.COPPER: Vector2i(13, -8),
+	TileTypes.Ore.STONE: Vector2i(2, 15),
+}
+const START_PATCH_RADIUS: int = 4
+const START_PATCH_AMOUNT: int = 900
+## В каком радиусе от старта ищем уже сгенерированную залежь, прежде чем добавлять свою.
+const START_PATCH_SEARCH: int = 26
+
+
+## Заполняет сетку миром по сиду. Возвращает клетку, с которой начинает игрок.
+static func generate(grid: Grid, seed_value: int) -> Vector2i:
+	var start_usec: int = Time.get_ticks_usec()
+	var size: int = grid.size
+
+	var elevation: PackedByteArray = _noise_map(size, seed_value, 0.0055, 4)
+	var moisture: PackedByteArray = _noise_map(size, seed_value + 7717, 0.011, 2)
+	var iron: PackedByteArray = _noise_map(size, seed_value + 1301, 0.055, 2)
+	var copper: PackedByteArray = _noise_map(size, seed_value + 2609, 0.055, 2)
+	var stone: PackedByteArray = _noise_map(size, seed_value + 3907, 0.048, 2)
+
+	_fill_terrain(grid, elevation, moisture)
+	_fill_ore(grid, iron, copper, stone)
+
+	var start: Vector2i = _prepare_start_area(grid, seed_value)
+
+	Log.info("MapGenerator: мир %dx%d, сид %d, за %.1f мс" % [
+		size, size, seed_value, float(Time.get_ticks_usec() - start_usec) / 1000.0,
+	])
+	return start
+
+
+## Карта шума размером size×size в виде байтов 0..255.
+static func _noise_map(size: int, seed_value: int, frequency: float, octaves: int) -> PackedByteArray:
+	var noise := FastNoiseLite.new()
+	noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	noise.seed = seed_value
+	noise.frequency = frequency
+	noise.fractal_octaves = octaves
+	noise.fractal_lacunarity = 2.0
+	noise.fractal_gain = 0.5
+	# normalize=true приводит значения к 0..1, поэтому L8 использует весь диапазон.
+	var image: Image = noise.get_image(size, size, false, false, true)
+	return image.get_data()
+
+
+static func _fill_terrain(grid: Grid, elevation: PackedByteArray, moisture: PackedByteArray) -> void:
+	var count: int = grid.size * grid.size
+	var terrain: PackedByteArray = grid.terrain
+	for i: int in count:
+		var e: int = elevation[i]
+		var t: int
+		if e < WATER_LEVEL:
+			t = TileTypes.Terrain.WATER
+		elif e < SAND_LEVEL:
+			t = TileTypes.Terrain.SAND
+		elif e > ROCK_LEVEL:
+			t = TileTypes.Terrain.ROCK
+		elif moisture[i] < DIRT_MOISTURE:
+			t = TileTypes.Terrain.DIRT
+		else:
+			t = TileTypes.Terrain.GRASS
+		terrain[i] = t
+	grid.terrain = terrain
+
+
+static func _fill_ore(
+	grid: Grid,
+	iron: PackedByteArray,
+	copper: PackedByteArray,
+	stone: PackedByteArray
+) -> void:
+	var count: int = grid.size * grid.size
+	var terrain: PackedByteArray = grid.terrain
+	var ore: PackedByteArray = grid.ore
+	var amount: PackedInt32Array = grid.ore_amount
+	var span: float = float(ORE_AMOUNT_MAX - ORE_AMOUNT_MIN)
+
+	for i: int in count:
+		# Под водой руду не добыть, в скале руды нет — экономим и память, и логику.
+		if terrain[i] == TileTypes.Terrain.WATER or terrain[i] == TileTypes.Terrain.ROCK:
+			continue
+		# Приоритет по «богатству» пятна: где два шума пересеклись, выигрывает сильнейший.
+		var best_value: int = ORE_THRESHOLD
+		var best_type: int = TileTypes.Ore.NONE
+		if iron[i] > best_value:
+			best_value = iron[i]
+			best_type = TileTypes.Ore.IRON
+		if copper[i] > best_value:
+			best_value = copper[i]
+			best_type = TileTypes.Ore.COPPER
+		if stone[i] > best_value:
+			best_value = stone[i]
+			best_type = TileTypes.Ore.STONE
+		if best_type == TileTypes.Ore.NONE:
+			continue
+		var richness: float = float(best_value - ORE_THRESHOLD) / float(255 - ORE_THRESHOLD)
+		ore[i] = best_type
+		amount[i] = ORE_AMOUNT_MIN + int(richness * richness * span)
+	grid.ore = ore
+	grid.ore_amount = amount
+
+
+## Готовит площадку старта: ровный грунт и гарантированный доступ ко всем трём рудам.
+## Без этого игрок с шансом в несколько процентов появляется среди воды и скал.
+static func _prepare_start_area(grid: Grid, seed_value: int) -> Vector2i:
+	var start: Vector2i = _find_start_cell(grid, seed_value)
+
+	for dy: int in range(-START_CLEAR_RADIUS, START_CLEAR_RADIUS + 1):
+		for dx: int in range(-START_CLEAR_RADIUS, START_CLEAR_RADIUS + 1):
+			if dx * dx + dy * dy > START_CLEAR_RADIUS * START_CLEAR_RADIUS:
+				continue
+			var cell: Vector2i = start + Vector2i(dx, dy)
+			if not grid.in_bounds(cell):
+				continue
+			if not TileTypes.is_buildable(grid.get_terrain(cell)):
+				grid.set_terrain(cell, TileTypes.Terrain.GRASS)
+			# Под самой базой руда мешает: место нужно под здания.
+			if dx * dx + dy * dy <= 16:
+				grid.set_ore(cell, TileTypes.Ore.NONE, 0)
+
+	for ore_type: int in START_PATCH_OFFSETS:
+		if _has_ore_near(grid, start, ore_type, START_PATCH_SEARCH):
+			continue
+		_stamp_ore_patch(grid, start + START_PATCH_OFFSETS[ore_type], ore_type, seed_value)
+
+	return start
+
+
+## Ищет пригодную стартовую клетку по спирали от центра мира.
+static func _find_start_cell(grid: Grid, seed_value: int) -> Vector2i:
+	var center := Vector2i(grid.size / 2, grid.size / 2)
+	var offset: int = Rng.range_int(seed_value, 0, 55, -24, 24)
+	center += Vector2i(offset, Rng.range_int(0, seed_value, 55, -24, 24))
+	for radius: int in range(0, grid.size / 2):
+		for dy: int in range(-radius, radius + 1):
+			for dx: int in range(-radius, radius + 1):
+				# Проверяем только новую «рамку» на каждом радиусе.
+				if absi(dx) != radius and absi(dy) != radius:
+					continue
+				var cell: Vector2i = center + Vector2i(dx, dy)
+				if grid.in_bounds(cell) and TileTypes.is_buildable(grid.get_terrain(cell)):
+					return cell
+	return center
+
+
+static func _has_ore_near(grid: Grid, center: Vector2i, ore_type: int, radius: int) -> bool:
+	var area := Rect2i(center - Vector2i(radius, radius), Vector2i(radius * 2, radius * 2))
+	return grid.count_ore_in_area(area, ore_type).x > 0
+
+
+static func _stamp_ore_patch(grid: Grid, center: Vector2i, ore_type: int, seed_value: int) -> void:
+	for dy: int in range(-START_PATCH_RADIUS, START_PATCH_RADIUS + 1):
+		for dx: int in range(-START_PATCH_RADIUS, START_PATCH_RADIUS + 1):
+			var cell: Vector2i = center + Vector2i(dx, dy)
+			if not grid.in_bounds(cell):
+				continue
+			var distance: float = sqrt(float(dx * dx + dy * dy))
+			var wobble: float = 0.7 + Rng.value01(cell.x, cell.y, seed_value + ore_type) * 0.55
+			if distance > float(START_PATCH_RADIUS) * wobble:
+				continue
+			if not TileTypes.is_buildable(grid.get_terrain(cell)):
+				grid.set_terrain(cell, TileTypes.Terrain.DIRT)
+			var falloff: float = 1.0 - distance / float(START_PATCH_RADIUS + 1)
+			grid.set_ore(cell, ore_type, maxi(ORE_AMOUNT_MIN, int(START_PATCH_AMOUNT * falloff)))
