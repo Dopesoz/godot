@@ -24,7 +24,7 @@ func after_each() -> void:
 	pass
 
 
-func check(condition: bool, message: String) -> void:
+func check(condition: bool, message: String = "условие не выполнено") -> void:
 	checks += 1
 	if not condition:
 		failures.append("%s: %s" % [_current, message])

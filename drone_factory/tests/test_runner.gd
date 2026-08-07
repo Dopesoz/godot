@@ -7,6 +7,20 @@ extends SceneTree
 ## Код возврата 0 — все тесты прошли, 1 — есть падения.
 
 const CASES_DIR: String = "res://tests/cases"
+## Страховка от зависшего раннера: без неё ошибка разбора скрипта прерывает
+## _initialize(), quit() не вызывается и процесс крутится вечно.
+const WATCHDOG_SECONDS: float = 120.0
+
+var _elapsed: float = 0.0
+var _finished: bool = false
+
+
+func _process(delta: float) -> bool:
+	_elapsed += delta
+	if not _finished and _elapsed > WATCHDOG_SECONDS:
+		printerr("ПАДЕНИЕ: раннер не завершился за %.0f с" % WATCHDOG_SECONDS)
+		quit(1)
+	return false
 
 
 func _initialize() -> void:
@@ -19,8 +33,8 @@ func _initialize() -> void:
 
 	for path: String in files:
 		var script: GDScript = load(path) as GDScript
-		if script == null:
-			all_failures.append("%s: не удалось загрузить скрипт" % path)
+		if script == null or not script.can_instantiate():
+			all_failures.append("%s: скрипт не загружается (ошибка разбора?)" % path)
 			continue
 		var instance: TestCase = script.new() as TestCase
 		if instance == null:
@@ -42,6 +56,7 @@ func _initialize() -> void:
 		for failure: String in instance.failures:
 			all_failures.append(failure)
 
+	_finished = true
 	print("")
 	print("=== Тесты: %d файлов, %d тестов, %d проверок ===" % [
 		files.size(), total_tests, total_checks,
