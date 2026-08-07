@@ -12,6 +12,8 @@ var build_menu: BuildMenu = null
 var build_bar: BuildBar = null
 var info_panel: InfoPanel = null
 var research_panel: ResearchPanel = null
+var settings_panel: SettingsPanel = null
+var settings: GameSettings = null
 
 
 func _ready() -> void:
@@ -19,6 +21,9 @@ func _ready() -> void:
 		ProjectSettings.get_setting("application/config/version", "?"),
 		Engine.get_version_info().string,
 	])
+
+	settings = GameSettings.new()
+	settings.load_settings()
 
 	world = GameWorld.new()
 	world.name = "World"
@@ -67,12 +72,20 @@ func _ready() -> void:
 	research_panel.name = "ResearchPanel"
 	add_child(research_panel)
 
+	settings_panel = SettingsPanel.new()
+	settings_panel.name = "SettingsPanel"
+	add_child(settings_panel)
+
 	build_bar = BuildBar.new()
 	build_bar.name = "BuildBar"
 	add_child(build_bar)
 
 	hud.build_menu_requested.connect(build_menu.open)
 	hud.research_requested.connect(research_panel.open)
+	hud.menu_requested.connect(settings_panel.open)
+	settings_panel.new_game_requested.connect(func() -> void:
+		start_new_game(int(Time.get_unix_time_from_system()))
+	)
 
 	if SaveSystem.has_save():
 		start_new_game(int(Time.get_unix_time_from_system()))
@@ -102,6 +115,8 @@ func start_new_game(seed_value: int) -> void:
 	research_panel.setup(
 		simulation.get_system(ResearchSystem) as ResearchSystem, world.research
 	)
+	settings_panel.setup(settings, save_system, simulation, hud)
+	settings.apply(hud, save_system)
 
 	camera.focus_on_cell(start)
 	world.update_view(camera.visible_world_rect())
