@@ -1,10 +1,8 @@
 extends Node
-## Корневой узел игры: собирает мир, системы и интерфейс.
-
-## Пока камеры нет, показываем фиксированное окно вокруг старта.
-const BOOTSTRAP_VIEW_SIZE := Vector2(720, 1280)
+## Корневой узел игры: собирает мир, камеру, системы и интерфейс.
 
 var world: GameWorld = null
+var camera: GameCamera = null
 
 
 func _ready() -> void:
@@ -17,13 +15,23 @@ func _ready() -> void:
 	world.name = "World"
 	add_child(world)
 
+	camera = GameCamera.new()
+	camera.name = "Camera"
+	world.add_child(camera)
+
 	var seed_value: int = int(Time.get_unix_time_from_system())
 	var start: Vector2i = world.new_game(seed_value)
 
-	var center: Vector2 = Grid.cell_to_world_center(start)
-	world.update_view(Rect2(center - BOOTSTRAP_VIEW_SIZE * 0.5, BOOTSTRAP_VIEW_SIZE))
+	camera.focus_on_cell(start)
+	world.update_view(camera.visible_world_rect())
 	world.terrain_renderer.flush_pending()
 
 	Log.info("Мир готов: старт %s, загружено чанков %d" % [
 		start, world.terrain_renderer.loaded_chunk_count(),
 	])
+
+
+func _process(_delta: float) -> void:
+	# Стриминг чанков идёт за камерой. Сам вызов дешёвый: если набор видимых
+	# чанков не изменился, рендер выходит сразу.
+	world.update_view(camera.visible_world_rect())
