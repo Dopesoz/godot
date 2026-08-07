@@ -35,6 +35,7 @@ func _ready() -> void:
 	simulation.name = "Simulation"
 	simulation.add_system(PowerSystem.new())
 	simulation.add_system(BuildingSystem.new())
+	simulation.add_system(LogisticsSystem.new())
 	add_child(simulation)
 
 	start_new_game(int(Time.get_unix_time_from_system()))

@@ -120,6 +120,12 @@ func requests() -> Dictionary[StringName, int]:
 	return {}
 
 
+## Инвентарь, в который дрон складывает привезённое. У машин это вход,
+## у складов и портов — общий инвентарь.
+func delivery_inventory() -> Inventory:
+	return input if input != null else output
+
+
 func status_text() -> String:
 	return STATUS_TEXT.get(status, "?")
 
