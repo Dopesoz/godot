@@ -17,7 +17,11 @@ static func create(def_id: StringName) -> Building:
 
 static func _instantiate(kind: int) -> Building:
 	match kind:
+		BuildingDefs.Kind.SOLAR:
+			return SolarPanel.new()
+		BuildingDefs.Kind.ACCUMULATOR:
+			return Accumulator.new()
 		_:
-			# Специализированные классы подключаются по мере реализации;
-			# базовое здание ведёт себя как инертная конструкция.
+			# Склад, столб и порт — инертные конструкции: их поведение целиком
+			# описывается инвентарём и участием в сетях.
 			return Building.new()

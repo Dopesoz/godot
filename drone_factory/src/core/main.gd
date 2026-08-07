@@ -33,6 +33,7 @@ func _ready() -> void:
 
 	simulation = Simulation.new()
 	simulation.name = "Simulation"
+	simulation.add_system(PowerSystem.new())
 	simulation.add_system(BuildingSystem.new())
 	add_child(simulation)
 
