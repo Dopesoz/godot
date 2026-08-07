@@ -163,6 +163,23 @@ func in_radius(center_cell: Vector2i, radius: float) -> Array[Building]:
 	return result
 
 
+## Здания, пересекающие прямоугольную область (в клетках). Используется
+## отрисовкой: перебирать весь мир ради экрана нельзя.
+func in_rect(area: Rect2i) -> Array[Building]:
+	var result: Array[Building] = []
+	var seen: Dictionary[int, bool] = {}
+	for chunk: Vector2i in _chunks_of(area):
+		var bucket: PackedInt32Array = _chunk_index.get(chunk, PackedInt32Array())
+		for building_id: int in bucket:
+			if seen.has(building_id):
+				continue
+			seen[building_id] = true
+			var building: Building = _buildings.get(building_id)
+			if building != null and building.rect().intersects(area):
+				result.append(building)
+	return result
+
+
 ## --- Сохранение ------------------------------------------------------------
 
 func serialize() -> Array:
