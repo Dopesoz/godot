@@ -8,6 +8,8 @@ var build_controller: BuildController = null
 var simulation: Simulation = null
 var save_system: SaveSystem = null
 var hud: Hud = null
+var build_menu: BuildMenu = null
+var build_bar: BuildBar = null
 
 
 func _ready() -> void:
@@ -51,6 +53,16 @@ func _ready() -> void:
 	hud.name = "Hud"
 	add_child(hud)
 
+	build_menu = BuildMenu.new()
+	build_menu.name = "BuildMenu"
+	add_child(build_menu)
+
+	build_bar = BuildBar.new()
+	build_bar.name = "BuildBar"
+	add_child(build_bar)
+
+	hud.build_menu_requested.connect(build_menu.open)
+
 	if SaveSystem.has_save():
 		start_new_game(int(Time.get_unix_time_from_system()))
 		if not save_system.load_game():
@@ -73,6 +85,8 @@ func start_new_game(seed_value: int) -> void:
 
 	save_system.setup(world, simulation, camera)
 	hud.setup(world, simulation)
+	build_menu.setup(build_controller, world.research)
+	build_bar.setup(build_controller)
 
 	camera.focus_on_cell(start)
 	world.update_view(camera.visible_world_rect())
