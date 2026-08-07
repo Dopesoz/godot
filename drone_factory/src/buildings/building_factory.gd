@@ -19,6 +19,10 @@ static func _instantiate(kind: int) -> Building:
 	match kind:
 		BuildingDefs.Kind.DRILL:
 			return Drill.new()
+		BuildingDefs.Kind.FURNACE:
+			return Furnace.new()
+		BuildingDefs.Kind.ASSEMBLER:
+			return Assembler.new()
 		BuildingDefs.Kind.SOLAR:
 			return SolarPanel.new()
 		BuildingDefs.Kind.ACCUMULATOR:
