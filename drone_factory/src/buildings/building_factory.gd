@@ -1,0 +1,23 @@
+class_name BuildingFactory
+extends RefCounted
+
+## Создание здания по идентификатору описания.
+##
+## Единственное место, где тип из данных превращается в класс поведения.
+## Реестр и системы работают только с базовым Building и о наследниках не знают.
+
+
+static func create(def_id: StringName) -> Building:
+	if not BuildingDefs.exists(def_id):
+		Log.error("BuildingFactory: неизвестное здание %s" % def_id)
+		return null
+	var building: Building = _instantiate(BuildingDefs.kind(def_id))
+	return building
+
+
+static func _instantiate(kind: int) -> Building:
+	match kind:
+		_:
+			# Специализированные классы подключаются по мере реализации;
+			# базовое здание ведёт себя как инертная конструкция.
+			return Building.new()
