@@ -31,6 +31,16 @@ const FONT_TITLE: int = 40
 const PANEL_ALPHA: float = 0.94
 
 
+## Общая тема на весь интерфейс: собирается один раз.
+static var _shared: Theme = null
+
+
+static func shared() -> Theme:
+	if _shared == null:
+		_shared = build()
+	return _shared
+
+
 static func build() -> Theme:
 	var theme := Theme.new()
 	theme.default_font_size = FONT_NORMAL

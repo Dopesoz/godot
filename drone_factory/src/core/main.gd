@@ -7,6 +7,7 @@ var touch: TouchInput = null
 var build_controller: BuildController = null
 var simulation: Simulation = null
 var save_system: SaveSystem = null
+var hud: Hud = null
 
 
 func _ready() -> void:
@@ -46,6 +47,10 @@ func _ready() -> void:
 	save_system.name = "SaveSystem"
 	add_child(save_system)
 
+	hud = Hud.new()
+	hud.name = "Hud"
+	add_child(hud)
+
 	if SaveSystem.has_save():
 		start_new_game(int(Time.get_unix_time_from_system()))
 		if not save_system.load_game():
@@ -67,6 +72,7 @@ func start_new_game(seed_value: int) -> void:
 	GameSetup.create_starting_base(world)
 
 	save_system.setup(world, simulation, camera)
+	hud.setup(world, simulation)
 
 	camera.focus_on_cell(start)
 	world.update_view(camera.visible_world_rect())
