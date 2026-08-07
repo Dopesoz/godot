@@ -17,6 +17,8 @@ static func create(def_id: StringName) -> Building:
 
 static func _instantiate(kind: int) -> Building:
 	match kind:
+		BuildingDefs.Kind.DRILL:
+			return Drill.new()
 		BuildingDefs.Kind.SOLAR:
 			return SolarPanel.new()
 		BuildingDefs.Kind.ACCUMULATOR:

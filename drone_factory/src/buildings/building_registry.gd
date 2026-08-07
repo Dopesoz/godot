@@ -76,6 +76,7 @@ func place(def_id: StringName, origin: Vector2i) -> Building:
 	building.setup(def_id, origin)
 
 	_register(building)
+	building.on_world_ready(grid)
 	Events.building_placed.emit(building.id)
 	return building
 
@@ -204,6 +205,7 @@ func deserialize(list: Array) -> void:
 		building.setup(def_id, Vector2i(int(data.get("x", 0)), int(data.get("y", 0))))
 		building.deserialize(data)
 		_register(building)
+		building.on_world_ready(grid)
 		_next_id = maxi(_next_id, building.id + 1)
 
 
