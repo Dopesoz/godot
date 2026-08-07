@@ -6,6 +6,7 @@ var camera: GameCamera = null
 var touch: TouchInput = null
 var build_controller: BuildController = null
 var simulation: Simulation = null
+var save_system: SaveSystem = null
 
 
 func _ready() -> void:
@@ -41,7 +42,17 @@ func _ready() -> void:
 
 	world.simulation = simulation
 
-	start_new_game(int(Time.get_unix_time_from_system()))
+	save_system = SaveSystem.new()
+	save_system.name = "SaveSystem"
+	add_child(save_system)
+
+	if SaveSystem.has_save():
+		start_new_game(int(Time.get_unix_time_from_system()))
+		if not save_system.load_game():
+			Log.warn("Сохранение не загрузилось, начинаем новую игру")
+			start_new_game(int(Time.get_unix_time_from_system()))
+	else:
+		start_new_game(int(Time.get_unix_time_from_system()))
 
 	touch.tapped.connect(build_controller.on_tap)
 	touch.long_pressed.connect(build_controller.on_long_press)
@@ -54,6 +65,8 @@ func start_new_game(seed_value: int) -> void:
 	simulation.reset()
 	build_controller.setup(world, camera)
 	GameSetup.create_starting_base(world)
+
+	save_system.setup(world, simulation, camera)
 
 	camera.focus_on_cell(start)
 	world.update_view(camera.visible_world_rect())
@@ -68,3 +81,15 @@ func _process(_delta: float) -> void:
 	# Стриминг идёт за камерой. Вызов дешёвый: если видимая область не
 	# изменилась, мир выходит сразу.
 	world.update_view(camera.visible_world_rect())
+
+
+## Android убивает свёрнутое приложение без предупреждения, поэтому
+## сохраняемся при уходе в фон, а не только при выходе.
+func _notification(what: int) -> void:
+	match what:
+		NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_APPLICATION_FOCUS_OUT, \
+		NOTIFICATION_WM_CLOSE_REQUEST:
+			if save_system != null:
+				save_system.save_on_exit()
+		_:
+			pass

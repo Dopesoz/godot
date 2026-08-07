@@ -54,6 +54,28 @@ func new_game(seed_value: int) -> Vector2i:
 	return start_cell
 
 
+## Готовит мир к загрузке сохранения: пустые слои нужного размера и чистые
+## реестры. Мир не генерируется заново — его слои приедут из файла.
+func prepare_for_load(seed_value: int) -> void:
+	world_seed = seed_value
+	grid = Grid.new(Constants.WORLD_SIZE)
+	buildings = BuildingRegistry.new(grid)
+	research = ResearchState.new()
+	terrain_renderer.setup(grid)
+	building_renderer.setup(buildings)
+	drone_renderer.setup(buildings, simulation)
+	_visible_cells = Rect2i(0, 0, 0, 0)
+
+
+## Досборка после загрузки: подтягиваем видимые чанки, чтобы первый кадр
+## был уже полным.
+func after_load(visible_world_rect: Rect2) -> void:
+	update_view(visible_world_rect)
+	terrain_renderer.flush_pending()
+	building_renderer.mark_dirty()
+	Events.world_generated.emit(world_seed)
+
+
 ## Сообщает миру видимую область в мировых пикселях: от неё зависит,
 ## какие чанки держать загруженными и какие здания рисовать.
 func update_view(visible_world_rect: Rect2) -> void:
