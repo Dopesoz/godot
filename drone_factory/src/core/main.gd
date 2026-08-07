@@ -10,6 +10,7 @@ var save_system: SaveSystem = null
 var hud: Hud = null
 var build_menu: BuildMenu = null
 var build_bar: BuildBar = null
+var info_panel: InfoPanel = null
 
 
 func _ready() -> void:
@@ -57,6 +58,10 @@ func _ready() -> void:
 	build_menu.name = "BuildMenu"
 	add_child(build_menu)
 
+	info_panel = InfoPanel.new()
+	info_panel.name = "InfoPanel"
+	add_child(info_panel)
+
 	build_bar = BuildBar.new()
 	build_bar.name = "BuildBar"
 	add_child(build_bar)
@@ -87,6 +92,7 @@ func start_new_game(seed_value: int) -> void:
 	hud.setup(world, simulation)
 	build_menu.setup(build_controller, world.research)
 	build_bar.setup(build_controller)
+	info_panel.setup(world, build_controller)
 
 	camera.focus_on_cell(start)
 	world.update_view(camera.visible_world_rect())
