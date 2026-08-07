@@ -80,6 +80,7 @@ func tick() -> void:
 	var context: Dictionary = {
 		"grid": world.grid,
 		"registry": world.buildings,
+		"research": world.research,
 		"daylight": daylight(),
 		"tick": tick_count,
 	}

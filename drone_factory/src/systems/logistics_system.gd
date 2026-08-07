@@ -41,6 +41,7 @@ func reset() -> void:
 
 func tick(delta: float, context: Dictionary) -> void:
 	var registry: BuildingRegistry = context["registry"]
+	var research: ResearchState = context.get("research")
 	var ports: Array[Building] = registry.of_kind(BuildingDefs.Kind.DRONE_PORT)
 
 	var active: int = 0
@@ -49,10 +50,15 @@ func tick(delta: float, context: Dictionary) -> void:
 
 	for port_building: Building in ports:
 		var port: DronePort = port_building
+		if research != null:
+			port.range_multiplier = research.multiplier(Technologies.BONUS_PORT_RANGE)
+			port.cargo_multiplier = research.multiplier(Technologies.BONUS_DRONE_CAPACITY)
 		total += port.drone_count()
 		if not port.is_operational():
 			continue
 		for drone: Drone in port.drones:
+			if research != null:
+				drone.speed_multiplier = research.multiplier(Technologies.BONUS_DRONE_SPEED)
 			if drone.is_busy():
 				active += 1
 				_advance_drone(drone, port, registry, delta)
@@ -179,7 +185,7 @@ func _assign_request(
 			var needed: int = int(requests[item_id]) - _reserved(_incoming, consumer.id, item_id)
 			if needed <= 0:
 				continue
-			var amount: int = mini(needed, DronePort.CARGO_CAPACITY)
+			var amount: int = mini(needed, port.cargo_capacity())
 			var source: Building = _find_source(registry, neighbours, item_id, consumer.id, amount)
 			if source == null:
 				continue
@@ -211,7 +217,7 @@ func _assign_haul(
 			var available: int = producer.output.count(item_id) - _reserved(_outgoing, producer.id, item_id)
 			if available <= 0:
 				continue
-			var amount: int = mini(available, DronePort.CARGO_CAPACITY)
+			var amount: int = mini(available, port.cargo_capacity())
 			var storage: Building = _find_storage(neighbours, item_id, amount)
 			if storage == null:
 				continue

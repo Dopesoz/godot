@@ -43,6 +43,11 @@ func _process(_delta: float) -> void:
 func start_building(def_id: StringName) -> void:
 	if not BuildingDefs.exists(def_id):
 		return
+	if not world.research.is_building_unlocked(def_id):
+		Events.notify.emit("Нужно исследование: %s" % Technologies.display_name(
+			BuildingDefs.required_tech(def_id)
+		))
+		return
 	pending_def_id = def_id
 	follow_center = true
 	select(0)
@@ -75,6 +80,8 @@ func can_confirm() -> bool:
 func confirm_blocker() -> String:
 	if pending_def_id == &"":
 		return ""
+	if not world.research.is_building_unlocked(pending_def_id):
+		return "Не изучено"
 	var error: int = world.buildings.check_placement(pending_def_id, pending_origin)
 	if error != BuildingRegistry.PlaceError.OK:
 		return BuildingRegistry.placement_error_text(error)

@@ -28,6 +28,8 @@ var source_id: int = 0
 var target_id: int = 0
 var cargo_item: StringName = &""
 var cargo_count: int = 0
+## Множитель скорости от исследований, ставится логистикой.
+var speed_multiplier: float = 1.0
 
 
 func is_busy() -> bool:
@@ -58,7 +60,7 @@ func advance(delta: float) -> bool:
 	if distance <= ARRIVE_DISTANCE:
 		position = target_position
 		return true
-	var step: float = SPEED * delta
+	var step: float = SPEED * speed_multiplier * delta
 	if step >= distance:
 		position = target_position
 		return true

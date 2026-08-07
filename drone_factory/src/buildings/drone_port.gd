@@ -20,8 +20,17 @@ var drones: Array[Drone] = []
 var _next_drone_id: int = 1
 
 
+## Множители от исследований, обновляются логистикой на тике.
+var range_multiplier: float = 1.0
+var cargo_multiplier: float = 1.0
+
+
 func service_radius() -> float:
-	return SERVICE_RADIUS
+	return SERVICE_RADIUS * range_multiplier
+
+
+func cargo_capacity() -> int:
+	return int(round(float(CARGO_CAPACITY) * cargo_multiplier))
 
 
 func drone_count() -> int:

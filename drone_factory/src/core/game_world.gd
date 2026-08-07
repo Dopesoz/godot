@@ -9,6 +9,8 @@ extends Node2D
 
 var grid: Grid = null
 var buildings: BuildingRegistry = null
+## Изученные технологии и их бонусы: читают и здания, и интерфейс.
+var research: ResearchState = null
 
 var terrain_renderer: TerrainRenderer = null
 var building_renderer: BuildingRenderer = null
@@ -43,6 +45,7 @@ func new_game(seed_value: int) -> Vector2i:
 	grid = Grid.new(Constants.WORLD_SIZE)
 	start_cell = MapGenerator.generate(grid, seed_value)
 	buildings = BuildingRegistry.new(grid)
+	research = ResearchState.new()
 
 	terrain_renderer.setup(grid)
 	building_renderer.setup(buildings)

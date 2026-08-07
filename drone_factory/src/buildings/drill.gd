@@ -14,13 +14,17 @@ const BASE_SPEED: float = 0.6
 var ore_type: int = TileTypes.Ore.NONE
 var mined_item: StringName = &""
 
+## Множитель от исследований, обновляется на тике из контекста.
+var speed_multiplier: float = 1.0
+
 var _progress: float = 0.0
 ## Клетки с рудой под буром. Пересчитываются при исчерпании очередной клетки.
 var _resolved: bool = false
 
 
+## Скорость с учётом питания и изученных технологий добычи.
 func speed() -> float:
-	return BASE_SPEED * power_satisfaction
+	return BASE_SPEED * power_satisfaction * speed_multiplier
 
 
 ## Сколько руды осталось под буром — показывается в панели здания.
@@ -38,6 +42,9 @@ func tick(delta: float, context: Dictionary) -> void:
 		status = Status.DISABLED
 		return
 	var grid: Grid = context["grid"]
+	var research: ResearchState = context.get("research")
+	if research != null:
+		speed_multiplier = research.multiplier(Technologies.BONUS_MINING_SPEED)
 	if not _resolved:
 		_resolve_ore(grid)
 

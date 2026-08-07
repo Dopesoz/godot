@@ -25,7 +25,8 @@ const CRAFT_SCIENCE_GREEN := &"craft_science_green"
 ##   machine — где исполняется;
 ##   time    — секунды на одну порцию при полном питании;
 ##   inputs  — что тратится;
-##   outputs — что получается.
+##   outputs — что получается;
+##   tech    — технология, открывающая рецепт (нет поля — доступен сразу).
 const DEFS: Dictionary[StringName, Dictionary] = {
 	SMELT_IRON: {
 		"name": "Железная пластина", "machine": Machine.FURNACE, "time": 1.6,
@@ -42,6 +43,7 @@ const DEFS: Dictionary[StringName, Dictionary] = {
 	SMELT_STEEL: {
 		"name": "Сталь", "machine": Machine.FURNACE, "time": 5.0,
 		"inputs": {Items.IRON_PLATE: 4}, "outputs": {Items.STEEL: 1},
+		"tech": &"steel",
 	},
 	CRAFT_GEAR: {
 		"name": "Шестерня", "machine": Machine.ASSEMBLER, "time": 1.0,
@@ -54,11 +56,12 @@ const DEFS: Dictionary[StringName, Dictionary] = {
 	CRAFT_CIRCUIT: {
 		"name": "Микросхема", "machine": Machine.ASSEMBLER, "time": 1.8,
 		"inputs": {Items.WIRE: 3, Items.IRON_PLATE: 1}, "outputs": {Items.CIRCUIT: 1},
+		"tech": &"electronics",
 	},
 	CRAFT_DRONE: {
 		"name": "Дрон", "machine": Machine.ASSEMBLER, "time": 4.0,
 		"inputs": {Items.CIRCUIT: 2, Items.GEAR: 2, Items.STEEL: 1},
-		"outputs": {Items.DRONE: 1},
+		"outputs": {Items.DRONE: 1}, "tech": &"drone_capacity",
 	},
 	CRAFT_SCIENCE_RED: {
 		"name": "Красная колба", "machine": Machine.ASSEMBLER, "time": 3.0,
@@ -68,7 +71,7 @@ const DEFS: Dictionary[StringName, Dictionary] = {
 	CRAFT_SCIENCE_GREEN: {
 		"name": "Зелёная колба", "machine": Machine.ASSEMBLER, "time": 5.0,
 		"inputs": {Items.CIRCUIT: 1, Items.STEEL: 1},
-		"outputs": {Items.SCIENCE_GREEN: 1},
+		"outputs": {Items.SCIENCE_GREEN: 1}, "tech": &"electronics",
 	},
 }
 
@@ -91,6 +94,11 @@ static func machine(id: StringName) -> int:
 
 static func craft_time(id: StringName) -> float:
 	return DEFS.get(id, {}).get("time", 1.0)
+
+
+## Технология, открывающая рецепт (&"" — доступен с начала игры).
+static func required_tech(id: StringName) -> StringName:
+	return DEFS.get(id, {}).get("tech", &"")
 
 
 static func inputs(id: StringName) -> Dictionary:
