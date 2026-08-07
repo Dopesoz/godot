@@ -26,6 +26,14 @@ var _buildings: Dictionary[int, Building] = {}
 var _chunk_index: Dictionary[Vector2i, PackedInt32Array] = {}
 var _next_id: int = 1
 
+## Кеши выборок. Системы спрашивают «все здания» и «здания такого-то вида»
+## десять раз в секунду; собирать массив заново на каждый запрос — это тысячи
+## лишних аллокаций в секунду на телефоне. Кеш сбрасывается только при
+## постройке и сносе, то есть редко.
+var _all_cache: Array[Building] = []
+var _kind_cache: Dictionary[int, Array] = {}
+var _cache_valid: bool = false
+
 
 func _init(target_grid: Grid) -> void:
 	grid = target_grid
@@ -88,6 +96,7 @@ func remove(building_id: int) -> bool:
 	grid.fill_area_building(building.rect(), Grid.NO_BUILDING)
 	_unindex(building)
 	_buildings.erase(building_id)
+	_invalidate_cache()
 	Events.building_removed.emit(building_id)
 	return true
 
@@ -98,6 +107,7 @@ func clear() -> void:
 		grid.fill_area_building(building.rect(), Grid.NO_BUILDING)
 	_buildings.clear()
 	_chunk_index.clear()
+	_invalidate_cache()
 	_next_id = 1
 
 
@@ -125,20 +135,46 @@ func all_ids() -> Array[int]:
 	return ids
 
 
+## Все здания. Возвращается общий массив кеша — менять его снаружи нельзя.
 func all() -> Array[Building]:
-	var result: Array[Building] = []
-	for building_id: int in _buildings:
-		result.append(_buildings[building_id])
-	return result
+	_ensure_cache()
+	return _all_cache
 
 
+## Здания указанного вида (порты, склады, лаборатории) — тоже из кеша.
 func of_kind(kind: int) -> Array[Building]:
-	var result: Array[Building] = []
+	_ensure_cache()
+	if not _kind_cache.has(kind):
+		var empty: Array[Building] = []
+		_kind_cache[kind] = empty
+	return _kind_cache[kind]
+
+
+## Кеш пересобирается в НОВЫЕ массивы, а не очищается на месте: снос здания
+## во время обхода (обычное дело в игровом коде и в тестах) иначе обрезал бы
+## массив прямо под ногами у цикла. Со свежими массивами обход спокойно
+## дорабатывает по устаревшему снимку.
+func _ensure_cache() -> void:
+	if _cache_valid:
+		return
+	var all_buildings: Array[Building] = []
+	var by_kind: Dictionary[int, Array] = {}
 	for building_id: int in _buildings:
 		var building: Building = _buildings[building_id]
-		if BuildingDefs.kind(building.def_id) == kind:
-			result.append(building)
-	return result
+		all_buildings.append(building)
+		var kind: int = BuildingDefs.kind(building.def_id)
+		if not by_kind.has(kind):
+			var bucket: Array[Building] = []
+			by_kind[kind] = bucket
+		var kind_bucket: Array[Building] = by_kind[kind]
+		kind_bucket.append(building)
+	_all_cache = all_buildings
+	_kind_cache = by_kind
+	_cache_valid = true
+
+
+func _invalidate_cache() -> void:
+	_cache_valid = false
 
 
 ## Здания, чей центр лежит в радиусе (в клетках) от точки. Идёт по индексу чанков.
@@ -212,6 +248,7 @@ func deserialize(list: Array) -> void:
 ## --- Индекс ----------------------------------------------------------------
 
 func _register(building: Building) -> void:
+	_invalidate_cache()
 	_buildings[building.id] = building
 	grid.fill_area_building(building.rect(), building.id)
 	_index(building)

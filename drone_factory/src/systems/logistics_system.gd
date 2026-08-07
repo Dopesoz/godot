@@ -15,9 +15,11 @@ extends GameSystem
 ## Брони живут в системе (не в сохранении) и восстанавливаются из заданий
 ## дронов при загрузке.
 
-## Сколько заданий раздаём за один тик: раздача — самая дорогая часть
-## логистики, и размазывать её по тикам дешевле, чем делать рывком.
-const MAX_ASSIGNMENTS_PER_TICK: int = 4
+## Сколько ПОПЫТОК раздать задание делаем за тик. Считать нужно именно
+## попытки, а не удачи: когда везти нечего, каждый свободный дрон запускает
+## полный поиск по окрестностям, и полсотни дронов превращают тик в обход
+## всей фабрики. С попытками стоимость тика ограничена сверху.
+const MAX_ASSIGN_ATTEMPTS_PER_TICK: int = 6
 ## Насколько заполнен выход производителя, чтобы дроны начали его разгружать.
 const HAUL_THRESHOLD: float = 0.25
 
@@ -46,7 +48,7 @@ func tick(delta: float, context: Dictionary) -> void:
 
 	var active: int = 0
 	var total: int = 0
-	var assignments: int = 0
+	var attempts: int = 0
 
 	for port_building: Building in ports:
 		var port: DronePort = port_building
@@ -56,15 +58,24 @@ func tick(delta: float, context: Dictionary) -> void:
 		total += port.drone_count()
 		if not port.is_operational():
 			continue
+
+		# Окрестности порта считаем один раз на порт, а не на каждого дрона:
+		# запрос по радиусу — самая дорогая операция в этом цикле.
+		var neighbours: Array[Building] = []
+		var neighbours_ready: bool = false
+
 		for drone: Drone in port.drones:
 			if research != null:
 				drone.speed_multiplier = research.multiplier(Technologies.BONUS_DRONE_SPEED)
 			if drone.is_busy():
 				active += 1
 				_advance_drone(drone, port, registry, delta)
-			elif assignments < MAX_ASSIGNMENTS_PER_TICK:
-				if _assign_task(drone, port, registry):
-					assignments += 1
+			elif attempts < MAX_ASSIGN_ATTEMPTS_PER_TICK:
+				attempts += 1
+				if not neighbours_ready:
+					neighbours = registry.in_radius(port.center_cell(), port.service_radius())
+					neighbours_ready = true
+				if _assign_task(drone, port, registry, neighbours):
 					active += 1
 
 	if active != _active_drones or total != _total_drones:
@@ -163,13 +174,14 @@ func _land(drone: Drone, port: DronePort) -> void:
 
 ## --- Раздача заданий -------------------------------------------------------
 
-func _assign_task(drone: Drone, port: DronePort, registry: BuildingRegistry) -> bool:
+func _assign_task(
+	drone: Drone, port: DronePort, registry: BuildingRegistry, neighbours: Array[Building]
+) -> bool:
 	# Если дрон почему-то держит груз (например, задание отменили) — сначала
 	# отвезём его на склад.
 	if drone.has_cargo():
-		return _assign_unload(drone, port, registry)
+		return _assign_unload(drone, neighbours)
 
-	var neighbours: Array[Building] = registry.in_radius(port.center_cell(), port.service_radius())
 	if _assign_request(drone, port, registry, neighbours):
 		return true
 	return _assign_haul(drone, port, registry, neighbours)
@@ -227,8 +239,7 @@ func _assign_haul(
 
 
 ## Дрон с «осиротевшим» грузом просто везёт его на склад.
-func _assign_unload(drone: Drone, port: DronePort, registry: BuildingRegistry) -> bool:
-	var neighbours: Array[Building] = registry.in_radius(port.center_cell(), port.service_radius())
+func _assign_unload(drone: Drone, neighbours: Array[Building]) -> bool:
 	var storage: Building = _find_storage(neighbours, drone.cargo_item, drone.cargo_count)
 	if storage == null:
 		return false

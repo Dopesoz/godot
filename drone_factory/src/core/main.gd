@@ -17,6 +17,10 @@ var settings: GameSettings = null
 
 
 func _ready() -> void:
+	# Больше 60 кадров на телефоне не нужны: экран чаще не обновляется, а
+	# лишние кадры — это нагрев и разряд батареи.
+	Engine.max_fps = 60
+
 	Log.info("Drone Factory %s, движок %s" % [
 		ProjectSettings.get_setting("application/config/version", "?"),
 		Engine.get_version_info().string,
