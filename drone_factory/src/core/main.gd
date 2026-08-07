@@ -38,6 +38,8 @@ func _ready() -> void:
 	simulation.add_system(LogisticsSystem.new())
 	add_child(simulation)
 
+	world.simulation = simulation
+
 	start_new_game(int(Time.get_unix_time_from_system()))
 
 	touch.tapped.connect(build_controller.on_tap)

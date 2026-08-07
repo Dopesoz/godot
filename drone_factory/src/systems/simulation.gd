@@ -118,6 +118,12 @@ func time_of_day_text() -> String:
 	return "Сумерки"
 
 
+## Доля времени, прошедшая с последнего тика, 0..1. По ней отрисовка
+## интерполирует положение дронов между тиками.
+func tick_alpha() -> float:
+	return clampf(_accumulator / Constants.TICK_DELTA, 0.0, 1.0)
+
+
 func dropped_ticks() -> int:
 	return _dropped_ticks
 

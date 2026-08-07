@@ -12,6 +12,10 @@ var buildings: BuildingRegistry = null
 
 var terrain_renderer: TerrainRenderer = null
 var building_renderer: BuildingRenderer = null
+var drone_renderer: DroneRenderer = null
+
+## Ссылка на симуляцию нужна только отрисовке дронов — для интерполяции.
+var simulation: Simulation = null
 
 var world_seed: int = 0
 var start_cell: Vector2i = Vector2i.ZERO
@@ -28,6 +32,10 @@ func _ready() -> void:
 	building_renderer.name = "BuildingRenderer"
 	add_child(building_renderer)
 
+	drone_renderer = DroneRenderer.new()
+	drone_renderer.name = "DroneRenderer"
+	add_child(drone_renderer)
+
 
 ## Создаёт новый мир. Возвращает стартовую клетку.
 func new_game(seed_value: int) -> Vector2i:
@@ -38,6 +46,7 @@ func new_game(seed_value: int) -> Vector2i:
 
 	terrain_renderer.setup(grid)
 	building_renderer.setup(buildings)
+	drone_renderer.setup(buildings, simulation)
 	Events.world_generated.emit(seed_value)
 	return start_cell
 
