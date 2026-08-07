@@ -5,6 +5,7 @@ var world: GameWorld = null
 var camera: GameCamera = null
 var touch: TouchInput = null
 var build_controller: BuildController = null
+var simulation: Simulation = null
 
 
 func _ready() -> void:
@@ -30,6 +31,11 @@ func _ready() -> void:
 	build_controller.name = "BuildController"
 	add_child(build_controller)
 
+	simulation = Simulation.new()
+	simulation.name = "Simulation"
+	simulation.add_system(BuildingSystem.new())
+	add_child(simulation)
+
 	start_new_game(int(Time.get_unix_time_from_system()))
 
 	touch.tapped.connect(build_controller.on_tap)
@@ -39,6 +45,8 @@ func _ready() -> void:
 
 func start_new_game(seed_value: int) -> void:
 	var start: Vector2i = world.new_game(seed_value)
+	simulation.setup(world)
+	simulation.reset()
 	build_controller.setup(world, camera)
 	GameSetup.create_starting_base(world)
 
