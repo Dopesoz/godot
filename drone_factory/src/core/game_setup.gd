@@ -34,7 +34,12 @@ static func create_starting_base(world: GameWorld) -> void:
 		Log.error("GameSetup: не удалось поставить стартовые здания")
 		return
 	for item_id: StringName in STARTING_ITEMS:
-		chest.output.add(item_id, STARTING_ITEMS[item_id])
+		# Дроны кладём прямо в порт: они должны взлететь сразу, а не ждать,
+		# пока игрок догадается перенести их со склада.
+		var destination: Building = port if item_id == Items.DRONE and port != null else chest
+		destination.output.add(item_id, STARTING_ITEMS[item_id])
+	if port != null:
+		(port as DronePort).on_world_ready(world.grid)
 	Events.inventory_changed.emit(chest.id)
 
 

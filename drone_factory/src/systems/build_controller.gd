@@ -159,6 +159,10 @@ func demolish(building_id: int) -> bool:
 		return false
 	var def_id: StringName = building.def_id
 
+	# Летающие дроны возвращаются предметами, иначе снос порта их уничтожит.
+	if building is DronePort:
+		(building as DronePort).pack_drones_back()
+
 	# Сначала спасаем содержимое: терять сотню пластин из-за сноса обидно.
 	for inventory: Inventory in [building.input, building.output]:
 		if inventory == null:
