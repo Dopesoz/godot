@@ -108,3 +108,15 @@ func test_generation_speed() -> void:
 	MapGenerator.generate(target, 4242)
 	var elapsed_ms: float = float(Time.get_ticks_usec() - start_usec) / 1000.0
 	check(elapsed_ms < 1200.0, "генерация мира 512x512 заняла %.0f мс" % elapsed_ms)
+
+
+func test_ore_coverage_is_sparse() -> void:
+	# Руда должна быть тем, что ищут: если ею покрыта половина карты,
+	# разведка теряет смысл, а карта превращается в кашу.
+	var ore_cells: int = 0
+	for i: int in SIZE * SIZE:
+		if grid.ore[i] != TileTypes.Ore.NONE:
+			ore_cells += 1
+	var coverage: float = float(ore_cells) / float(SIZE * SIZE)
+	check(coverage > 0.02, "руды почти нет: %.3f" % coverage)
+	check(coverage < 0.18, "руда покрывает %.3f карты — слишком много" % coverage)
