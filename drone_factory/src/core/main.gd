@@ -11,6 +11,7 @@ var hud: Hud = null
 var build_menu: BuildMenu = null
 var build_bar: BuildBar = null
 var info_panel: InfoPanel = null
+var research_panel: ResearchPanel = null
 
 
 func _ready() -> void:
@@ -62,11 +63,16 @@ func _ready() -> void:
 	info_panel.name = "InfoPanel"
 	add_child(info_panel)
 
+	research_panel = ResearchPanel.new()
+	research_panel.name = "ResearchPanel"
+	add_child(research_panel)
+
 	build_bar = BuildBar.new()
 	build_bar.name = "BuildBar"
 	add_child(build_bar)
 
 	hud.build_menu_requested.connect(build_menu.open)
+	hud.research_requested.connect(research_panel.open)
 
 	if SaveSystem.has_save():
 		start_new_game(int(Time.get_unix_time_from_system()))
@@ -93,6 +99,9 @@ func start_new_game(seed_value: int) -> void:
 	build_menu.setup(build_controller, world.research)
 	build_bar.setup(build_controller)
 	info_panel.setup(world, build_controller)
+	research_panel.setup(
+		simulation.get_system(ResearchSystem) as ResearchSystem, world.research
+	)
 
 	camera.focus_on_cell(start)
 	world.update_view(camera.visible_world_rect())
