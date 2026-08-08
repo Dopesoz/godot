@@ -76,11 +76,12 @@ jobs:
           EOF
 
       - name: Собрать APK
-        env:
-          GODOT_ANDROID_KEYSTORE_RELEASE_PATH: ${{ env.HOME }}/debug.keystore
-          GODOT_ANDROID_KEYSTORE_RELEASE_USER: androiddebugkey
-          GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD: android
         run: |
+          # HOME доступен только как переменная окружения шага: в контексте
+          # ${{ env }} его нет, и путь к ключу вышел бы пустым.
+          export GODOT_ANDROID_KEYSTORE_RELEASE_PATH="${HOME}/debug.keystore"
+          export GODOT_ANDROID_KEYSTORE_RELEASE_USER=androiddebugkey
+          export GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD=android
           mkdir -p "${PROJECT_DIR}/build"
           godot --headless --path "${PROJECT_DIR}" \
             --export-release "Android APK (arm64)" build/drone_factory_arm64.apk
