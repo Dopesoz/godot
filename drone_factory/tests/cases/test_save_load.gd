@@ -213,3 +213,47 @@ func test_drone_reservations_survive_load() -> void:
 			not logistics._incoming.is_empty(),
 			"брони летящих дронов должны восстанавливаться, иначе ресурсы задвоятся"
 		)
+
+
+func test_ui_sees_research_after_restart() -> void:
+	# То, на что жаловался игрок: здания на месте, а дерево технологий пустое.
+	# Причина была не в записи, а в подмене объектов при загрузке: интерфейс
+	# продолжал смотреть на состояние прежней партии. Поэтому проверяем именно
+	# то, что видит игрок, а не только содержимое файла.
+	SaveSystem.delete_save()
+	var first: Node = load("res://scenes/main.tscn").instantiate()
+	Engine.get_main_loop().root.add_child(first)
+	first.start_new_game(5150)
+	first.world.research.complete(Technologies.STEAM_POWER)
+	first.world.research.complete(Technologies.ELECTRONICS)
+	first.world.stats.add(GameStats.produced_key(Items.IRON_PLATE), 42)
+	check(first.save_system.save_game(), "игра должна сохраниться")
+	first.free()
+
+	# Второй запуск приложения: сцена собирается заново и подхватывает файл.
+	var second: Node = load("res://scenes/main.tscn").instantiate()
+	Engine.get_main_loop().root.add_child(second)
+
+	check(
+		second.world.research.is_completed(Technologies.STEAM_POWER),
+		"изученное должно пережить перезапуск"
+	)
+	check(
+		second.build_menu.research.is_completed(Technologies.STEAM_POWER),
+		"меню строительства смотрит на устаревшее состояние исследований"
+	)
+	check(
+		second.research_panel.state.is_completed(Technologies.ELECTRONICS),
+		"панель исследований смотрит на устаревшее состояние"
+	)
+	check_eq(
+		second.build_controller.pool.stores().size(),
+		ResourcePool.new(second.world.buildings).stores().size(),
+		"строительство считает ресурсы по устаревшему реестру зданий"
+	)
+	check(
+		second.world.stats.total_of(Items.IRON_PLATE) >= 42,
+		"статистика партии потерялась при загрузке"
+	)
+	second.free()
+	SaveSystem.delete_save()

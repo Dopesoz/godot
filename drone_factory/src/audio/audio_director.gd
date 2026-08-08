@@ -15,11 +15,19 @@ const VOICES: int = 5
 const EFFECT_COOLDOWN: float = 0.12
 ## Как быстро подстраивается громкость гула.
 const HUM_SMOOTHING: float = 1.5
+## Сколько раз петля проигрывается подряд, прежде чем включится следующий трек.
+##
+## Не один: смена на каждом круге читается как дёрганый плейлист. Не десять:
+## тогда возвращается та самая «заедающая» петля, ради которой треки и
+## разводились. Три круга — это примерно минута на трек.
+const LOOPS_PER_TRACK: int = 3
 
 var music_volume: float = 0.6
 var sfx_volume: float = 0.8
 
 var _music_player: AudioStreamPlayer = null
+var _track_index: int = 0
+var _track_time: float = 0.0
 var _hum_player: AudioStreamPlayer = null
 var _voices: Array[AudioStreamPlayer] = []
 var _next_voice: int = 0
@@ -35,7 +43,10 @@ func _ready() -> void:
 	SoundBank.build()
 
 	_music_player = AudioStreamPlayer.new()
-	_music_player.stream = SoundBank.music()
+	# Трек стартует со случайного места списка: иначе каждая партия начинается
+	# с одной и той же мелодии, и это первое, что приедается.
+	_track_index = randi() % maxi(SoundBank.track_count(), 1)
+	_music_player.stream = SoundBank.music(_track_index)
 	_music_player.bus = &"Master"
 	add_child(_music_player)
 
@@ -75,6 +86,40 @@ func apply_volumes() -> void:
 		_music_player.stop()
 
 
+## Смена трека.
+##
+## Петли зациклены самим потоком (так между кругами нет щелчка), поэтому
+## сигнала об окончании не будет — время считаем сами и переключаемся ровно
+## на границе круга, чтобы мелодия не обрывалась на полуфразе.
+func _update_music(delta: float) -> void:
+	if _music_player == null or not _music_player.playing:
+		return
+	var length: float = _music_player.stream.get_length()
+	if length <= 0.0:
+		return
+	_track_time += delta
+	if _track_time < length * float(LOOPS_PER_TRACK):
+		return
+	_track_time = 0.0
+	next_track()
+
+
+## Переключает музыку на следующий трек по кругу.
+func next_track() -> void:
+	if SoundBank.track_count() <= 1:
+		return
+	_track_index = (_track_index + 1) % SoundBank.track_count()
+	_music_player.stream = SoundBank.music(_track_index)
+	_track_time = 0.0
+	if music_volume > 0.001:
+		_music_player.play()
+
+
+## Какой трек звучит сейчас — для интерфейса и тестов.
+func current_track() -> int:
+	return _track_index
+
+
 static func _to_db(volume: float) -> float:
 	# Линейная громкость воспринимается неровно, поэтому переводим в децибелы.
 	return -80.0 if volume <= 0.001 else linear_to_db(clampf(volume, 0.0, 1.0))
@@ -100,6 +145,7 @@ func play(effect_id: StringName) -> void:
 
 func _process(delta: float) -> void:
 	_time += delta
+	_update_music(delta)
 	_update_hum(delta)
 
 

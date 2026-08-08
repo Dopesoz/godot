@@ -170,3 +170,29 @@ func test_radius_query_performance() -> void:
 		registry.in_radius(Vector2i(30, 30), 10.0)
 	var elapsed_ms: float = float(Time.get_ticks_usec() - start_usec) / 1000.0
 	check(elapsed_ms < 60.0, "200 запросов по радиусу заняли %.1f мс" % elapsed_ms)
+
+
+func test_kind_cache_is_not_corrupted_by_callers() -> void:
+	# of_kind() отдаёт кеш по ссылке ради скорости. Значит, любой, кто собирает
+	# из него свой список, обязан начинать с пустого массива — иначе кеш
+	# складов пополняется чужими зданиями, а ресурсы начинают двоиться.
+	registry.place(BuildingDefs.STORAGE, Vector2i(10, 10))
+	registry.place(BuildingDefs.DRONE_PORT, Vector2i(20, 20))
+	var pool := ResourcePool.new(registry)
+
+	var before: int = registry.of_kind(BuildingDefs.Kind.STORAGE).size()
+	for i: int in 5:
+		pool.stores()
+	check_eq(
+		registry.of_kind(BuildingDefs.Kind.STORAGE).size(), before,
+		"кеш складов испортился после обращений к общему хранилищу"
+	)
+	check_eq(pool.stores().size(), 2, "склад и порт — два хранилища, сколько ни спрашивай")
+
+
+func test_pool_counts_each_store_once() -> void:
+	var storage: Building = registry.place(BuildingDefs.STORAGE, Vector2i(10, 10))
+	storage.output.add(Items.IRON_PLATE, 10)
+	var pool := ResourcePool.new(registry)
+	for i: int in 4:
+		check_eq(pool.count(Items.IRON_PLATE), 10, "количество не должно расти от повторных запросов")

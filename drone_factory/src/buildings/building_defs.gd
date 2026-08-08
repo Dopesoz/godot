@@ -128,10 +128,10 @@ const DEFS: Dictionary[StringName, Dictionary] = {
 		"name": "Хижина носильщиков", "kind": Kind.PORTER_HUT, "size": Vector2i(2, 2),
 		"cost": {Items.STONE: 25, Items.IRON_PLATE: 4},
 		"power_use": 0.0, "power_gen": 0.0, "power_range": 0,
-		"input": 0, "output": 150, "needs_ore": false, "tech": &"",
-		"description": "Бригада разносит грузы пешком и без электричества. "
-			+ "Дешёвая логистика для дальних залежей, куда не тянуть провода. "
-			+ "Медленнее дрона и через воду не ходит.",
+		"input": 60, "output": 150, "needs_ore": false, "tech": &"",
+		"description": "Бригада разносит грузы пешком, без электричества, "
+			+ "но на дереве. Логистика для дальних залежей, куда не тянуть "
+			+ "провода. Медленнее дрона и через воду не ходит.",
 	},
 	WATER_PUMP: {
 		"name": "Водозабор", "kind": Kind.WATER_PUMP, "size": Vector2i(2, 2),

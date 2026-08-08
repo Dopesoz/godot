@@ -13,6 +13,9 @@ const STARTING_ITEMS: Dictionary[StringName, int] = {
 	Items.COPPER_PLATE: 40,
 	Items.GEAR: 24,
 	Items.CIRCUIT: 8,
+	# Дерево на первую хижину носильщиков: без запаса игрок построит её и
+	# увидит бригаду, которая никуда не идёт.
+	Items.WOOD: 40,
 	Items.DRONE: 2,
 }
 

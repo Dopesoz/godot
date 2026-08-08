@@ -140,3 +140,28 @@ func test_state_survives_save() -> void:
 func test_unknown_achievement_in_save_is_skipped() -> void:
 	achievements.deserialize(["first_smelt", "obsolete_achievement"])
 	check_eq(achievements.unlocked_count(), 1, "исчезнувшее достижение не должно ломать загрузку")
+
+
+func test_every_achievement_pays_something() -> void:
+	for id: StringName in Achievements.all_ids():
+		var reward: Dictionary = Achievements.reward(id)
+		check(not reward.is_empty(), "у достижения %s нет награды" % id)
+		for item_id: StringName in reward:
+			check(Items.exists(item_id), "%s награждает несуществующим %s" % [id, item_id])
+			check(int(reward[item_id]) > 0, "%s награждает нулём %s" % [id, item_id])
+		check(not Achievements.reward_text(id).is_empty(), "награду %s нечем показать" % id)
+
+
+func test_reward_lands_in_storage() -> void:
+	var storage: Building = world.buildings.place(BuildingDefs.STORAGE, world.start_cell + Vector2i(6, 6))
+	check(storage != null, "склад не поставился")
+	var pool := ResourcePool.new(world.buildings)
+	var before: int = pool.count(Items.IRON_PLATE)
+
+	achievements._unlock(&"first_smelt")
+	var reward: int = int(Achievements.reward(&"first_smelt").get(Items.IRON_PLATE, 0))
+	check(reward > 0, "у достижения должна быть награда пластинами")
+	check_eq(
+		pool.count(Items.IRON_PLATE), before + reward,
+		"награда должна попасть на склад"
+	)

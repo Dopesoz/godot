@@ -69,12 +69,32 @@ func new_game(seed_value: int) -> Vector2i:
 
 ## Готовит мир к загрузке сохранения: пустые слои нужного размера и чистые
 ## реестры. Мир не генерируется заново — его слои приедут из файла.
+##
+## Объекты состояния именно очищаются, а не создаются заново, и это важно.
+## Интерфейс и строительство получают ссылки на сетку, реестр и исследования
+## один раз при старте партии. Если подменить объект здесь, у них останется
+## указатель на прежний: фабрика продолжит работать (системы читают состояние
+## через контекст тика), а меню будет показывать пустое дерево технологий —
+## ровно то, что выглядело как «исследования пропали после перезапуска».
 func prepare_for_load(seed_value: int) -> void:
 	world_seed = seed_value
-	grid = Grid.new(Constants.WORLD_SIZE)
-	buildings = BuildingRegistry.new(grid)
-	research = ResearchState.new()
-	stats = GameStats.new()
+	if grid == null or grid.size != Constants.WORLD_SIZE:
+		grid = Grid.new(Constants.WORLD_SIZE)
+	else:
+		grid.clear()
+	if buildings == null:
+		buildings = BuildingRegistry.new(grid)
+	else:
+		buildings.clear()
+		buildings.grid = grid
+	if research == null:
+		research = ResearchState.new()
+	else:
+		research.clear()
+	if stats == null:
+		stats = GameStats.new()
+	else:
+		stats.clear()
 	terrain_renderer.setup(grid)
 	building_renderer.setup(buildings)
 	drone_renderer.setup(buildings, simulation)

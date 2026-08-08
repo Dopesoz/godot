@@ -68,6 +68,9 @@ func _build_row(id: StringName) -> Control:
 	var detail: String = Achievements.description(id)
 	if not done:
 		detail += " · " + achievements.progress_text(id)
+	var reward: String = Achievements.reward_text(id)
+	if not reward.is_empty():
+		detail += "\nНаграда: " + reward
 	var detail_label: Label = UiWidgets.label(detail, UiTheme.FONT_SMALL, Palette.UI_TEXT_DIM)
 	detail_label.name = "Detail"
 	detail_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

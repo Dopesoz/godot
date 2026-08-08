@@ -20,10 +20,11 @@ enum Ore {
 	COPPER,
 	COAL,
 	URANIUM,
+	TREES,
 }
 
 const TERRAIN_COUNT: int = 5
-const ORE_COUNT: int = 6
+const ORE_COUNT: int = 7
 
 ## Сколько вариантов одного тайла рисуется, чтобы поверхность не «тайлилась» узором.
 const VARIANTS: int = 4
@@ -43,6 +44,7 @@ const ORE_NAMES: Dictionary[int, String] = {
 	Ore.COPPER: "Медная руда",
 	Ore.COAL: "Уголь",
 	Ore.URANIUM: "Урановая руда",
+	Ore.TREES: "Лес",
 }
 
 

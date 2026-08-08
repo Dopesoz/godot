@@ -82,9 +82,13 @@ func test_cost_is_charged_and_refunded() -> void:
 	check(building != null, "постройка не удалась")
 	check_eq(controller.pool.count(Items.IRON_PLATE), before - cost, "стоимость не списана")
 
+	# Снос возвращает стоимость целиком: переставить здание должно быть
+	# бесплатно, иначе игрок боится трогать уже построенное.
 	controller.demolish(building.id)
-	var expected: int = before - cost + int(floorf(cost * BuildController.REFUND_RATIO))
-	check_eq(controller.pool.count(Items.IRON_PLATE), expected, "неверный возврат при сносе")
+	check_eq(
+		controller.pool.count(Items.IRON_PLATE), before,
+		"после сноса ресурсов должно стать столько же, сколько было до постройки"
+	)
 
 
 func test_cannot_build_without_resources() -> void:

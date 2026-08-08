@@ -10,6 +10,11 @@ const GRASS_DARK := Color8(46, 84, 54)
 const GRASS := Color8(62, 106, 63)
 const GRASS_LIGHT := Color8(84, 130, 74)
 
+## Крона леса намеренно темнее и холоднее травы: иначе лес сливается
+## с обычным лугом, и залежь древесины на карте не найти.
+const TREE := Color8(34, 78, 44)
+const TREE_LIGHT := Color8(96, 150, 84)
+
 const DIRT_DARK := Color8(84, 62, 44)
 const DIRT := Color8(108, 82, 56)
 const DIRT_LIGHT := Color8(132, 104, 72)

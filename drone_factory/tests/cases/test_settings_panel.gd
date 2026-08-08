@@ -136,3 +136,26 @@ func test_touch_targets() -> void:
 	panel.open()
 	for name: String in ["SaveButton", "LoadButton", "NewGameButton", "FpsToggle"]:
 		check(button(name).custom_minimum_size.y >= UiTheme.TOUCH_MIN, "кнопка %s мелковата" % name)
+
+
+func test_dev_tools_are_hidden_until_asked_for() -> void:
+	panel.open()
+	var box: VBoxContainer = panel.find_child("DevBox", true, false) as VBoxContainer
+	check(box != null, "нужен блок отладки")
+	check(not box.visible, "режим разработчика не должен быть включён по умолчанию")
+
+	settings.set_flag(&"dev_mode", true)
+	panel._refresh_toggles()
+	check(box.visible, "включённый режим должен показывать кнопки отладки")
+	for name: String in ["DevItemsButton", "DevTechButton", "DevChapterButton"]:
+		check(panel.find_child(name, true, false) != null, "нет кнопки %s" % name)
+
+
+func test_dev_mode_survives_restart() -> void:
+	settings.set_flag(&"dev_mode", true)
+	settings.save_settings()
+	var reloaded := GameSettings.new()
+	reloaded.load_settings()
+	check(reloaded.get_flag(&"dev_mode"), "режим разработчика должен запоминаться")
+	settings.set_flag(&"dev_mode", false)
+	settings.save_settings()

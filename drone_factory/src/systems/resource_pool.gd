@@ -16,7 +16,11 @@ func _init(building_registry: BuildingRegistry) -> void:
 
 ## Хранилища, из которых можно брать и в которые можно класть.
 func stores() -> Array[Building]:
-	var result: Array[Building] = registry.of_kind(BuildingDefs.Kind.STORAGE)
+	# Массив собирается свой: of_kind() отдаёт кеш реестра по ссылке, и
+	# дописывание в него порталось прямо в кеш складов. Склады от этого
+	# размножались с каждым вызовом, а вместе с ними двоились и ресурсы.
+	var result: Array[Building] = []
+	result.append_array(registry.of_kind(BuildingDefs.Kind.STORAGE))
 	for kind: int in BuildingDefs.COURIER_KINDS:
 		result.append_array(registry.of_kind(kind))
 	return result

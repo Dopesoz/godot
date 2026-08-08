@@ -61,8 +61,30 @@ func progress_text(id: StringName) -> String:
 
 func _unlock(id: StringName) -> void:
 	unlocked[id] = true
+	var reward: String = _grant_reward(id)
 	Events.achievement_unlocked.emit(id)
-	Events.notify.emit("Достижение: %s" % Achievements.display_name(id))
+	Events.notify.emit("Достижение: %s%s" % [
+		Achievements.display_name(id), "" if reward.is_empty() else " (+%s)" % reward,
+	])
+
+
+## Награда кладётся на склад тем же путём, что и всё остальное в игре: через
+## общее хранилище. Если складов нет или они забиты, награда просто пропадает —
+## заводить ради неё отдельный «карман игрока» значило бы завести второй,
+## параллельный способ хранить вещи.
+func _grant_reward(id: StringName) -> String:
+	var reward: Dictionary = Achievements.reward(id)
+	if reward.is_empty() or world == null or world.buildings == null:
+		return ""
+	var pool := ResourcePool.new(world.buildings)
+	var delivered: PackedStringArray = PackedStringArray()
+	for item_id: StringName in reward:
+		var amount: int = int(reward[item_id])
+		# give() возвращает остаток, который некуда положить.
+		var accepted: int = amount - pool.give(item_id, amount)
+		if accepted > 0:
+			delivered.append("%s %d" % [Items.display_name(item_id), accepted])
+	return ", ".join(delivered)
 
 
 ## --- Сбор статистики -------------------------------------------------------

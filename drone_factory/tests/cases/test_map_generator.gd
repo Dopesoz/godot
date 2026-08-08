@@ -120,3 +120,37 @@ func test_ore_coverage_is_sparse() -> void:
 	var coverage: float = float(ore_cells) / float(SIZE * SIZE)
 	check(coverage > 0.02, "руды почти нет: %.3f" % coverage)
 	check(coverage < 0.18, "руда покрывает %.3f карты — слишком много" % coverage)
+
+
+func test_forest_is_generated_and_reachable() -> void:
+	# Древесина — топливо носильщиков, значит лес обязан быть и на карте,
+	# и в разумной досягаемости от старта.
+	var trees: int = 0
+	for i: int in grid.size * grid.size:
+		if grid.ore[i] == TileTypes.Ore.TREES:
+			trees += 1
+	var share: float = float(trees) / float(grid.size * grid.size)
+	check(share > 0.01, "леса почти нет: %.2f%% карты" % (share * 100.0))
+	check(share < 0.20, "лес занял %.0f%% карты — он вытесняет всё остальное" % (share * 100.0))
+
+	var nearest: int = 9999
+	for radius: int in range(1, 60):
+		for dy: int in range(-radius, radius + 1):
+			for dx: int in range(-radius, radius + 1):
+				var cell: Vector2i = start + Vector2i(dx, dy)
+				if grid.in_bounds(cell) and grid.get_ore(cell) == TileTypes.Ore.TREES:
+					nearest = mini(nearest, maxi(absi(dx), absi(dy)))
+		if nearest < 9999:
+			break
+	check(nearest <= 40, "ближайший лес в %d клетках — слишком далеко" % nearest)
+
+
+func test_trees_do_not_replace_ore() -> void:
+	# Лес кладётся только на пустые клетки: иначе он съедает залежи.
+	for i: int in grid.size * grid.size:
+		if grid.ore[i] != TileTypes.Ore.TREES:
+			continue
+		check_eq(
+			grid.terrain[i], TileTypes.Terrain.GRASS,
+			"лес вырос не на траве"
+		)

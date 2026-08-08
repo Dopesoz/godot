@@ -18,6 +18,8 @@ func before_each() -> void:
 	logistics = LogisticsSystem.new()
 	hut = registry.place(BuildingDefs.PORTER_HUT, Vector2i(20, 20)) as PorterHut
 	hut.on_world_ready(grid)
+	# Бригада работает на дереве: без запаса она никуда не пойдёт.
+	hut.input.add(Items.WOOD, 40)
 
 
 func context() -> Dictionary:
@@ -27,6 +29,35 @@ func context() -> Dictionary:
 func run_ticks(count: int) -> void:
 	for i: int in count:
 		logistics.tick(Constants.TICK_DELTA, context())
+
+
+func test_hut_runs_on_wood() -> void:
+	check(hut.has_fuel(), "с запасом дерева бригада должна быть готова к работе")
+	check(hut.accepts_task(Items.IRON_ORE, 999), "с деревом берётся любое задание")
+
+	hut.input.clear()
+	check(not hut.has_fuel(), "без дерева топлива нет")
+	check(
+		not hut.accepts_task(Items.IRON_ORE, 999),
+		"без дерева бригада не должна браться за посторонние грузы"
+	)
+	check(
+		hut.accepts_task(Items.WOOD, hut.id),
+		"подвоз дерева себе — единственное, за что бригада берётся без топлива"
+	)
+	check(
+		hut.requests().has(Items.WOOD),
+		"хижина обязана просить дерево, иначе его некому привезти"
+	)
+
+
+func test_wood_burns_per_trip() -> void:
+	var before: int = hut.input.count(Items.WOOD)
+	hut.on_courier_returned(hut.drones[0])
+	check_eq(
+		hut.input.count(Items.WOOD), before - PorterHut.WOOD_PER_TRIP,
+		"за ходку должно списываться дерево"
+	)
 
 
 func test_hut_is_a_courier_base_with_a_crew() -> void:

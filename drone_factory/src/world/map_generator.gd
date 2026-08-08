@@ -26,6 +26,12 @@ const DIRT_MOISTURE: int = 118
 const ORE_THRESHOLD: int = 205
 ## Уран — редкость поздней игры: порог выше, залежи мельче и разбросаны дальше.
 const URANIUM_THRESHOLD: int = 222
+## Порог леса ниже рудного: рощи должны быть заметной частью пейзажа,
+## а не редкой находкой — древесина нужна носильщикам постоянно.
+const TREE_THRESHOLD: int = 190
+const TREE_AMOUNT_MIN: int = 200
+const TREE_AMOUNT_MAX: int = 900
+
 const ORE_AMOUNT_MIN: int = 120
 const ORE_AMOUNT_MAX: int = 2400
 
@@ -37,6 +43,7 @@ const START_PATCH_OFFSETS: Dictionary[int, Vector2i] = {
 	TileTypes.Ore.COPPER: Vector2i(13, -8),
 	TileTypes.Ore.STONE: Vector2i(2, 15),
 	TileTypes.Ore.COAL: Vector2i(-12, 12),
+	TileTypes.Ore.TREES: Vector2i(11, 11),
 }
 const START_PATCH_RADIUS: int = 4
 const START_PATCH_AMOUNT: int = 900
@@ -68,6 +75,10 @@ static func generate(grid: Grid, seed_value: int) -> Vector2i:
 
 	_fill_terrain(grid, elevation, moisture)
 	_fill_ore(grid, ore_layers)
+	# Лес кладётся последним и только на пустые клетки: древесина не должна
+	# отнимать место у руды, иначе на карте станет тесно именно там, где
+	# игрок и строит фабрику.
+	_fill_trees(grid, _noise_map(size, seed_value + 8419, 0.06, 2))
 
 	var start: Vector2i = _prepare_start_area(grid, seed_value)
 
@@ -153,6 +164,30 @@ static func _fill_ore(grid: Grid, layers: Array[Dictionary]) -> void:
 		var richness: float = best_richness[i]
 		ore[i] = best_type[i]
 		amount[i] = ORE_AMOUNT_MIN + int(richness * richness * span)
+	grid.ore = ore
+	grid.ore_amount = amount
+
+
+## Лес: рощи на траве там, где не легла руда.
+static func _fill_trees(grid: Grid, tree_map: PackedByteArray) -> void:
+	var count: int = grid.size * grid.size
+	var terrain: PackedByteArray = grid.terrain
+	var ore: PackedByteArray = grid.ore
+	var amount: PackedInt32Array = grid.ore_amount
+	var inverse_span: float = 1.0 / float(255 - TREE_THRESHOLD)
+	var span: float = float(TREE_AMOUNT_MAX - TREE_AMOUNT_MIN)
+
+	for i: int in count:
+		if ore[i] != TileTypes.Ore.NONE:
+			continue
+		if terrain[i] != TileTypes.Terrain.GRASS:
+			continue
+		var value: int = tree_map[i]
+		if value <= TREE_THRESHOLD:
+			continue
+		var density: float = float(value - TREE_THRESHOLD) * inverse_span
+		ore[i] = TileTypes.Ore.TREES
+		amount[i] = TREE_AMOUNT_MIN + int(density * span)
 	grid.ore = ore
 	grid.ore_amount = amount
 

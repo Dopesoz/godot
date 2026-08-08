@@ -35,17 +35,17 @@ func test_every_effect_is_generated_and_audible() -> void:
 
 
 func test_music_loops() -> void:
-	var music: AudioStreamWAV = SoundBank.music()
+	var music: AudioStreamWAV = SoundBank.music(0)
 	check(music != null)
 	check_eq(music.loop_mode, AudioStreamWAV.LOOP_FORWARD, "музыка должна зацикливаться")
-	var seconds: float = float(music.data.size() / 2) / float(AudioLab.RATE)
+	var seconds: float = music.get_length()
 	check(seconds > 8.0, "петля слишком короткая: %.1f с" % seconds)
 	check(seconds < 60.0, "петля слишком длинная для памяти телефона: %.1f с" % seconds)
 
 
 func test_samples_stay_in_range() -> void:
 	# Перегрузка звучит как треск, поэтому нормализация обязана держать пик.
-	var music: AudioStreamWAV = SoundBank.music()
+	var music: AudioStreamWAV = SoundBank.music(0)
 	var clipped: int = 0
 	for i: int in mini(music.data.size() / 2, 50000):
 		if absi(music.data.decode_s16(i * 2)) >= 32760:
@@ -135,3 +135,32 @@ func test_settings_persist_audio_and_scale() -> void:
 	check_almost(restored.ui_scale, 0.75)
 	check_eq(restored.max_fps, 30)
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(GameSettings.PATH))
+
+
+func test_several_distinct_music_tracks() -> void:
+	check(SoundBank.track_count() >= 4, "одной петли на всю партию мало")
+	var seen: Array[String] = []
+	for index: int in SoundBank.track_count():
+		var track: AudioStreamWAV = SoundBank.music(index)
+		check(track != null, "трек %d не собрался" % index)
+		check(track.loop_mode != AudioStreamWAV.LOOP_DISABLED, "трек %d должен зацикливаться" % index)
+		var length: float = track.get_length()
+		check(length > 8.0, "трек %d слишком короткий: %.1f с" % [index, length])
+		var signature: String = track.data.slice(0, 4096).hex_encode()
+		check(not seen.has(signature), "трек %d звучит так же, как предыдущий" % index)
+		seen.append(signature)
+
+
+func test_track_index_wraps_around() -> void:
+	check_eq(SoundBank.music(SoundBank.track_count()), SoundBank.music(0), "индекс должен закольцовываться")
+	check_eq(SoundBank.music(-1), SoundBank.music(SoundBank.track_count() - 1))
+
+
+func test_audio_build_fits_the_startup_budget() -> void:
+	# Весь звук считается кодом при запуске. На слабом телефоне это время
+	# игрок видит как чёрный экран, поэтому у него есть предел.
+	SoundBank.reset()
+	var start_usec: int = Time.get_ticks_usec()
+	SoundBank.build()
+	var elapsed_ms: float = float(Time.get_ticks_usec() - start_usec) / 1000.0
+	check(elapsed_ms < 2500.0, "сборка звука заняла %.0f мс" % elapsed_ms)

@@ -10,6 +10,11 @@ extends RefCounted
 ## достаточно, а память и время генерации остаются в разумных пределах.
 
 const RATE: int = 22050
+## Частота для музыки. Фоновая петля состоит из мягких низких тонов и шороха —
+## выше пяти килогерц в ней ничего нет, и вдвое меньшая частота слышится так
+## же. Зато синтез считается вдвое быстрее, а на слабом телефоне время старта
+## — это то, что игрок замечает первым.
+const MUSIC_RATE: int = 11025
 
 ## Ноты в герцах: минорная гамма, на которой строятся и музыка, и сигналы.
 const NOTE_A2: float = 110.0
@@ -25,7 +30,9 @@ const NOTE_A4: float = 440.0
 
 
 ## Собирает поток из массива сэмплов -1..1.
-static func to_stream(samples: PackedFloat32Array, loop: bool = false) -> AudioStreamWAV:
+static func to_stream(
+	samples: PackedFloat32Array, loop: bool = false, rate: int = RATE
+) -> AudioStreamWAV:
 	var data := PackedByteArray()
 	data.resize(samples.size() * 2)
 	for i: int in samples.size():
@@ -34,7 +41,7 @@ static func to_stream(samples: PackedFloat32Array, loop: bool = false) -> AudioS
 
 	var stream := AudioStreamWAV.new()
 	stream.format = AudioStreamWAV.FORMAT_16_BITS
-	stream.mix_rate = RATE
+	stream.mix_rate = rate
 	stream.stereo = false
 	stream.data = data
 	if loop:
@@ -44,9 +51,9 @@ static func to_stream(samples: PackedFloat32Array, loop: bool = false) -> AudioS
 	return stream
 
 
-static func silence(seconds: float) -> PackedFloat32Array:
+static func silence(seconds: float, rate: int = RATE) -> PackedFloat32Array:
 	var samples := PackedFloat32Array()
-	samples.resize(int(seconds * RATE))
+	samples.resize(int(seconds * rate))
 	return samples
 
 
@@ -59,15 +66,16 @@ static func tone(
 	frequency: float,
 	duration: float,
 	volume: float = 0.3,
-	attack: float = 0.01
+	attack: float = 0.01,
+	rate: int = RATE
 ) -> void:
-	var start: int = int(start_seconds * RATE)
-	var length: int = int(duration * RATE)
+	var start: int = int(start_seconds * rate)
+	var length: int = int(duration * rate)
 	for i: int in length:
 		var index: int = start + i
 		if index < 0 or index >= samples.size():
 			continue
-		var t: float = float(i) / float(RATE)
+		var t: float = float(i) / float(rate)
 		var progress: float = float(i) / float(length)
 		# Огибающая: короткая атака, длинный экспоненциальный спад.
 		var envelope: float = minf(t / maxf(attack, 0.001), 1.0) * pow(1.0 - progress, 1.6)
@@ -81,10 +89,11 @@ static func noise_burst(
 	start_seconds: float,
 	duration: float,
 	volume: float = 0.2,
-	seed_value: int = 1
+	seed_value: int = 1,
+	rate: int = RATE
 ) -> void:
-	var start: int = int(start_seconds * RATE)
-	var length: int = int(duration * RATE)
+	var start: int = int(start_seconds * rate)
+	var length: int = int(duration * rate)
 	var rng: RandomNumberGenerator = Rng.stream(seed_value)
 	var previous: float = 0.0
 	for i: int in length:

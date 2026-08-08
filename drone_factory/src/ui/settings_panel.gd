@@ -23,6 +23,8 @@ var _toggles: Dictionary[String, Dictionary] = {}
 var _cycles: Dictionary[String, String] = {}
 var _confirm_new_game: bool = false
 var _new_game_button: Button = null
+var _dev_box: VBoxContainer = null
+var world: GameWorld = null
 
 
 func setup(
@@ -30,13 +32,15 @@ func setup(
 	game_save_system: SaveSystem,
 	game_simulation: Simulation,
 	game_hud: Hud,
-	game_audio: AudioDirector = null
+	game_audio: AudioDirector = null,
+	game_world: GameWorld = null
 ) -> void:
 	settings = game_settings
 	save_system = game_save_system
 	simulation = game_simulation
 	hud = game_hud
 	audio = game_audio
+	world = game_world
 	_refresh_toggles()
 
 
@@ -79,6 +83,32 @@ func _build_content(container: VBoxContainer) -> void:
 	container.add_child(_toggle("ScreenToggle", "Не гасить экран", &"keep_screen_on"))
 
 	container.add_child(UiWidgets.separator())
+
+	# Режим разработчика спрятан за переключателем, а не вынесен кнопками
+	# наверх: выдать себе всё одним случайным тапом — испортить партию.
+	container.add_child(_toggle("DevToggle", "Режим разработчика", &"dev_mode"))
+
+	_dev_box = VBoxContainer.new()
+	_dev_box.name = "DevBox"
+	_dev_box.visible = false
+	_dev_box.add_theme_constant_override("separation", UiTheme.PAD_S)
+	container.add_child(_dev_box)
+
+	_dev_box.add_child(UiWidgets.paragraph(
+		"Отладка: всё выданное сохраняется как обычный прогресс.",
+		UiTheme.FONT_SMALL, Palette.WARN
+	))
+	_dev_box.add_child(_dev_button("DevItemsButton", "Выдать все ресурсы", func() -> void:
+		DevMode.grant_all_items(world)
+	))
+	_dev_box.add_child(_dev_button("DevTechButton", "Открыть все технологии", func() -> void:
+		DevMode.unlock_all_research(world)
+	))
+	_dev_box.add_child(_dev_button("DevChapterButton", "Пропустить главу", func() -> void:
+		DevMode.skip_chapter(simulation.get_system(StorySystem) as StorySystem)
+	))
+
+	container.add_child(UiWidgets.separator())
 	container.add_child(UiWidgets.paragraph(
 		"Управление: тап — выбрать, перетаскивание — карта, двойной тап и "
 		+ "протяжка — приближение, долгое нажатие — отмена.",
@@ -98,6 +128,18 @@ func _toggle(node_name: String, caption: String, key: StringName) -> Button:
 		settings.set_flag(key, not settings.get_flag(key))
 		_refresh_toggles()
 		_apply_settings()
+	)
+	return button
+
+
+## Кнопка отладки: делает своё дело и сразу обновляет панель, чтобы игрок
+## видел результат, не закрывая меню.
+func _dev_button(node_name: String, caption: String, action: Callable) -> Button:
+	var button: Button = UiWidgets.text_button(caption, UiTheme.TOUCH_MIN * 4)
+	button.name = node_name
+	button.pressed.connect(func() -> void:
+		action.call()
+		_refresh_toggles()
 	)
 	return button
 
@@ -158,6 +200,8 @@ func _refresh_toggles() -> void:
 		var cycle_button: Button = find_child(node_name, true, false) as Button
 		if cycle_button != null:
 			cycle_button.text = "%s: %s" % [_cycles[node_name], _cycle_value(node_name)]
+	if _dev_box != null:
+		_dev_box.visible = settings.get_flag(&"dev_mode")
 
 
 func _on_open() -> void:

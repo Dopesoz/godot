@@ -145,7 +145,7 @@ func start_new_game(seed_value: int) -> void:
 	story_panel.setup(simulation.get_system(StorySystem) as StorySystem)
 	achievements_panel.setup(simulation.get_system(AchievementSystem) as AchievementSystem)
 	audio.setup(world.buildings)
-	settings_panel.setup(settings, save_system, simulation, hud, audio)
+	settings_panel.setup(settings, save_system, simulation, hud, audio, world)
 	settings_panel.achievements_requested.connect(func() -> void:
 		settings_panel.close()
 		achievements_panel.open()

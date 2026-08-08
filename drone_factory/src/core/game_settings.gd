@@ -13,6 +13,9 @@ var show_fps: bool = false
 var autosave: bool = true
 ## Не гасить экран во время игры: партия идёт долго, а касаний может не быть.
 var keep_screen_on: bool = true
+## Режим разработчика: открывает в меню кнопки выдачи ресурсов и технологий.
+## Хранится в настройках, а не в сохранении: это свойство пульта, а не партии.
+var dev_mode: bool = false
 
 ## Громкость 0..1 с шагом в четверть: ползунок пальцем на телефоне неудобен,
 ## а четырёх ступеней хватает.
@@ -27,7 +30,7 @@ var max_fps: int = 60
 
 ## Доступ по ключу: панель настроек работает с флагами единообразно и не
 ## обрастает веткой на каждую настройку.
-const FLAGS: Array[StringName] = [&"show_fps", &"autosave", &"keep_screen_on"]
+const FLAGS: Array[StringName] = [&"show_fps", &"autosave", &"keep_screen_on", &"dev_mode"]
 
 
 func get_flag(key: StringName) -> bool:
@@ -38,6 +41,8 @@ func get_flag(key: StringName) -> bool:
 			return autosave
 		&"keep_screen_on":
 			return keep_screen_on
+		&"dev_mode":
+			return dev_mode
 		_:
 			return false
 
@@ -50,6 +55,8 @@ func set_flag(key: StringName, value: bool) -> void:
 			autosave = value
 		&"keep_screen_on":
 			keep_screen_on = value
+		&"dev_mode":
+			dev_mode = value
 		_:
 			pass
 
@@ -61,6 +68,7 @@ func load_settings() -> void:
 	show_fps = bool(config.get_value(SECTION, "show_fps", show_fps))
 	autosave = bool(config.get_value(SECTION, "autosave", autosave))
 	keep_screen_on = bool(config.get_value(SECTION, "keep_screen_on", keep_screen_on))
+	dev_mode = bool(config.get_value(SECTION, "dev_mode", dev_mode))
 	music_volume = clampf(float(config.get_value(SECTION, "music_volume", music_volume)), 0.0, 1.0)
 	sfx_volume = clampf(float(config.get_value(SECTION, "sfx_volume", sfx_volume)), 0.0, 1.0)
 	ui_scale = clampf(float(config.get_value(SECTION, "ui_scale", ui_scale)), 0.75, 1.25)
@@ -72,6 +80,7 @@ func save_settings() -> void:
 	config.set_value(SECTION, "show_fps", show_fps)
 	config.set_value(SECTION, "autosave", autosave)
 	config.set_value(SECTION, "keep_screen_on", keep_screen_on)
+	config.set_value(SECTION, "dev_mode", dev_mode)
 	config.set_value(SECTION, "music_volume", music_volume)
 	config.set_value(SECTION, "sfx_volume", sfx_volume)
 	config.set_value(SECTION, "ui_scale", ui_scale)

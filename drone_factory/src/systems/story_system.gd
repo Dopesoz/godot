@@ -80,6 +80,13 @@ func _objective_met() -> bool:
 	return Conditions.is_met(condition, _stats, world.research)
 
 
+## Пропустить главу, не выполняя задачу. Нужно режиму разработчика: иначе
+## поздние главы приходится ждать, даже когда всё нужное уже построено.
+func force_advance() -> void:
+	if not is_finished():
+		_advance()
+
+
 func _advance() -> void:
 	var finished: Dictionary = chapter()
 	_grant_reward(finished.get("reward", {}))

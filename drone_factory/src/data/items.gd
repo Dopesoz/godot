@@ -20,6 +20,7 @@ const WIRE := &"wire"
 const CIRCUIT := &"circuit"
 const DRONE := &"drone"
 const COAL := &"coal"
+const WOOD := &"wood"
 const WATER := &"water"
 const URANIUM_ORE := &"uranium_ore"
 const FUEL_ROD := &"fuel_rod"
@@ -86,6 +87,10 @@ const DEFS: Dictionary[StringName, Dictionary] = {
 		# Воду не крафтят и не добывают буром — её качает водозабор.
 		"from_building": BuildingDefs.WATER_PUMP,
 	},
+	WOOD: {
+		"name": "Дерево", "shape": Shape.INGOT,
+		"color": Palette.DIRT, "accent": Palette.TREE_LIGHT, "stack": 200,
+	},
 	URANIUM_ORE: {
 		"name": "Урановая руда", "shape": Shape.CHUNK,
 		"color": Color8(96, 148, 88), "accent": Color8(150, 230, 130), "stack": 200,
@@ -122,6 +127,7 @@ const ORE_TO_ITEM: Dictionary[int, StringName] = {
 	TileTypes.Ore.COPPER: COPPER_ORE,
 	TileTypes.Ore.COAL: COAL,
 	TileTypes.Ore.URANIUM: URANIUM_ORE,
+	TileTypes.Ore.TREES: WOOD,
 }
 
 

@@ -218,3 +218,63 @@ func test_logistics_tick_cost() -> void:
 	run_ticks(20)
 	var per_tick_ms: float = float(Time.get_ticks_usec() - start_usec) / 20000.0
 	check(per_tick_ms < 5.0, "тик логистики занял %.2f мс" % per_tick_ms)
+
+
+func test_every_port_gets_work_not_just_the_first() -> void:
+	# Попыток раздачи на тик немного. Если каждый тик начинать с начала списка,
+	# работа достаётся одним и тем же курьерам, а остальные стоят без дела —
+	# игрок видит это как «боты затупили».
+	var ports: Array[DronePort] = [port]
+	for i: int in 3:
+		var extra: DronePort = place(BuildingDefs.DRONE_PORT, Vector2i(-14, i * 10 - 10)) as DronePort
+		extra.output.add(Items.DRONE, 2)
+		ports.append(extra)
+		place(BuildingDefs.SOLAR, Vector2i(-11, i * 10 - 10))
+		var storage: Building = place(BuildingDefs.STORAGE, Vector2i(-18, i * 10 - 10))
+		storage.output.add(Items.IRON_ORE, 100)
+		var machine: Furnace = place(BuildingDefs.FURNACE, Vector2i(-14, i * 10 - 6)) as Furnace
+		machine.set_recipe(Recipes.SMELT_IRON)
+
+	var near_storage: Building = place(BuildingDefs.STORAGE, Vector2i(-4, 0))
+	near_storage.output.add(Items.IRON_ORE, 100)
+	var near_furnace: Furnace = place(BuildingDefs.FURNACE, Vector2i(0, 5)) as Furnace
+	near_furnace.set_recipe(Recipes.SMELT_IRON)
+
+	run_ticks(120)
+
+	for index: int in ports.size():
+		var served: bool = false
+		for drone: Drone in ports[index].drones:
+			if drone.is_busy() or drone.has_cargo():
+				served = true
+		check(served, "порт %d не получил ни одного задания" % index)
+
+
+func test_delivery_resumes_after_supplier_is_demolished() -> void:
+	# Если поставщика снесли в полёте, бронь на приём утекала, и получатель
+	# навсегда оставался «тем, кому уже везут». Машина вставала насовсем.
+	var storage: Building = place(BuildingDefs.STORAGE, Vector2i(-4, 0))
+	storage.output.add(Items.IRON_ORE, 100)
+	var furnace: Furnace = place(BuildingDefs.FURNACE, Vector2i(0, 5)) as Furnace
+	furnace.set_recipe(Recipes.SMELT_IRON)
+
+	var flying: bool = false
+	for i: int in 40:
+		simulation.tick()
+		for drone: Drone in port.drones:
+			if drone.state == Drone.State.TO_SOURCE and drone.source_id == storage.id:
+				flying = true
+		if flying:
+			break
+	check(flying, "дрон должен был вылететь за рудой")
+
+	world.buildings.remove(storage.id)
+	run_ticks(60)
+
+	var replacement: Building = place(BuildingDefs.STORAGE, Vector2i(-4, 0))
+	replacement.output.add(Items.IRON_ORE, 100)
+	run_ticks(400)
+	check(
+		furnace.input.count(Items.IRON_ORE) > 0 or furnace.output.count(Items.IRON_PLATE) > 0,
+		"после сноса поставщика доставка обязана возобновиться"
+	)

@@ -20,8 +20,23 @@ extends GameSystem
 ## полный поиск по окрестностям, и полсотни дронов превращают тик в обход
 ## всей фабрики. С попытками стоимость тика ограничена сверху.
 const MAX_ASSIGN_ATTEMPTS_PER_TICK: int = 6
+## Сколько разных баз опрашивается за тик.
+##
+## Настоящая цена раздачи — запрос «кто рядом» по радиусу базы. Пока все
+## попытки за тик доставались одной базе, запрос был один. Честная очередь
+## разносит попытки по базам, и без этого предела тик дорожает пропорционально
+## числу портов. Очередь от предела не страдает: курсор всё равно сдвигается
+## каждый тик, просто круг проходится за несколько тиков вместо одного.
+const MAX_BASES_PER_TICK: int = 2
 ## Насколько заполнен выход производителя, чтобы дроны начали его разгружать.
 const HAUL_THRESHOLD: float = 0.25
+## Как часто брони пересобираются по заданиям курьеров, в тиках.
+##
+## Бронь — единственное состояние логистики, которое живёт дольше одного тика,
+## и любая утечка в ней означает машину, которой «уже везут» то, что никто не
+## везёт. Раз в десять секунд состояние восстанавливается из того, что курьеры
+## на самом деле держат в руках, поэтому любая такая ошибка рассасывается сама.
+const RESERVATION_AUDIT_TICKS: int = 100
 
 ## Забронированные поставки: building_id -> {item -> количество в пути}.
 var _incoming: Dictionary[int, Dictionary] = {}
@@ -30,6 +45,15 @@ var _outgoing: Dictionary[int, Dictionary] = {}
 
 var _active_drones: int = 0
 var _total_drones: int = 0
+
+## С какого свободного курьера продолжать раздачу заданий.
+##
+## Попыток на тик немного, а курьеров бывает много. Если каждый тик начинать
+## с начала списка, задания достаются одним и тем же, а последние порты и
+## хижины стоят без дела — игрок видит ботов, которые просто не летают.
+## Курсор пускает раздачу по кругу, и работа доходит до каждого.
+var _assign_cursor: int = 0
+var _ticks_to_audit: int = RESERVATION_AUDIT_TICKS
 
 
 func system_name() -> String:
@@ -49,9 +73,21 @@ func tick(delta: float, context: Dictionary) -> void:
 	var active: int = 0
 	var total: int = 0
 	var attempts: int = 0
+	var queried: int = 0
+	var base_count: int = ports.size()
 
-	for port_building: Building in ports:
-		var port: DronePort = port_building
+	_ticks_to_audit -= 1
+	if _ticks_to_audit <= 0:
+		_ticks_to_audit = RESERVATION_AUDIT_TICKS
+		rebuild_reservations(registry)
+
+	# Обход начинается не с первой базы, а со следующей по кругу. Полёты
+	# считаются для всех, а вот попытки раздачи достаются тем, до кого дошла
+	# очередь: иначе первый порт съедает весь лимит каждый тик, и дальние
+	# порты с хижинами стоят без дела.
+	var offset: int = 0 if base_count == 0 else _assign_cursor % base_count
+	for step: int in base_count:
+		var port: DronePort = ports[(offset + step) % base_count]
 		if research != null:
 			port.range_multiplier = research.multiplier(Technologies.BONUS_PORT_RANGE)
 			port.cargo_multiplier = research.multiplier(Technologies.BONUS_DRONE_CAPACITY)
@@ -59,7 +95,7 @@ func tick(delta: float, context: Dictionary) -> void:
 		if not port.is_operational():
 			continue
 
-		# Окрестности порта считаем один раз на порт, а не на каждого дрона:
+		# Окрестности базы считаем один раз на базу, а не на каждого курьера:
 		# запрос по радиусу — самая дорогая операция в этом цикле.
 		var neighbours: Array[Building] = []
 		var neighbours_ready: bool = false
@@ -70,13 +106,17 @@ func tick(delta: float, context: Dictionary) -> void:
 			if drone.is_busy():
 				active += 1
 				_advance_drone(drone, port, registry, delta)
-			elif attempts < MAX_ASSIGN_ATTEMPTS_PER_TICK:
+			elif attempts < MAX_ASSIGN_ATTEMPTS_PER_TICK \
+					and (neighbours_ready or queried < MAX_BASES_PER_TICK):
 				attempts += 1
 				if not neighbours_ready:
 					neighbours = registry.in_radius(port.center_cell(), port.service_radius())
 					neighbours_ready = true
+					queried += 1
 				if _assign_task(drone, port, registry, neighbours):
 					active += 1
+
+	_assign_cursor += 1
 
 	if active != _active_drones or total != _total_drones:
 		_active_drones = active
@@ -120,6 +160,10 @@ func _pick_up(drone: Drone, port: DronePort, registry: BuildingRegistry) -> void
 	var source: Building = registry.get_building(drone.source_id)
 	_release(_outgoing, drone.source_id, drone.cargo_item, drone.cargo_count)
 	if source == null or source.output == null:
+		# Поставщика снесли, пока курьер летел. Бронь на приём снимаем здесь же:
+		# иначе получатель навсегда останется «тем, кому уже везут», и никто
+		# больше не привезёт ему сырьё — машина встанет насовсем.
+		_release(_incoming, drone.target_id, drone.cargo_item, drone.cargo_count)
 		_return_home(drone, port)
 		return
 
@@ -178,6 +222,7 @@ func _land(drone: Drone, port: DronePort) -> void:
 	if drone.cargo_count <= 0:
 		drone.cargo_item = &""
 	drone.clear_task()
+	port.on_courier_returned(drone)
 
 
 ## --- Раздача заданий -------------------------------------------------------
@@ -225,6 +270,8 @@ func _assign_request(
 			amount = mini(amount, available)
 			if amount <= 0:
 				continue
+			if not port.accepts_task(item_id, consumer.id):
+				continue
 			if not _route_is_walkable(drone, registry, source, consumer):
 				continue
 			_start_task(drone, port, source, consumer, item_id, amount)
@@ -254,6 +301,8 @@ func _assign_haul(
 			var amount: int = mini(available, port.cargo_capacity())
 			var storage: Building = _find_storage(neighbours, item_id, amount)
 			if storage == null:
+				continue
+			if not port.accepts_task(item_id, storage.id):
 				continue
 			if not _route_is_walkable(drone, registry, producer, storage):
 				continue

@@ -77,6 +77,24 @@ static func _draw_terrain(canvas: PixelCanvas, terrain: int, variant: int, ox: i
 			pass
 
 
+## Лес рисуется не самородками, а силуэтами деревьев: игрок должен отличать
+## его от залежи с одного взгляда, не приближая камеру.
+static func _draw_trees(canvas: PixelCanvas, variant: int, ox: int, oy: int) -> void:
+	var seed_value: int = ART_SEED + 4441 + variant * 29
+	# Два дерева на клетку, но крупных. Мелкая россыпь на траве не читается
+	# вообще: зелёное на зелёном сливается, и залежь древесины не найти.
+	for i: int in 2:
+		var cx: int = ox + Rng.range_int(i, 7, seed_value, 7, TILE - 7)
+		var cy: int = oy + Rng.range_int(i, 11, seed_value, 11, TILE - 5)
+		# Ствол — коричневый, он и отделяет дерево от травы.
+		canvas.rect(cx - 1, cy, 2, 5, Palette.DIRT_DARK)
+		# Тень под кроной задаёт силуэт.
+		canvas.blob(cx, cy - 4, 5.2, Palette.OUTLINE, seed_value + i)
+		canvas.blob(cx, cy - 5, 4.4, Palette.TREE, seed_value + i * 7)
+		# Блик сверху слева: без него крона выглядит плоским пятном.
+		canvas.blob(cx - 1, cy - 7, 2.2, Palette.TREE_LIGHT, seed_value + i * 3)
+
+
 static func _draw_ore(canvas: PixelCanvas, ore: int, variant: int, ox: int, oy: int) -> void:
 	if ore == TileTypes.Ore.NONE:
 		return
@@ -95,6 +113,9 @@ static func _draw_ore(canvas: PixelCanvas, ore: int, variant: int, ox: int, oy: 
 		TileTypes.Ore.URANIUM:
 			base = Palette.URANIUM_ORE
 			light = Palette.URANIUM_ORE_LIGHT
+		TileTypes.Ore.TREES:
+			_draw_trees(canvas, variant, ox, oy)
+			return
 		_:
 			base = Palette.COPPER_ORE
 			light = Palette.COPPER_ORE_LIGHT

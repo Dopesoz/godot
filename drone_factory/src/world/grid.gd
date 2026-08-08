@@ -37,6 +37,15 @@ func _init(world_size: int = Constants.WORLD_SIZE) -> void:
 	building.resize(count)
 
 
+## Обнуляет все слои, сохраняя сам объект. Нужно при загрузке сохранения:
+## подменять сетку новой нельзя — на неё уже смотрят реестр зданий и отрисовка.
+func clear() -> void:
+	terrain.fill(0)
+	ore.fill(0)
+	ore_amount.fill(0)
+	building.fill(NO_BUILDING)
+
+
 ## --- Координаты ------------------------------------------------------------
 
 func in_bounds(cell: Vector2i) -> bool:
