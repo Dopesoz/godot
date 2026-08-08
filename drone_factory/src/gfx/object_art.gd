@@ -60,6 +60,12 @@ static func _draw_building(def_id: StringName) -> PixelCanvas:
 			_draw_drone_port(canvas)
 		BuildingDefs.Kind.ASSEMBLER:
 			_draw_assembler(canvas)
+		BuildingDefs.Kind.WATER_PUMP:
+			_draw_water_pump(canvas)
+		BuildingDefs.Kind.BOILER:
+			_draw_boiler(canvas)
+		BuildingDefs.Kind.REACTOR:
+			_draw_reactor(canvas)
 		BuildingDefs.Kind.LAB:
 			_draw_lab(canvas)
 		_:
@@ -191,6 +197,53 @@ static func _draw_lab(canvas: PixelCanvas) -> void:
 	canvas.rect(canvas.width - 5, canvas.height - 6, 2, 3, Palette.OK)
 
 
+static func _draw_water_pump(canvas: PixelCanvas) -> void:
+	_draw_base(canvas)
+	canvas.rect(2, 3, canvas.width - 4, canvas.height - 5, Palette.METAL)
+	# Приёмный колодец с водой.
+	canvas.rect(3, canvas.height - 8, 7, 6, Palette.WATER_DARK)
+	canvas.rect(4, canvas.height - 7, 5, 4, Palette.WATER)
+	canvas.hline(4, canvas.height - 7, 5, Palette.WATER_LIGHT)
+	# Труба и вентиль.
+	canvas.rect(canvas.width - 8, 4, 3, canvas.height - 9, Palette.METAL_LIGHT)
+	canvas.hline(canvas.width - 10, 4, 7, Palette.METAL_HILIGHT)
+	canvas.circle(canvas.width - 7, 3, 2, Palette.GLASS)
+
+
+static func _draw_boiler(canvas: PixelCanvas) -> void:
+	_draw_base(canvas)
+	# Бак.
+	canvas.rect(2, 5, canvas.width - 4, canvas.height - 7, Palette.METAL)
+	canvas.rect_outline(2, 5, canvas.width - 4, canvas.height - 7, Palette.METAL_DARK)
+	canvas.hline(3, 6, canvas.width - 6, Palette.METAL_HILIGHT)
+	# Топка с огнём.
+	var fx: int = 4
+	canvas.rect(fx, canvas.height - 8, 7, 5, Palette.OUTLINE)
+	canvas.rect(fx + 1, canvas.height - 7, 5, 3, Palette.ACCENT)
+	canvas.rect(fx + 2, canvas.height - 6, 3, 1, Palette.WARN)
+	# Труба и дым: сразу видно, что здание коптит.
+	canvas.rect(canvas.width - 8, 0, 4, 6, Palette.METAL_DARK)
+	canvas.put(canvas.width - 7, 0, Palette.UI_TEXT_DIM)
+	canvas.put(canvas.width - 5, 1, Palette.UI_TEXT_DIM)
+
+
+static func _draw_reactor(canvas: PixelCanvas) -> void:
+	_draw_base(canvas)
+	canvas.rect(2, 3, canvas.width - 4, canvas.height - 5, Palette.METAL)
+	# Купол активной зоны.
+	var cx: int = canvas.width / 2
+	var cy: int = canvas.height / 2
+	canvas.circle(cx, cy, canvas.width / 3, Palette.METAL_DARK)
+	canvas.circle(cx, cy, canvas.width / 4, Palette.URANIUM_ORE)
+	canvas.circle(cx, cy, 2, Palette.URANIUM_ORE_LIGHT)
+	# Символ радиации: три сектора вокруг центра.
+	for offset: Vector2i in [Vector2i(0, -6), Vector2i(-5, 4), Vector2i(5, 4)]:
+		canvas.rect(cx + offset.x - 1, cy + offset.y - 1, 3, 3, Palette.OUTLINE)
+	# Градирни по углам.
+	canvas.rect(2, 2, 4, 4, Palette.METAL_LIGHT)
+	canvas.rect(canvas.width - 6, 2, 4, 4, Palette.METAL_LIGHT)
+
+
 ## --- Предметы --------------------------------------------------------------
 
 static func _draw_item(item_id: StringName) -> PixelCanvas:
@@ -238,6 +291,19 @@ static func _draw_item(item_id: StringName) -> PixelCanvas:
 			canvas.hline(10, 5, 4, accent)
 			canvas.put(3, 6, Palette.METAL)
 			canvas.put(12, 6, Palette.METAL)
+		Items.Shape.DROPLET:
+			# Капля: широкая снизу, острая сверху.
+			canvas.put(8, 2, color)
+			for i: int in 5:
+				canvas.hline(8 - i / 2 - 1, 3 + i, i + 2, color)
+			canvas.circle(8, 10, 4, color)
+			canvas.put(6, 8, accent)
+			canvas.put(7, 7, accent)
+		Items.Shape.ROD:
+			canvas.rect(6, 2, 4, 12, color)
+			canvas.rect(5, 1, 6, 2, Palette.METAL_LIGHT)
+			canvas.rect(5, 13, 6, 2, Palette.METAL_LIGHT)
+			canvas.vline(7, 4, 8, accent)
 		Items.Shape.FLASK:
 			canvas.rect(6, 2, 4, 3, Palette.METAL_LIGHT)
 			canvas.rect(5, 5, 6, 8, color)

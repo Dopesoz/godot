@@ -22,6 +22,8 @@ signal inventory_changed(building_id: int)
 ## --- Электричество ---------------------------------------------------------
 
 signal power_stats_changed(produced: float, consumed: float, satisfaction: float)
+## Загрязнение и его влияние на солнечные панели (1.0 — чистое небо).
+signal pollution_changed(level: float, solar_factor: float)
 
 ## --- Логистика -------------------------------------------------------------
 

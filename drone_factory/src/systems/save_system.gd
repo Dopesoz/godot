@@ -23,6 +23,7 @@ var simulation: Simulation = null
 var camera: GameCamera = null
 var research: ResearchSystem = null
 var logistics: LogisticsSystem = null
+var pollution: PollutionSystem = null
 
 ## Автосохранение можно выключить в настройках.
 var autosave_enabled: bool = true
@@ -40,6 +41,7 @@ func setup(
 	camera = game_camera
 	research = simulation.get_system(ResearchSystem) as ResearchSystem
 	logistics = simulation.get_system(LogisticsSystem) as LogisticsSystem
+	pollution = simulation.get_system(PollutionSystem) as PollutionSystem
 
 
 func _process(delta: float) -> void:
@@ -136,6 +138,7 @@ func collect() -> Dictionary:
 		"buildings": world.buildings.serialize(),
 		"research_done": world.research.serialize(),
 		"research_active": research.serialize() if research != null else {},
+		"pollution": pollution.serialize() if pollution != null else 0.0,
 	}
 
 
@@ -160,6 +163,8 @@ func apply(data: Dictionary) -> bool:
 		research.deserialize(data.get("research_active", {}))
 
 	simulation.reset()
+	if pollution != null:
+		pollution.deserialize(float(data.get("pollution", 0.0)))
 	simulation.game_time = float(data.get("time", 0.0))
 	simulation.tick_count = int(data.get("tick", 0))
 

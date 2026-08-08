@@ -24,6 +24,8 @@ const DIRT_MOISTURE: int = 118
 ## при более низком пороге руда покрывает половину мира и перестаёт быть
 ## тем, что нужно искать.
 const ORE_THRESHOLD: int = 205
+## Уран — редкость поздней игры: порог выше, залежи мельче и разбросаны дальше.
+const URANIUM_THRESHOLD: int = 222
 const ORE_AMOUNT_MIN: int = 120
 const ORE_AMOUNT_MAX: int = 2400
 
@@ -34,6 +36,7 @@ const START_PATCH_OFFSETS: Dictionary[int, Vector2i] = {
 	TileTypes.Ore.IRON: Vector2i(-14, -6),
 	TileTypes.Ore.COPPER: Vector2i(13, -8),
 	TileTypes.Ore.STONE: Vector2i(2, 15),
+	TileTypes.Ore.COAL: Vector2i(-12, 12),
 }
 const START_PATCH_RADIUS: int = 4
 const START_PATCH_AMOUNT: int = 900
@@ -48,12 +51,23 @@ static func generate(grid: Grid, seed_value: int) -> Vector2i:
 
 	var elevation: PackedByteArray = _noise_map(size, seed_value, 0.0055, 4)
 	var moisture: PackedByteArray = _noise_map(size, seed_value + 7717, 0.011, 2)
-	var iron: PackedByteArray = _noise_map(size, seed_value + 1301, 0.055, 2)
-	var copper: PackedByteArray = _noise_map(size, seed_value + 2609, 0.055, 2)
-	var stone: PackedByteArray = _noise_map(size, seed_value + 3907, 0.048, 2)
+	# Каждая руда — свой слой шума со своим порогом. Уран режется жёстче,
+	# поэтому его залежи редкие и далеко от старта.
+	var ore_layers: Array[Dictionary] = [
+		{"ore": TileTypes.Ore.IRON, "map": _noise_map(size, seed_value + 1301, 0.055, 2),
+			"threshold": ORE_THRESHOLD},
+		{"ore": TileTypes.Ore.COPPER, "map": _noise_map(size, seed_value + 2609, 0.055, 2),
+			"threshold": ORE_THRESHOLD},
+		{"ore": TileTypes.Ore.STONE, "map": _noise_map(size, seed_value + 3907, 0.048, 2),
+			"threshold": ORE_THRESHOLD},
+		{"ore": TileTypes.Ore.COAL, "map": _noise_map(size, seed_value + 5119, 0.05, 2),
+			"threshold": ORE_THRESHOLD},
+		{"ore": TileTypes.Ore.URANIUM, "map": _noise_map(size, seed_value + 6221, 0.07, 2),
+			"threshold": URANIUM_THRESHOLD},
+	]
 
 	_fill_terrain(grid, elevation, moisture)
-	_fill_ore(grid, iron, copper, stone)
+	_fill_ore(grid, ore_layers)
 
 	var start: Vector2i = _prepare_start_area(grid, seed_value)
 
@@ -97,12 +111,7 @@ static func _fill_terrain(grid: Grid, elevation: PackedByteArray, moisture: Pack
 	grid.terrain = terrain
 
 
-static func _fill_ore(
-	grid: Grid,
-	iron: PackedByteArray,
-	copper: PackedByteArray,
-	stone: PackedByteArray
-) -> void:
+static func _fill_ore(grid: Grid, layers: Array[Dictionary]) -> void:
 	var count: int = grid.size * grid.size
 	var terrain: PackedByteArray = grid.terrain
 	var ore: PackedByteArray = grid.ore
@@ -113,23 +122,25 @@ static func _fill_ore(
 		# Под водой руду не добыть, в скале руды нет — экономим и память, и логику.
 		if terrain[i] == TileTypes.Terrain.WATER or terrain[i] == TileTypes.Terrain.ROCK:
 			continue
-		# Приоритет по «богатству» пятна: где два шума пересеклись, выигрывает сильнейший.
-		var best_value: int = ORE_THRESHOLD
+		# Где пятна пересеклись, выигрывает то, что дальше ушло за свой порог:
+		# сравнивать сырые значения нельзя, пороги у руд разные.
+		var best_excess: float = 0.0
 		var best_type: int = TileTypes.Ore.NONE
-		if iron[i] > best_value:
-			best_value = iron[i]
-			best_type = TileTypes.Ore.IRON
-		if copper[i] > best_value:
-			best_value = copper[i]
-			best_type = TileTypes.Ore.COPPER
-		if stone[i] > best_value:
-			best_value = stone[i]
-			best_type = TileTypes.Ore.STONE
+		var best_richness: float = 0.0
+		for layer: Dictionary in layers:
+			var threshold: int = layer["threshold"]
+			var value: int = (layer["map"] as PackedByteArray)[i]
+			if value <= threshold:
+				continue
+			var richness: float = float(value - threshold) / float(255 - threshold)
+			if richness > best_excess:
+				best_excess = richness
+				best_richness = richness
+				best_type = layer["ore"]
 		if best_type == TileTypes.Ore.NONE:
 			continue
-		var richness: float = float(best_value - ORE_THRESHOLD) / float(255 - ORE_THRESHOLD)
 		ore[i] = best_type
-		amount[i] = ORE_AMOUNT_MIN + int(richness * richness * span)
+		amount[i] = ORE_AMOUNT_MIN + int(best_richness * best_richness * span)
 	grid.ore = ore
 	grid.ore_amount = amount
 

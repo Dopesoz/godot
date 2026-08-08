@@ -17,6 +17,7 @@ const CRAFT_GEAR := &"craft_gear"
 const CRAFT_WIRE := &"craft_wire"
 const CRAFT_CIRCUIT := &"craft_circuit"
 const CRAFT_DRONE := &"craft_drone"
+const CRAFT_FUEL_ROD := &"craft_fuel_rod"
 const CRAFT_SCIENCE_RED := &"craft_science_red"
 const CRAFT_SCIENCE_GREEN := &"craft_science_green"
 
@@ -62,6 +63,11 @@ const DEFS: Dictionary[StringName, Dictionary] = {
 		"name": "Дрон", "machine": Machine.ASSEMBLER, "time": 4.0,
 		"inputs": {Items.CIRCUIT: 2, Items.GEAR: 2, Items.STEEL: 1},
 		"outputs": {Items.DRONE: 1}, "tech": &"drone_capacity",
+	},
+	CRAFT_FUEL_ROD: {
+		"name": "Топливный стержень", "machine": Machine.ASSEMBLER, "time": 12.0,
+		"inputs": {Items.URANIUM_ORE: 10, Items.STEEL: 2},
+		"outputs": {Items.FUEL_ROD: 1}, "tech": &"nuclear",
 	},
 	CRAFT_SCIENCE_RED: {
 		"name": "Красная колба", "machine": Machine.ASSEMBLER, "time": 3.0,

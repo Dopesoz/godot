@@ -48,6 +48,9 @@ func _ready() -> void:
 
 	simulation = Simulation.new()
 	simulation.name = "Simulation"
+	# Загрязнение считается первым: расчёт энергии должен видеть уже
+	# обновлённый штраф солнечным панелям.
+	simulation.add_system(PollutionSystem.new())
 	simulation.add_system(PowerSystem.new())
 	simulation.add_system(BuildingSystem.new())
 	simulation.add_system(ResearchSystem.new())

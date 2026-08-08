@@ -37,6 +37,12 @@ const IRON_ORE_LIGHT := Color8(170, 188, 210)
 const COPPER_ORE := Color8(176, 104, 56)
 const COPPER_ORE_LIGHT := Color8(214, 142, 80)
 
+const COAL_ORE := Color8(44, 42, 50)
+const COAL_ORE_LIGHT := Color8(84, 82, 92)
+
+const URANIUM_ORE := Color8(96, 148, 88)
+const URANIUM_ORE_LIGHT := Color8(158, 236, 140)
+
 ## --- Конструкции -----------------------------------------------------------
 
 const METAL_DARK := Color8(58, 66, 84)

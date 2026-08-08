@@ -30,6 +30,7 @@ var _stats_box: HBoxContainer = null
 var _power_label: Label = null
 var _drones_label: Label = null
 var _time_label: Label = null
+var _pollution_label: Label = null
 var _fps_label: Label = null
 var _toast: Label = null
 var _bottom_bar: HBoxContainer = null
@@ -51,6 +52,7 @@ func _ready() -> void:
 	Events.inventory_changed.connect(_on_inventory_changed)
 	Events.power_stats_changed.connect(_on_power_changed)
 	Events.drone_count_changed.connect(_on_drones_changed)
+	Events.pollution_changed.connect(_on_pollution_changed)
 	Events.notify.connect(show_toast)
 	Events.unlocks_changed.connect(func() -> void: _stats_dirty = true)
 
@@ -138,6 +140,12 @@ func _build_top_bar() -> Control:
 	_time_label = UiWidgets.label("День", UiTheme.FONT_SMALL, Palette.UI_TEXT_DIM)
 	status.add_child(_time_label)
 
+	# Загрязнение появляется в строке только когда оно есть: на чистой карте
+	# лишний показатель занимал бы место впустую.
+	_pollution_label = UiWidgets.label("", UiTheme.FONT_SMALL, Palette.WARN)
+	_pollution_label.visible = false
+	status.add_child(_pollution_label)
+
 	var filler := Control.new()
 	filler.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	status.add_child(filler)
@@ -218,6 +226,19 @@ func _on_power_changed(produced: float, consumed: float, satisfaction: float) ->
 func _on_drones_changed(active: int, total: int) -> void:
 	if _drones_label != null:
 		_drones_label.text = "Дроны %d/%d" % [active, total]
+
+
+func _on_pollution_changed(level: float, solar_factor: float) -> void:
+	if _pollution_label == null:
+		return
+	_pollution_label.visible = level > 1.0
+	if not _pollution_label.visible:
+		return
+	# Игроку важно не абсолютное число, а насколько копоть съедает солнце.
+	_pollution_label.text = "Смог −%d%% солнцу" % int(round((1.0 - solar_factor) * 100.0))
+	_pollution_label.add_theme_color_override(
+		"font_color", Palette.BAD if solar_factor < 0.75 else Palette.WARN
+	)
 
 
 func show_toast(text: String) -> void:

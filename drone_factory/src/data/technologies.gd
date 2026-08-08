@@ -7,6 +7,7 @@ extends RefCounted
 ## Дерево намеренно неглубокое: на телефоне играют короткими сессиями, и цель
 ## должна быть видна на один-два шага вперёд, а не на двадцать.
 
+const STEAM_POWER := &"steam_power"
 const POWER_STORAGE := &"power_storage"
 const MINING_1 := &"mining_1"
 const ELECTRONICS := &"electronics"
@@ -16,6 +17,7 @@ const DRONE_CAPACITY := &"drone_capacity"
 const SOLAR_EFFICIENCY := &"solar_efficiency"
 const PORT_RANGE := &"port_range"
 const MINING_2 := &"mining_2"
+const NUCLEAR := &"nuclear"
 
 ## Ключи бонусов. Значение — прибавка в долях (0.25 = +25%).
 const BONUS_MINING_SPEED := &"mining_speed"
@@ -37,6 +39,12 @@ const DEFS: Dictionary[StringName, Dictionary] = {
 		"name": "Буры II", "cost": {Items.SCIENCE_RED: 30}, "requires": [],
 		"buildings": [], "recipes": [], "bonuses": {BONUS_MINING_SPEED: 0.25},
 		"description": "Скорость добычи +25%.",
+	},
+	STEAM_POWER: {
+		"name": "Паровая энергия", "cost": {Items.SCIENCE_RED: 25}, "requires": [],
+		"buildings": [BuildingDefs.WATER_PUMP, BuildingDefs.BOILER], "recipes": [],
+		"bonuses": {},
+		"description": "Водозабор и котёл: энергия ночью, но растёт загрязнение.",
 	},
 	POWER_STORAGE: {
 		"name": "Накопление энергии", "cost": {Items.SCIENCE_RED: 40},
@@ -73,6 +81,14 @@ const DEFS: Dictionary[StringName, Dictionary] = {
 		"name": "Дальняя логистика", "cost": {Items.SCIENCE_RED: 70, Items.SCIENCE_GREEN: 30},
 		"requires": [ELECTRONICS], "buildings": [], "recipes": [],
 		"bonuses": {BONUS_PORT_RANGE: 0.4}, "description": "Радиус порта дронов +40%.",
+	},
+	NUCLEAR: {
+		"name": "Атомная энергия",
+		"cost": {Items.SCIENCE_RED: 150, Items.SCIENCE_GREEN: 90},
+		"requires": [ELECTRONICS, STEEL, STEAM_POWER],
+		"buildings": [BuildingDefs.REACTOR], "recipes": [Recipes.CRAFT_FUEL_ROD],
+		"bonuses": {},
+		"description": "Реактор и топливные стержни. Дорого, но чисто и надолго.",
 	},
 	MINING_2: {
 		"name": "Буры III", "cost": {Items.SCIENCE_RED: 80, Items.SCIENCE_GREEN: 40},

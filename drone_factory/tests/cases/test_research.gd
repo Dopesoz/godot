@@ -105,6 +105,9 @@ func item_producible(state: ResearchState, item_id: StringName, depth: int = 0) 
 	for ore_type: int in Items.ORE_TO_ITEM:
 		if Items.ORE_TO_ITEM[ore_type] == item_id:
 			return state.is_building_unlocked(BuildingDefs.DRILL)
+	var producer: StringName = Items.source_building(item_id)
+	if producer != &"":
+		return state.is_building_unlocked(producer)
 	for recipe_id: StringName in Recipes.DEFS:
 		if not Recipes.outputs(recipe_id).has(item_id):
 			continue

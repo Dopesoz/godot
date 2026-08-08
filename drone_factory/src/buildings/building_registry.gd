@@ -8,7 +8,7 @@ extends RefCounted
 ## превращается в O(n²) при разрастании фабрики. Индекс сводит это к перебору
 ## нескольких чанков.
 
-enum PlaceError { OK, UNKNOWN_DEF, OUT_OF_BOUNDS, OCCUPIED, BAD_TERRAIN, NO_ORE }
+enum PlaceError { OK, UNKNOWN_DEF, OUT_OF_BOUNDS, OCCUPIED, BAD_TERRAIN, NO_ORE, NO_WATER }
 
 const PLACE_ERROR_TEXT: Dictionary[int, String] = {
 	PlaceError.OK: "",
@@ -17,6 +17,7 @@ const PLACE_ERROR_TEXT: Dictionary[int, String] = {
 	PlaceError.OCCUPIED: "Место занято",
 	PlaceError.BAD_TERRAIN: "Неподходящая поверхность",
 	PlaceError.NO_ORE: "Здесь нет руды",
+	PlaceError.NO_WATER: "Нужно поставить у воды",
 }
 
 var grid: Grid = null
@@ -59,7 +60,29 @@ func check_placement(def_id: StringName, origin: Vector2i) -> int:
 
 	if BuildingDefs.needs_ore(def_id) and grid.dominant_ore_in_area(area).x == TileTypes.Ore.NONE:
 		return PlaceError.NO_ORE
+	if BuildingDefs.needs_water(def_id) and not _touches_water(area):
+		return PlaceError.NO_WATER
 	return PlaceError.OK
+
+
+## Есть ли вода вплотную к площадке (по краю, без диагоналей).
+func _touches_water(area: Rect2i) -> bool:
+	for x: int in range(area.position.x - 1, area.position.x + area.size.x + 1):
+		for y: int in range(area.position.y - 1, area.position.y + area.size.y + 1):
+			var cell := Vector2i(x, y)
+			if area.has_point(cell):
+				continue
+			# Диагонали не считаются: насос должен стоять к воде стороной.
+			var on_corner: bool = (
+				(x < area.position.x or x >= area.position.x + area.size.x)
+				and (y < area.position.y or y >= area.position.y + area.size.y)
+			)
+			if on_corner:
+				continue
+			# Порядок важен: за краем мира get_terrain() отвечает «вода».
+			if grid.in_bounds(cell) and grid.get_terrain(cell) == TileTypes.Terrain.WATER:
+				return true
+	return false
 
 
 func can_place(def_id: StringName, origin: Vector2i) -> bool:

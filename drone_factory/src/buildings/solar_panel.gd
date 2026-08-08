@@ -9,12 +9,20 @@ extends Building
 var last_output: float = 0.0
 ## Множитель от исследований, обновляется на тике из контекста.
 var output_multiplier: float = 1.0
+## Множитель от загрязнения: копоть в небе режет выработку. Ставит
+## PollutionSystem, который выполняется до расчёта энергии.
+var pollution_multiplier: float = 1.0
 
 
 func power_supply(daylight: float) -> float:
 	if not enabled:
 		return 0.0
-	return BuildingDefs.power_gen(def_id) * clampf(daylight, 0.0, 1.0) * output_multiplier
+	return (
+		BuildingDefs.power_gen(def_id)
+		* clampf(daylight, 0.0, 1.0)
+		* output_multiplier
+		* pollution_multiplier
+	)
 
 
 func tick(_delta: float, context: Dictionary) -> void:

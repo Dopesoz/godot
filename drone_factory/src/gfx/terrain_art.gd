@@ -89,6 +89,12 @@ static func _draw_ore(canvas: PixelCanvas, ore: int, variant: int, ox: int, oy: 
 		TileTypes.Ore.IRON:
 			base = Palette.IRON_ORE
 			light = Palette.IRON_ORE_LIGHT
+		TileTypes.Ore.COAL:
+			base = Palette.COAL_ORE
+			light = Palette.COAL_ORE_LIGHT
+		TileTypes.Ore.URANIUM:
+			base = Palette.URANIUM_ORE
+			light = Palette.URANIUM_ORE_LIGHT
 		_:
 			base = Palette.COPPER_ORE
 			light = Palette.COPPER_ORE_LIGHT

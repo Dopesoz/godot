@@ -19,11 +19,15 @@ const GEAR := &"gear"
 const WIRE := &"wire"
 const CIRCUIT := &"circuit"
 const DRONE := &"drone"
+const COAL := &"coal"
+const WATER := &"water"
+const URANIUM_ORE := &"uranium_ore"
+const FUEL_ROD := &"fuel_rod"
 const SCIENCE_RED := &"science_red"
 const SCIENCE_GREEN := &"science_green"
 
 ## Форма иконки: по ней процедурный генератор рисует спрайт предмета.
-enum Shape { CHUNK, PLATE, INGOT, GEAR, WIRE, CIRCUIT, DRONE, FLASK }
+enum Shape { CHUNK, PLATE, INGOT, GEAR, WIRE, CIRCUIT, DRONE, FLASK, DROPLET, ROD }
 
 const DEFS: Dictionary[StringName, Dictionary] = {
 	STONE: {
@@ -70,6 +74,24 @@ const DEFS: Dictionary[StringName, Dictionary] = {
 		"name": "Дрон", "shape": Shape.DRONE,
 		"color": Palette.GLASS, "accent": Palette.ACCENT, "stack": 50,
 	},
+	COAL: {
+		"name": "Уголь", "shape": Shape.CHUNK,
+		"color": Color8(48, 46, 52), "accent": Color8(86, 84, 92), "stack": 200,
+	},
+	WATER: {
+		"name": "Вода", "shape": Shape.DROPLET,
+		"color": Palette.WATER_LIGHT, "accent": Color8(150, 210, 255), "stack": 400,
+		# Воду не крафтят и не добывают буром — её качает водозабор.
+		"from_building": BuildingDefs.WATER_PUMP,
+	},
+	URANIUM_ORE: {
+		"name": "Урановая руда", "shape": Shape.CHUNK,
+		"color": Color8(96, 148, 88), "accent": Color8(150, 230, 130), "stack": 200,
+	},
+	FUEL_ROD: {
+		"name": "Топливный стержень", "shape": Shape.ROD,
+		"color": Color8(120, 200, 110), "accent": Palette.METAL_LIGHT, "stack": 50,
+	},
 	SCIENCE_RED: {
 		"name": "Красная колба", "shape": Shape.FLASK,
 		"color": Palette.BAD, "accent": Color8(255, 170, 160), "stack": 100,
@@ -85,6 +107,8 @@ const ORE_TO_ITEM: Dictionary[int, StringName] = {
 	TileTypes.Ore.STONE: STONE,
 	TileTypes.Ore.IRON: IRON_ORE,
 	TileTypes.Ore.COPPER: COPPER_ORE,
+	TileTypes.Ore.COAL: COAL,
+	TileTypes.Ore.URANIUM: URANIUM_ORE,
 }
 
 
@@ -132,3 +156,8 @@ static func all_ids() -> Array[StringName]:
 ## Предмет, который даёт добыча клетки с указанной рудой.
 static func from_ore(ore_type: int) -> StringName:
 	return ORE_TO_ITEM.get(ore_type, &"")
+
+
+## Здание, которое производит предмет само, без рецепта (&"" — такого нет).
+static func source_building(id: StringName) -> StringName:
+	return DEFS.get(id, {}).get("from_building", &"")

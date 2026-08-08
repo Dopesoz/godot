@@ -49,13 +49,19 @@ func test_recipes_are_well_formed() -> void:
 
 
 func test_every_item_is_obtainable() -> void:
-	# Предмет либо добывается буром, либо является выходом какого-то рецепта.
-	# Иначе он мусор в каталоге или недостижимая цель для игрока.
+	# Предмет либо добывается буром, либо производится зданием напрямую
+	# (вода из водозабора), либо является выходом рецепта. Иначе он мусор
+	# в каталоге или недостижимая цель для игрока.
 	var minable: Array[StringName] = []
 	for ore_type: int in Items.ORE_TO_ITEM:
 		minable.append(Items.ORE_TO_ITEM[ore_type])
 	for id: StringName in Items.all_ids():
-		var obtainable: bool = minable.has(id) or Recipes.producing(id) != &""
+		var from_building: StringName = Items.source_building(id)
+		var obtainable: bool = (
+			minable.has(id)
+			or Recipes.producing(id) != &""
+			or (from_building != &"" and BuildingDefs.exists(from_building))
+		)
 		check(obtainable, "предмет %s нельзя получить никаким способом" % id)
 
 
@@ -78,7 +84,7 @@ func _resolves_to_ore(recipe_id: StringName, depth: int) -> bool:
 	for ore_type: int in Items.ORE_TO_ITEM:
 		minable.append(Items.ORE_TO_ITEM[ore_type])
 	for item: StringName in Recipes.inputs(recipe_id):
-		if minable.has(item):
+		if minable.has(item) or Items.source_building(item) != &"":
 			continue
 		var source: StringName = Recipes.producing(item)
 		if source == &"" or not _resolves_to_ore(source, depth + 1):

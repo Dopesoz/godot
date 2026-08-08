@@ -17,6 +17,9 @@ enum Kind {
 	POLE,
 	DRONE_PORT,
 	LAB,
+	WATER_PUMP,
+	BOILER,
+	REACTOR,
 }
 
 const STORAGE := &"storage"
@@ -28,6 +31,9 @@ const ACCUMULATOR := &"accumulator"
 const POLE := &"pole"
 const DRONE_PORT := &"drone_port"
 const LAB := &"lab"
+const WATER_PUMP := &"water_pump"
+const BOILER := &"boiler"
+const REACTOR := &"reactor"
 
 ## Поля описания:
 ##   name          — подпись в интерфейсе;
@@ -39,6 +45,8 @@ const LAB := &"lab"
 ##   power_range   — радиус подключения к сети в клетках;
 ##   input/output  — ёмкости инвентарей;
 ##   needs_ore     — требует руду под собой (бур);
+##   needs_water   — требует воду вплотную к площадке (насос);
+##   pollution     — сколько загрязнения даёт в секунду при работе;
 ##   tech          — технология, открывающая постройку (&"" — доступно сразу);
 ##   description   — одна строка для панели информации.
 const DEFS: Dictionary[StringName, Dictionary] = {
@@ -100,6 +108,29 @@ const DEFS: Dictionary[StringName, Dictionary] = {
 		"input": 0, "output": 200, "needs_ore": false, "tech": &"",
 		"description": "База дронов. Развозит ресурсы в радиусе действия.",
 	},
+	WATER_PUMP: {
+		"name": "Водозабор", "kind": Kind.WATER_PUMP, "size": Vector2i(2, 2),
+		"cost": {Items.IRON_PLATE: 10, Items.GEAR: 4},
+		"power_use": 20.0, "power_gen": 0.0, "power_range": 0,
+		"input": 0, "output": 200, "needs_ore": false, "needs_water": true,
+		"tech": &"steam_power",
+		"description": "Ставится у воды. Качает воду для котлов и реакторов.",
+	},
+	BOILER: {
+		"name": "Котёл", "kind": Kind.BOILER, "size": Vector2i(2, 2),
+		"cost": {Items.IRON_PLATE: 15, Items.BRICK: 10, Items.GEAR: 5},
+		"power_use": 0.0, "power_gen": 110.0, "power_range": 5,
+		"input": 120, "output": 0, "needs_ore": false, "tech": &"steam_power",
+		"pollution": 1.4,
+		"description": "Жжёт уголь с водой. Много энергии, но коптит небо.",
+	},
+	REACTOR: {
+		"name": "Реактор", "kind": Kind.REACTOR, "size": Vector2i(3, 3),
+		"cost": {Items.STEEL: 40, Items.CIRCUIT: 30, Items.BRICK: 30, Items.GEAR: 20},
+		"power_use": 0.0, "power_gen": 700.0, "power_range": 7,
+		"input": 200, "output": 0, "needs_ore": false, "tech": &"nuclear",
+		"description": "Один стержень держит фабрику полторы минуты. Без копоти.",
+	},
 	LAB: {
 		"name": "Лаборатория", "kind": Kind.LAB, "size": Vector2i(2, 2),
 		"cost": {Items.IRON_PLATE: 15, Items.GEAR: 10, Items.CIRCUIT: 2},
@@ -112,6 +143,7 @@ const DEFS: Dictionary[StringName, Dictionary] = {
 ## Порядок кнопок в меню строительства: от «поставь первым» к сложному.
 const BUILD_ORDER: Array[StringName] = [
 	DRILL, FURNACE, STORAGE, SOLAR, DRONE_PORT, ASSEMBLER, LAB, POLE, ACCUMULATOR,
+	WATER_PUMP, BOILER, REACTOR,
 ]
 
 ## Ёмкость аккумулятора, кДж.
@@ -168,6 +200,16 @@ static func output_capacity(def_id: StringName) -> int:
 
 static func needs_ore(def_id: StringName) -> bool:
 	return DEFS.get(def_id, {}).get("needs_ore", false)
+
+
+## Требует ли здание воду вплотную к площадке.
+static func needs_water(def_id: StringName) -> bool:
+	return DEFS.get(def_id, {}).get("needs_water", false)
+
+
+## Сколько загрязнения даёт здание в секунду при работе.
+static func pollution(def_id: StringName) -> float:
+	return DEFS.get(def_id, {}).get("pollution", 0.0)
 
 
 static func required_tech(def_id: StringName) -> StringName:
