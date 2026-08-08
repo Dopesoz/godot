@@ -44,6 +44,7 @@ func _build() -> void:
 	_root.theme = UiTheme.shared()
 	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_root)
+	UiWidgets.bind_to_viewport(_root)
 
 	var margins: Vector4i = UiTheme.safe_area_margins()
 	var holder := MarginContainer.new()

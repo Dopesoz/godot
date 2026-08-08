@@ -17,6 +17,7 @@ const HEIGHT_RATIO: float = 0.62
 var title_text: String = "Панель"
 
 var _dim: ColorRect = null
+var _holder: MarginContainer = null
 var _panel: PanelContainer = null
 var _content: VBoxContainer = null
 var _is_open: bool = false
@@ -33,6 +34,7 @@ func _build() -> void:
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.theme = UiTheme.shared()
 	add_child(root)
+	UiWidgets.bind_to_viewport(root)
 
 	_dim = ColorRect.new()
 	_dim.color = Color(0, 0, 0, 0.45)
@@ -40,17 +42,18 @@ func _build() -> void:
 	_dim.gui_input.connect(_on_dim_input)
 	root.add_child(_dim)
 
-	var margins: Vector4i = UiTheme.safe_area_margins()
 	var holder := MarginContainer.new()
+	_holder = holder
 	holder.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	holder.anchor_top = 1.0 - HEIGHT_RATIO
 	holder.anchor_bottom = 1.0
 	holder.offset_top = 0
 	holder.offset_bottom = 0
-	holder.add_theme_constant_override("margin_left", margins.x)
-	holder.add_theme_constant_override("margin_right", margins.z)
-	holder.add_theme_constant_override("margin_bottom", margins.w)
 	root.add_child(holder)
+	_fit_content_width()
+	var viewport: Viewport = get_viewport()
+	if viewport != null and not viewport.size_changed.is_connected(_fit_content_width):
+		viewport.size_changed.connect(_fit_content_width)
 
 	_panel = PanelContainer.new()
 	holder.add_child(_panel)
@@ -82,6 +85,20 @@ func _build() -> void:
 	column.add_child(_content)
 
 	_build_content(_content)
+
+
+## Ширина содержимого ограничена: на широком экране кнопка во всю ширину
+## выглядит нелепо, а её центр с текстом уезжает далеко от пальца. Отступы
+## пересчитываются при каждой смене размера окна.
+func _fit_content_width() -> void:
+	if _holder == null:
+		return
+	var margins: Vector4i = UiTheme.safe_area_margins()
+	var available: float = get_viewport().get_visible_rect().size.x
+	var extra: int = maxi(int(available) - UiWidgets.MAX_CONTENT_WIDTH, 0) / 2
+	_holder.add_theme_constant_override("margin_left", margins.x + extra)
+	_holder.add_theme_constant_override("margin_right", margins.z + extra)
+	_holder.add_theme_constant_override("margin_bottom", margins.w)
 
 
 ## Точка расширения: наследник наполняет лист.

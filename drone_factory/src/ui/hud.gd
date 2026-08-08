@@ -112,6 +112,8 @@ func _build_layout() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.theme = UiTheme.shared()
 	add_child(root)
+	# Размер корня задаётся явно и обновляется при смене размера окна.
+	UiWidgets.bind_to_viewport(root)
 
 	var column := VBoxContainer.new()
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE

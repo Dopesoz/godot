@@ -1,6 +1,14 @@
 class_name UiWidgets
 extends RefCounted
 
+## Предельная ширина содержимого панели в единицах базового разрешения.
+##
+## Заметно больше базовых 720: при растяжении «expand» видимая ширина у обычных
+## телефонов получается 720-820 единиц, и предел не должен срабатывать на них.
+## Ограничение существует ради планшетов, где кнопка во всю ширину выглядит
+## нелепо, а её центр с текстом уезжает далеко от пальца.
+const MAX_CONTENT_WIDTH: int = 900
+
 ## Фабрика типовых элементов интерфейса.
 ##
 ## Собирать панели из кода, а не из .tscn, здесь выгоднее: элементы
@@ -130,6 +138,27 @@ static func scroll_list() -> ScrollContainer:
 
 static func scroll_list_content(scroll: ScrollContainer) -> VBoxContainer:
 	return scroll.get_node("List") as VBoxContainer
+
+
+## Жёстко привязывает корневой Control интерфейса к видимой области вьюпорта.
+##
+## Якоря у Control внутри CanvasLayer вычисляются от вьюпорта, но на Android
+## окно получает настоящий размер уже после старта, и корень остаётся с прежними
+## габаритами — интерфейс уезжает за край экрана. Явная подписка на size_changed
+## снимает вопрос: размер всегда равен видимой области, чем бы она ни стала.
+static func bind_to_viewport(root: Control) -> void:
+	var viewport: Viewport = root.get_viewport()
+	if viewport == null:
+		return
+	var fit := func() -> void:
+		if not is_instance_valid(root):
+			return
+		root.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		root.position = Vector2.ZERO
+		root.size = root.get_viewport().get_visible_rect().size
+	fit.call()
+	if not viewport.size_changed.is_connected(fit):
+		viewport.size_changed.connect(fit)
 
 
 static func clear_children(node: Node) -> void:
