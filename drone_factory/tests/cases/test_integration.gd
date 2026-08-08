@@ -10,6 +10,9 @@ func before_each() -> void:
 	SaveSystem.delete_save()
 	main = load("res://scenes/main.tscn").instantiate()
 	Engine.get_main_loop().root.add_child(main)
+	# Игра стартует со случайным сидом — для сквозного теста это значит
+	# случайную карту и плавающие падения. Переигрываем на фиксированном.
+	main.start_new_game(20260808)
 
 
 func after_each() -> void:
@@ -62,8 +65,20 @@ func test_player_can_build_a_working_mine() -> void:
 	var drill: Building = main.build_controller.confirm()
 	check(drill != null, "бур не поставился: %s" % main.build_controller.confirm_blocker())
 
+	# Место под панель ищем, а не назначаем: рядом с буром может оказаться
+	# вода или другая залежь, и тест должен проверять игру, а не везение.
+	var panel_cell := Vector2i(-1, -1)
+	for offset: Vector2i in [
+		Vector2i(0, 3), Vector2i(3, 0), Vector2i(-3, 0), Vector2i(0, -3),
+		Vector2i(3, 3), Vector2i(-3, -3), Vector2i(4, 0), Vector2i(0, 4),
+	] as Array[Vector2i]:
+		if world.buildings.can_place(BuildingDefs.SOLAR, ore_cell + offset):
+			panel_cell = ore_cell + offset
+			break
+	check(panel_cell.x >= 0, "рядом с буром не нашлось места под панель")
+
 	main.build_controller.start_building(BuildingDefs.SOLAR)
-	main.build_controller._move_ghost(ore_cell + Vector2i(0, 3))
+	main.build_controller._move_ghost(panel_cell)
 	var panel: Building = main.build_controller.confirm()
 	check(panel != null, "панель не поставилась: %s" % main.build_controller.confirm_blocker())
 

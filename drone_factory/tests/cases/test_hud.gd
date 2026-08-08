@@ -13,6 +13,8 @@ func before_each() -> void:
 	Engine.get_main_loop().root.add_child(simulation)
 	world.simulation = simulation
 	world.new_game(4545)
+	# Строка задачи в HUD берётся из сюжета — без него проверять нечего.
+	simulation.add_system(StorySystem.new())
 	simulation.setup(world)
 	GameSetup.create_starting_base(world)
 
@@ -165,5 +167,13 @@ func test_objective_line_fits_narrow_screen() -> void:
 	hud.refresh_objective()
 	var button: Button = hud.find_child("ObjectiveButton", true, false) as Button
 	check(button != null, "нужна строка задачи")
-	if button != null:
-		check(button.clip_text, "длинная задача должна обрезаться, а не растягивать панель")
+	check(not hud.objective_text().is_empty(), "задача должна быть написана")
+	check(
+		button.get_combined_minimum_size().x <= 400.0,
+		"длинная задача не должна растягивать панель: %.0f" % button.get_combined_minimum_size().x
+	)
+	# Обрезка на полуслове — то, что игрок видел на телефоне: текст обязан
+	# переноситься на вторую строку.
+	var label: Label = hud.find_child("ObjectiveLabel", true, false) as Label
+	check_eq(label.autowrap_mode, TextServer.AUTOWRAP_WORD_SMART)
+	check(label.max_lines_visible >= 2, "под задачу нужно две строки")

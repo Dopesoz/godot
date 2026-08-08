@@ -37,5 +37,7 @@ static func is_met(condition: Dictionary, stats: GameStats, research: ResearchSt
 static func progress_text(condition: Dictionary, stats: GameStats, research: ResearchState) -> String:
 	var value: Vector2i = progress(condition, stats, research)
 	if value.y <= 1:
-		return "готово" if value.x >= value.y else "не выполнено"
+		# Для задачи из одного шага счётчик не нужен: «не выполнено» рядом
+		# с самой задачей — это шум, который ещё и вытесняет её текст с экрана.
+		return "готово" if value.x >= value.y else ""
 	return "%d / %d" % [mini(value.x, value.y), value.y]

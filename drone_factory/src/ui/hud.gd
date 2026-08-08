@@ -37,6 +37,7 @@ var _drones_label: Label = null
 var _time_label: Label = null
 var _pollution_label: Label = null
 var _objective_button: Button = null
+var _objective_label: Label = null
 var _fps_label: Label = null
 var _toast: Label = null
 var _bottom_bar: HBoxContainer = null
@@ -170,10 +171,22 @@ func _build_top_bar() -> Control:
 func _build_objective() -> Control:
 	_objective_button = Button.new()
 	_objective_button.name = "ObjectiveButton"
-	_objective_button.custom_minimum_size = Vector2(0, UiTheme.TOUCH_MIN)
+	_objective_button.custom_minimum_size = Vector2(0, UiTheme.TOUCH_LARGE)
 	_objective_button.focus_mode = Control.FOCUS_NONE
-	_objective_button.clip_text = true
 	_objective_button.pressed.connect(func() -> void: story_requested.emit())
+
+	# Текст задачи живёт в отдельной подписи с переносом: в саму кнопку он
+	# помещается только одной строкой и обрезался на полуслове.
+	_objective_label = UiWidgets.paragraph("", UiTheme.FONT_NORMAL)
+	_objective_label.name = "ObjectiveLabel"
+	_objective_label.set_anchors_and_offsets_preset(
+		Control.PRESET_FULL_RECT, Control.PRESET_MODE_KEEP_SIZE, UiTheme.PAD_M
+	)
+	_objective_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_objective_label.max_lines_visible = 2
+	_objective_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_objective_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_objective_button.add_child(_objective_label)
 	return _objective_button
 
 
@@ -283,12 +296,21 @@ func refresh_objective() -> void:
 		_objective_button.visible = false
 		return
 	if story.is_finished():
-		_objective_button.text = "✓ Экспедиция завершена"
+		_set_objective_text("✓ Экспедиция завершена")
 		return
 	var progress: String = story.progress_text()
-	_objective_button.text = "Задача: %s%s" % [
+	_set_objective_text("Задача: %s%s" % [
 		story.hint(), "" if progress.is_empty() else "  (%s)" % progress,
-	]
+	])
+
+
+func _set_objective_text(text: String) -> void:
+	_objective_label.text = text
+
+
+## Текст текущей задачи — то, что игрок читает в строке под показателями.
+func objective_text() -> String:
+	return "" if _objective_label == null else _objective_label.text
 
 
 func _on_pollution_changed(level: float, solar_factor: float) -> void:

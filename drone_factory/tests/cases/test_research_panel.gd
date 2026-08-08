@@ -98,3 +98,19 @@ func test_touch_targets() -> void:
 	panel.open()
 	for tech_id: StringName in Technologies.all_ids():
 		check(row(tech_id).custom_minimum_size.y >= UiTheme.TOUCH_MIN, "строка %s мелковата" % tech_id)
+
+
+func test_rows_fit_a_phone_screen() -> void:
+	# Строка технологии обрезается, а не ломает раскладку, — но обрезанное
+	# описание всё равно бесполезно. Меряем настоящую ширину текста.
+	var budget: float = 648.0
+	for tech_id: StringName in Technologies.all_ids():
+		var text: String = "%s · %s" % [
+			ResearchPanel._cost_text(tech_id), Technologies.description(tech_id),
+		]
+		var probe: Label = UiWidgets.label(text, UiTheme.FONT_SMALL)
+		var width: float = probe.get_combined_minimum_size().x
+		probe.free()
+		check(width <= budget, "строка технологии %s требует %.0f при %.0f: «%s»" % [
+			tech_id, width, budget, text,
+		])

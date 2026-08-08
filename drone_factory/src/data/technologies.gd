@@ -45,13 +45,13 @@ const DEFS: Dictionary[StringName, Dictionary] = {
 	WIND_POWER: {
 		"name": "Ветроэнергетика", "cost": {Items.SCIENCE_RED: 20}, "requires": [],
 		"buildings": [BuildingDefs.WIND], "recipes": [], "bonuses": {},
-		"description": "Ветряк: слабее панели, зато крутится и ночью.",
+		"description": "Ветряк: слабее панели, но работает ночью.",
 	},
 	STEAM_POWER: {
 		"name": "Паровая энергия", "cost": {Items.SCIENCE_RED: 25}, "requires": [],
 		"buildings": [BuildingDefs.WATER_PUMP, BuildingDefs.BOILER], "recipes": [],
 		"bonuses": {},
-		"description": "Водозабор и котёл: энергия ночью, но растёт загрязнение.",
+		"description": "Водозабор и котёл. Много энергии, но копоть.",
 	},
 	POWER_STORAGE: {
 		"name": "Накопление энергии", "cost": {Items.SCIENCE_RED: 40},
@@ -77,7 +77,7 @@ const DEFS: Dictionary[StringName, Dictionary] = {
 		"name": "Грузовые дроны", "cost": {Items.SCIENCE_RED: 60, Items.SCIENCE_GREEN: 30},
 		"requires": [ELECTRONICS], "buildings": [], "recipes": [Recipes.CRAFT_DRONE],
 		"bonuses": {BONUS_DRONE_CAPACITY: 0.5},
-		"description": "Сборка дронов и +50% к грузоподъёмности.",
+		"description": "Сборка дронов, +50% к грузу.",
 	},
 	SOLAR_EFFICIENCY: {
 		"name": "Эффективные панели", "cost": {Items.SCIENCE_RED: 50, Items.SCIENCE_GREEN: 20},
@@ -95,14 +95,14 @@ const DEFS: Dictionary[StringName, Dictionary] = {
 		"requires": [ELECTRONICS, STEEL, STEAM_POWER],
 		"buildings": [BuildingDefs.REACTOR], "recipes": [Recipes.CRAFT_FUEL_ROD],
 		"bonuses": {},
-		"description": "Реактор и топливные стержни. Дорого, но чисто и надолго.",
+		"description": "Реактор и стержни. Дорого, зато чисто.",
 	},
 	BEACON: {
 		"name": "Спасательный маяк",
 		"cost": {Items.SCIENCE_RED: 140, Items.SCIENCE_GREEN: 80},
 		"requires": [ELECTRONICS, STEEL],
 		"buildings": [BuildingDefs.BEACON], "recipes": [], "bonuses": {},
-		"description": "Главная цель: передатчик, который позовёт помощь.",
+		"description": "Передатчик, который позовёт помощь.",
 	},
 	MINING_2: {
 		"name": "Буры III", "cost": {Items.SCIENCE_RED: 80, Items.SCIENCE_GREEN: 40},

@@ -61,6 +61,10 @@ func _build() -> void:
 	attach_root(root)
 
 	_panel = PanelContainer.new()
+	# Лист прижат книзу и высок ровно настолько, насколько есть содержимое:
+	# панель на две строки, растянутая на две трети экрана, выглядит поломанной
+	# и зря закрывает карту.
+	_panel.size_flags_vertical = Control.SIZE_SHRINK_END
 	holder.add_child(_panel)
 
 	var column := VBoxContainer.new()
@@ -85,7 +89,7 @@ func _build() -> void:
 
 	_scroll = ScrollContainer.new()
 	_scroll.name = "Scroll"
-	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_scroll.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	# Вертикально — обычная прокрутка. Горизонтально — «никогда не показывать»:
 	# полосы нет, но и минимум по ширине наружу не уходит, а значит лист не
 	# растянется. SCROLL_MODE_DISABLED так не умеет — он как раз пробрасывает
@@ -112,10 +116,26 @@ func _build() -> void:
 	column.add_child(_footer)
 
 	_build_content(_content)
+	_content.minimum_size_changed.connect(_update_sheet_height)
+	_update_sheet_height()
+
+
+## Высота листа = высота содержимого, но не больше отведённой доли экрана.
+##
+## Считается через сам лист, без подобранных вручную чисел: всё, что в панели
+## не прокрутка (заголовок, разделитель, строка действий, поля), — это разница
+## между минимумом панели и текущим минимумом прокрутки.
+func _update_sheet_height() -> void:
+	if _scroll == null or _panel == null or _content == null:
+		return
+	var chrome: float = _panel.get_combined_minimum_size().y - _scroll.custom_minimum_size.y
+	var limit: float = maxf(viewport_size().y * HEIGHT_RATIO - chrome, 0.0)
+	_scroll.custom_minimum_size.y = clampf(_content.get_combined_minimum_size().y, 0.0, limit)
 
 
 func _fit_layout() -> void:
 	_fit_content_width()
+	_update_sheet_height()
 
 
 ## Ширина содержимого ограничена: на широком экране кнопка во всю ширину
@@ -165,6 +185,7 @@ func open() -> void:
 	_is_open = true
 	visible = true
 	_on_open()
+	_update_sheet_height()
 	opened.emit()
 
 

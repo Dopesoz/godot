@@ -4,3 +4,7 @@ android/
 build/
 export/
 *.translation
+
+# Снимки интерфейса из tools/screenshot.gd.
+shot_*.png
+shot_*.png.import
