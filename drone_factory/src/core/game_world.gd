@@ -11,6 +11,8 @@ var grid: Grid = null
 var buildings: BuildingRegistry = null
 ## Изученные технологии и их бонусы: читают и здания, и интерфейс.
 var research: ResearchState = null
+## Накопительная статистика партии: достижения и задачи считают по ней.
+var stats: GameStats = GameStats.new()
 
 var terrain_renderer: TerrainRenderer = null
 var building_renderer: BuildingRenderer = null
@@ -46,6 +48,7 @@ func new_game(seed_value: int) -> Vector2i:
 	start_cell = MapGenerator.generate(grid, seed_value)
 	buildings = BuildingRegistry.new(grid)
 	research = ResearchState.new()
+	stats = GameStats.new()
 
 	terrain_renderer.setup(grid)
 	building_renderer.setup(buildings)
@@ -61,6 +64,7 @@ func prepare_for_load(seed_value: int) -> void:
 	grid = Grid.new(Constants.WORLD_SIZE)
 	buildings = BuildingRegistry.new(grid)
 	research = ResearchState.new()
+	stats = GameStats.new()
 	terrain_renderer.setup(grid)
 	building_renderer.setup(buildings)
 	drone_renderer.setup(buildings, simulation)
@@ -85,6 +89,20 @@ func update_view(visible_world_rect: Rect2) -> void:
 	_visible_cells = cells
 	terrain_renderer.update_visible(cells)
 	building_renderer.set_view(cells)
+
+
+## Куда возвращать камеру по кнопке «К базе»: порт дронов, если он есть,
+## иначе стартовая клетка. Порт — настоящий центр фабрики, а стартовая
+## клетка остаётся запасным вариантом, если игрок снёс всё подчистую.
+func home_cell() -> Vector2i:
+	if buildings != null:
+		var ports: Array[Building] = buildings.of_kind(BuildingDefs.Kind.DRONE_PORT)
+		if not ports.is_empty():
+			return ports[0].center_cell()
+		var all_buildings: Array[Building] = buildings.all()
+		if not all_buildings.is_empty():
+			return all_buildings[0].center_cell()
+	return start_cell
 
 
 func visible_cells() -> Rect2i:

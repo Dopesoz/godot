@@ -15,6 +15,8 @@ const STATS_REFRESH_INTERVAL: float = 0.5
 ## Сколько держится всплывающее сообщение.
 const TOAST_TIME: float = 2.2
 
+## Игрок просит вернуть камеру к базе.
+signal home_requested()
 signal build_menu_requested()
 signal research_requested()
 signal menu_requested()
@@ -115,6 +117,7 @@ func _build_layout() -> void:
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(spacer)
 
+	column.add_child(_build_map_controls())
 	column.add_child(_build_toast())
 	column.add_child(_build_bottom_bar())
 
@@ -154,6 +157,21 @@ func _build_top_bar() -> Control:
 	_fps_label.visible = show_fps
 	status.add_child(_fps_label)
 	return _top_bar
+
+
+## Кнопки поверх карты. Пока одна: возврат к базе. На большой карте потеряться
+## проще простого, а искать базу вслепую пальцем — худшее, что можно предложить
+## игроку на телефоне.
+func _build_map_controls() -> Control:
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_END
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	var home: Button = UiWidgets.text_button("К базе", UiTheme.TOUCH_MIN * 2)
+	home.name = "HomeButton"
+	home.pressed.connect(func() -> void: home_requested.emit())
+	row.add_child(home)
+	return row
 
 
 func _build_toast() -> Control:

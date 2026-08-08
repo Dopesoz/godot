@@ -76,6 +76,7 @@ func tick(delta: float, context: Dictionary) -> void:
 	_progress -= float(mined)
 	output.add(mined_item, mined)
 	status = Status.WORKING
+	Events.items_harvested.emit(mined_item, mined)
 	Events.inventory_changed.emit(id)
 
 

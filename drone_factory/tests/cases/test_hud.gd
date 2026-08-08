@@ -123,3 +123,26 @@ func test_empty_space_passes_touches_to_map() -> void:
 	# Иначе карта перестанет двигаться пальцем в середине экрана.
 	var root: Control = hud.get_node("Root")
 	check_eq(root.mouse_filter, Control.MOUSE_FILTER_IGNORE)
+
+
+func test_home_button_exists_and_reports() -> void:
+	var pressed: Array[int] = [0]
+	hud.home_requested.connect(func() -> void: pressed[0] += 1)
+	var button: Button = find_button("HomeButton")
+	check(button != null, "нужна кнопка возврата к базе")
+	if button == null:
+		return
+	check(button.custom_minimum_size.y >= UiTheme.TOUCH_MIN, "кнопка мельче цели касания")
+	button.pressed.emit()
+	check_eq(pressed[0], 1, "кнопка должна сообщать о нажатии")
+
+
+func test_home_cell_points_at_the_port() -> void:
+	var ports: Array[Building] = world.buildings.of_kind(BuildingDefs.Kind.DRONE_PORT)
+	check(not ports.is_empty(), "в стартовой базе есть порт")
+	check_eq(world.home_cell(), ports[0].center_cell(), "домой — это порт дронов")
+
+
+func test_home_cell_falls_back_to_start() -> void:
+	world.buildings.clear()
+	check_eq(world.home_cell(), world.start_cell, "без зданий возвращаемся к точке старта")

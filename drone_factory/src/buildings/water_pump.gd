@@ -39,6 +39,7 @@ func tick(delta: float, _context: Dictionary) -> void:
 	_progress -= float(produced)
 	output.add(Items.WATER, produced)
 	status = Status.WORKING
+	Events.items_harvested.emit(Items.WATER, produced)
 	Events.inventory_changed.emit(id)
 
 

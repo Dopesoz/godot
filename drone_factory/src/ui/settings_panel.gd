@@ -8,6 +8,7 @@ extends UiPanel
 ## за время в меню что-то сломается незамеченным.
 
 signal new_game_requested()
+signal achievements_requested()
 
 var settings: GameSettings = null
 var save_system: SaveSystem = null
@@ -51,6 +52,11 @@ func _build_content(container: VBoxContainer) -> void:
 	_new_game_button.name = "NewGameButton"
 	_new_game_button.pressed.connect(_on_new_game)
 	container.add_child(_new_game_button)
+
+	var achievements: Button = UiWidgets.text_button("Достижения", UiTheme.TOUCH_MIN * 4)
+	achievements.name = "AchievementsButton"
+	achievements.pressed.connect(func() -> void: achievements_requested.emit())
+	container.add_child(achievements)
 
 	container.add_child(UiWidgets.separator())
 

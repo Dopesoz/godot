@@ -115,6 +115,8 @@ func tick(delta: float, _context: Dictionary) -> void:
 
 	progress = 0.0
 	output.add_all(Recipes.outputs(recipe_id))
+	for item_id: StringName in Recipes.outputs(recipe_id):
+		Events.items_produced.emit(item_id, int(Recipes.outputs(recipe_id)[item_id]))
 	Events.inventory_changed.emit(id)
 	_consume_job()
 

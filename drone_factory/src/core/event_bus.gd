@@ -29,6 +29,15 @@ signal pollution_changed(level: float, solar_factor: float)
 
 signal drone_count_changed(active: int, total: int)
 
+## --- Статистика ------------------------------------------------------------
+
+## Машина выпустила предметы.
+signal items_produced(item_id: StringName, count: int)
+## Бур или насос добыл сырьё.
+signal items_harvested(item_id: StringName, count: int)
+## Открыто достижение.
+signal achievement_unlocked(achievement_id: StringName)
+
 ## --- Производство и исследования -------------------------------------------
 
 signal production_queue_changed(building_id: int)
