@@ -42,11 +42,19 @@ func test_arm64_is_enabled() -> void:
 
 
 func test_min_and_target_sdk() -> void:
+	# Уровни SDK переопределяются только при сборке через Gradle: иначе экспорт
+	# отказывается собирать проект с внятной ошибкой. Пресет без Gradle обязан
+	# оставлять поля пустыми и брать значения из шаблона.
 	for section: String in option_sections():
-		check_eq(String(config.get_value(section, "gradle_build/target_sdk", "")), "34",
-			"%s: целевой API должен соответствовать требованиям Play" % section)
-		check(int(String(config.get_value(section, "gradle_build/min_sdk", "0"))) >= 21,
-			"%s: слишком низкий минимальный API" % section)
+		var gradle: bool = bool(config.get_value(section, "gradle_build/use_gradle_build", false))
+		var target: String = String(config.get_value(section, "gradle_build/target_sdk", ""))
+		var minimum: String = String(config.get_value(section, "gradle_build/min_sdk", ""))
+		if gradle:
+			check_eq(target, "34", "%s: целевой API должен соответствовать требованиям Play" % section)
+			check(int(minimum) >= 21, "%s: слишком низкий минимальный API" % section)
+		else:
+			check(target.is_empty() and minimum.is_empty(),
+				"%s: без Gradle уровни SDK задавать нельзя — экспорт откажется" % section)
 
 
 func test_aab_preset_uses_gradle_build() -> void:

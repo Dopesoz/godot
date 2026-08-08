@@ -1,0 +1,99 @@
+# Сборка Android APK игры Drone Factory.
+#
+# Зачем: собранный APK нужно откуда-то скачивать. Здесь он появляется в
+# артефактах каждого запуска, поэтому ссылка на скачивание есть всегда и не
+# зависит от машины разработчика.
+#
+# APK подписывается отладочным ключом, который генерируется прямо в сборке:
+# такой файл ставится на телефон сайдлоадом, но НЕ годится для Google Play —
+# для магазина нужен постоянный релизный ключ из секретов репозитория.
+name: Drone Factory Android
+
+on:
+  push:
+    paths:
+      - "drone_factory/**"
+      - ".github/workflows/drone_factory_android.yml"
+  workflow_dispatch:
+
+env:
+  GODOT_VERSION: 4.4.1
+  PROJECT_DIR: drone_factory
+
+jobs:
+  build:
+    name: Тесты и APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Установить JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Установить Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Установить build-tools
+        run: sdkmanager "build-tools;34.0.0" "platform-tools"
+
+      - name: Скачать Godot и шаблоны экспорта
+        run: |
+          set -e
+          BASE="https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable"
+          curl -sSL -o godot.zip "${BASE}/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          curl -sSL -o templates.tpz "${BASE}/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          unzip -q godot.zip
+          mv Godot_v${GODOT_VERSION}-stable_linux.x86_64 /usr/local/bin/godot
+          chmod +x /usr/local/bin/godot
+          mkdir -p ~/.local/share/godot/export_templates
+          unzip -q templates.tpz
+          mv templates ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+
+      - name: Прогнать тесты
+        run: godot --headless --path "${PROJECT_DIR}" --script res://tests/test_runner.gd
+
+      - name: Создать отладочный ключ подписи
+        run: |
+          keytool -keyalg RSA -genkeypair -alias androiddebugkey -keypass android \
+            -keystore "${HOME}/debug.keystore" -storepass android \
+            -dname "CN=Android Debug,O=Android,C=US" -validity 9999 -deststoretype pkcs12
+
+      - name: Настроить пути SDK для экспорта
+        run: |
+          mkdir -p ~/.config/godot
+          cat > ~/.config/godot/editor_settings-4.4.tres <<EOF
+          [gd_resource type="EditorSettings" format=3]
+
+          [resource]
+          export/android/android_sdk_path = "${ANDROID_SDK_ROOT}"
+          export/android/java_sdk_path = "${JAVA_HOME}"
+          export/android/debug_keystore = "${HOME}/debug.keystore"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
+          EOF
+
+      - name: Собрать APK
+        env:
+          GODOT_ANDROID_KEYSTORE_RELEASE_PATH: ${{ env.HOME }}/debug.keystore
+          GODOT_ANDROID_KEYSTORE_RELEASE_USER: androiddebugkey
+          GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD: android
+        run: |
+          mkdir -p "${PROJECT_DIR}/build"
+          godot --headless --path "${PROJECT_DIR}" \
+            --export-release "Android APK (тест)" build/drone_factory.apk
+          ls -la "${PROJECT_DIR}/build"
+
+      - name: Проверить подпись
+        run: |
+          "${ANDROID_SDK_ROOT}"/build-tools/34.0.0/apksigner verify --verbose \
+            "${PROJECT_DIR}/build/drone_factory.apk"
+
+      - name: Выложить APK в артефакты
+        uses: actions/upload-artifact@v4
+        with:
+          name: drone-factory-apk
+          path: ${{ env.PROJECT_DIR }}/build/drone_factory.apk
+          retention-days: 30
