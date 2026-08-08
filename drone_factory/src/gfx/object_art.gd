@@ -66,6 +66,8 @@ static func _draw_building(def_id: StringName) -> PixelCanvas:
 			_draw_boiler(canvas)
 		BuildingDefs.Kind.REACTOR:
 			_draw_reactor(canvas)
+		BuildingDefs.Kind.BEACON:
+			_draw_beacon(canvas)
 		BuildingDefs.Kind.LAB:
 			_draw_lab(canvas)
 		_:
@@ -242,6 +244,21 @@ static func _draw_reactor(canvas: PixelCanvas) -> void:
 	# Градирни по углам.
 	canvas.rect(2, 2, 4, 4, Palette.METAL_LIGHT)
 	canvas.rect(canvas.width - 6, 2, 4, 4, Palette.METAL_LIGHT)
+
+
+static func _draw_beacon(canvas: PixelCanvas) -> void:
+	_draw_base(canvas)
+	var cx: int = canvas.width / 2
+	# Тарелка на мачте: силуэт должен читаться как «передатчик», а не как ещё
+	# одна коробка на фабрике.
+	canvas.rect(cx - 2, canvas.height - 12, 4, 10, Palette.METAL_LIGHT)
+	canvas.line(Vector2i(cx - 7, canvas.height - 3), Vector2i(cx, canvas.height - 11), Palette.METAL)
+	canvas.line(Vector2i(cx + 7, canvas.height - 3), Vector2i(cx, canvas.height - 11), Palette.METAL)
+	canvas.circle(cx, 10, 7, Palette.METAL_HILIGHT)
+	canvas.circle(cx, 10, 5, Palette.GLASS_DARK)
+	canvas.circle(cx, 10, 2, Palette.GLASS)
+	canvas.put(cx, 2, Palette.ACCENT)
+	canvas.put(cx, 3, Palette.ACCENT)
 
 
 ## --- Предметы --------------------------------------------------------------

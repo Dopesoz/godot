@@ -20,6 +20,7 @@ enum Kind {
 	WATER_PUMP,
 	BOILER,
 	REACTOR,
+	BEACON,
 }
 
 const STORAGE := &"storage"
@@ -34,6 +35,7 @@ const LAB := &"lab"
 const WATER_PUMP := &"water_pump"
 const BOILER := &"boiler"
 const REACTOR := &"reactor"
+const BEACON := &"beacon"
 
 ## Поля описания:
 ##   name          — подпись в интерфейсе;
@@ -131,6 +133,13 @@ const DEFS: Dictionary[StringName, Dictionary] = {
 		"input": 200, "output": 0, "needs_ore": false, "tech": &"nuclear",
 		"description": "Один стержень держит фабрику полторы минуты. Без копоти.",
 	},
+	BEACON: {
+		"name": "Маяк", "kind": Kind.BEACON, "size": Vector2i(3, 3),
+		"cost": {Items.STEEL: 60, Items.CIRCUIT: 40, Items.GEAR: 30},
+		"power_use": 250.0, "power_gen": 0.0, "power_range": 0,
+		"input": 0, "output": 0, "needs_ore": false, "tech": &"beacon",
+		"description": "Передатчик спасательного сигнала. Нужен постоянный ток.",
+	},
 	LAB: {
 		"name": "Лаборатория", "kind": Kind.LAB, "size": Vector2i(2, 2),
 		"cost": {Items.IRON_PLATE: 15, Items.GEAR: 10, Items.CIRCUIT: 2},
@@ -143,7 +152,7 @@ const DEFS: Dictionary[StringName, Dictionary] = {
 ## Порядок кнопок в меню строительства: от «поставь первым» к сложному.
 const BUILD_ORDER: Array[StringName] = [
 	DRILL, FURNACE, STORAGE, SOLAR, DRONE_PORT, ASSEMBLER, LAB, POLE, ACCUMULATOR,
-	WATER_PUMP, BOILER, REACTOR,
+	WATER_PUMP, BOILER, REACTOR, BEACON,
 ]
 
 ## Ёмкость аккумулятора, кДж.

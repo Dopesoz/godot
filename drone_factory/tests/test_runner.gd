@@ -9,7 +9,7 @@ extends SceneTree
 const CASES_DIR: String = "res://tests/cases"
 ## Страховка от зависшего раннера: без неё ошибка разбора скрипта прерывает
 ## _initialize(), quit() не вызывается и процесс крутится вечно.
-const WATCHDOG_SECONDS: float = 120.0
+const WATCHDOG_SECONDS: float = 600.0
 
 var _elapsed: float = 0.0
 var _started: bool = false

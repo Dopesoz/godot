@@ -18,6 +18,7 @@ const SOLAR_EFFICIENCY := &"solar_efficiency"
 const PORT_RANGE := &"port_range"
 const MINING_2 := &"mining_2"
 const NUCLEAR := &"nuclear"
+const BEACON := &"beacon"
 
 ## Ключи бонусов. Значение — прибавка в долях (0.25 = +25%).
 const BONUS_MINING_SPEED := &"mining_speed"
@@ -89,6 +90,13 @@ const DEFS: Dictionary[StringName, Dictionary] = {
 		"buildings": [BuildingDefs.REACTOR], "recipes": [Recipes.CRAFT_FUEL_ROD],
 		"bonuses": {},
 		"description": "Реактор и топливные стержни. Дорого, но чисто и надолго.",
+	},
+	BEACON: {
+		"name": "Спасательный маяк",
+		"cost": {Items.SCIENCE_RED: 140, Items.SCIENCE_GREEN: 80},
+		"requires": [ELECTRONICS, STEEL],
+		"buildings": [BuildingDefs.BEACON], "recipes": [], "bonuses": {},
+		"description": "Главная цель: передатчик, который позовёт помощь.",
 	},
 	MINING_2: {
 		"name": "Буры III", "cost": {Items.SCIENCE_RED: 80, Items.SCIENCE_GREEN: 40},

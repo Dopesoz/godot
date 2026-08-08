@@ -111,6 +111,11 @@ static func _fill_terrain(grid: Grid, elevation: PackedByteArray, moisture: Pack
 	grid.terrain = terrain
 
 
+## Слои руды сводятся в один результат.
+##
+## Проход идёт по слоям снаружи и по клеткам внутри, а не наоборот: обращение
+## к словарю слоя внутри цикла по четверти миллиона клеток стоило втрое дороже
+## самой генерации шума. Здесь словарь читается пять раз за всю функцию.
 static func _fill_ore(grid: Grid, layers: Array[Dictionary]) -> void:
 	var count: int = grid.size * grid.size
 	var terrain: PackedByteArray = grid.terrain
@@ -118,29 +123,36 @@ static func _fill_ore(grid: Grid, layers: Array[Dictionary]) -> void:
 	var amount: PackedInt32Array = grid.ore_amount
 	var span: float = float(ORE_AMOUNT_MAX - ORE_AMOUNT_MIN)
 
+	# Лучшее «превышение порога» по каждой клетке: пороги у руд разные,
+	# поэтому сравнивать сырые значения шума нельзя.
+	var best_richness := PackedFloat32Array()
+	best_richness.resize(count)
+	var best_type := PackedByteArray()
+	best_type.resize(count)
+
+	for layer: Dictionary in layers:
+		var noise_map: PackedByteArray = layer["map"]
+		var threshold: int = layer["threshold"]
+		var ore_type: int = layer["ore"]
+		var inverse_span: float = 1.0 / float(255 - threshold)
+		for i: int in count:
+			var value: int = noise_map[i]
+			if value <= threshold:
+				continue
+			var richness: float = float(value - threshold) * inverse_span
+			if richness > best_richness[i]:
+				best_richness[i] = richness
+				best_type[i] = ore_type
+
 	for i: int in count:
+		if best_type[i] == TileTypes.Ore.NONE:
+			continue
 		# Под водой руду не добыть, в скале руды нет — экономим и память, и логику.
 		if terrain[i] == TileTypes.Terrain.WATER or terrain[i] == TileTypes.Terrain.ROCK:
 			continue
-		# Где пятна пересеклись, выигрывает то, что дальше ушло за свой порог:
-		# сравнивать сырые значения нельзя, пороги у руд разные.
-		var best_excess: float = 0.0
-		var best_type: int = TileTypes.Ore.NONE
-		var best_richness: float = 0.0
-		for layer: Dictionary in layers:
-			var threshold: int = layer["threshold"]
-			var value: int = (layer["map"] as PackedByteArray)[i]
-			if value <= threshold:
-				continue
-			var richness: float = float(value - threshold) / float(255 - threshold)
-			if richness > best_excess:
-				best_excess = richness
-				best_richness = richness
-				best_type = layer["ore"]
-		if best_type == TileTypes.Ore.NONE:
-			continue
-		ore[i] = best_type
-		amount[i] = ORE_AMOUNT_MIN + int(best_richness * best_richness * span)
+		var richness: float = best_richness[i]
+		ore[i] = best_type[i]
+		amount[i] = ORE_AMOUNT_MIN + int(richness * richness * span)
 	grid.ore = ore
 	grid.ore_amount = amount
 

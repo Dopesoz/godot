@@ -14,6 +14,7 @@ var info_panel: InfoPanel = null
 var research_panel: ResearchPanel = null
 var settings_panel: SettingsPanel = null
 var achievements_panel: AchievementsPanel = null
+var story_panel: StoryPanel = null
 var settings: GameSettings = null
 
 
@@ -57,6 +58,7 @@ func _ready() -> void:
 	simulation.add_system(ResearchSystem.new())
 	simulation.add_system(LogisticsSystem.new())
 	simulation.add_system(AchievementSystem.new())
+	simulation.add_system(StorySystem.new())
 	add_child(simulation)
 
 	world.simulation = simulation
@@ -81,6 +83,10 @@ func _ready() -> void:
 	research_panel.name = "ResearchPanel"
 	add_child(research_panel)
 
+	story_panel = StoryPanel.new()
+	story_panel.name = "StoryPanel"
+	add_child(story_panel)
+
 	achievements_panel = AchievementsPanel.new()
 	achievements_panel.name = "AchievementsPanel"
 	add_child(achievements_panel)
@@ -94,6 +100,7 @@ func _ready() -> void:
 	add_child(build_bar)
 
 	hud.home_requested.connect(_on_home_requested)
+	hud.story_requested.connect(story_panel.open)
 	hud.build_menu_requested.connect(build_menu.open)
 	hud.research_requested.connect(research_panel.open)
 	hud.menu_requested.connect(settings_panel.open)
@@ -129,6 +136,7 @@ func start_new_game(seed_value: int) -> void:
 	research_panel.setup(
 		simulation.get_system(ResearchSystem) as ResearchSystem, world.research
 	)
+	story_panel.setup(simulation.get_system(StorySystem) as StorySystem)
 	achievements_panel.setup(simulation.get_system(AchievementSystem) as AchievementSystem)
 	settings_panel.setup(settings, save_system, simulation, hud)
 	settings_panel.achievements_requested.connect(func() -> void:

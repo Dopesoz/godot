@@ -45,6 +45,15 @@ signal research_progress_changed(tech_id: StringName, progress: float)
 signal research_completed(tech_id: StringName)
 signal unlocks_changed()
 
+## --- Сюжет -----------------------------------------------------------------
+
+## Пройдена очередная глава: id завершённой и id следующей (&"" — история кончилась).
+signal story_advanced(finished_id: StringName, next_id: StringName)
+## Маяк заряжается: 0..1.
+signal beacon_progress(progress: float)
+## Игра пройдена.
+signal game_won()
+
 ## --- Игровой цикл / UI -----------------------------------------------------
 
 signal game_saved()

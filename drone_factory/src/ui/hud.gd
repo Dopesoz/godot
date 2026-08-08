@@ -18,12 +18,15 @@ const TOAST_TIME: float = 2.2
 ## Игрок просит вернуть камеру к базе.
 signal home_requested()
 signal build_menu_requested()
+## Игрок тапнул по строке задачи.
+signal story_requested()
 signal research_requested()
 signal menu_requested()
 
 var world: GameWorld = null
 var simulation: Simulation = null
 var pool: ResourcePool = null
+var story: StorySystem = null
 
 var show_fps: bool = OS.is_debug_build()
 
@@ -33,6 +36,7 @@ var _power_label: Label = null
 var _drones_label: Label = null
 var _time_label: Label = null
 var _pollution_label: Label = null
+var _objective_button: Button = null
 var _fps_label: Label = null
 var _toast: Label = null
 var _bottom_bar: HBoxContainer = null
@@ -55,6 +59,7 @@ func _ready() -> void:
 	Events.power_stats_changed.connect(_on_power_changed)
 	Events.drone_count_changed.connect(_on_drones_changed)
 	Events.pollution_changed.connect(_on_pollution_changed)
+	Events.story_advanced.connect(func(_a: StringName, _b: StringName) -> void: refresh_objective())
 	Events.notify.connect(show_toast)
 	Events.unlocks_changed.connect(func() -> void: _stats_dirty = true)
 
@@ -63,7 +68,9 @@ func setup(game_world: GameWorld, game_simulation: Simulation) -> void:
 	world = game_world
 	simulation = game_simulation
 	pool = ResourcePool.new(game_world.buildings)
+	story = game_simulation.get_system(StorySystem) as StorySystem
 	_stats_dirty = true
+	refresh_objective()
 
 
 func _process(delta: float) -> void:
@@ -72,6 +79,7 @@ func _process(delta: float) -> void:
 		_stats_timer = 0.0
 		_stats_dirty = false
 		_refresh_stats()
+		refresh_objective()
 
 	if simulation != null and _time_label != null:
 		_time_label.text = simulation.time_of_day_text()
@@ -111,6 +119,7 @@ func _build_layout() -> void:
 	root.add_child(column)
 
 	column.add_child(_build_top_bar())
+	column.add_child(_build_objective())
 
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -157,6 +166,18 @@ func _build_top_bar() -> Control:
 	_fps_label.visible = show_fps
 	status.add_child(_fps_label)
 	return _top_bar
+
+
+## Строка текущей задачи. Она же обучение: игрок всегда видит следующий шаг,
+## не открывая ни одной панели. Тап открывает дневник с полным текстом.
+func _build_objective() -> Control:
+	_objective_button = Button.new()
+	_objective_button.name = "ObjectiveButton"
+	_objective_button.custom_minimum_size = Vector2(0, UiTheme.TOUCH_MIN)
+	_objective_button.focus_mode = Control.FOCUS_NONE
+	_objective_button.clip_text = true
+	_objective_button.pressed.connect(func() -> void: story_requested.emit())
+	return _objective_button
 
 
 ## Кнопки поверх карты. Пока одна: возврат к базе. На большой карте потеряться
@@ -244,6 +265,23 @@ func _on_power_changed(produced: float, consumed: float, satisfaction: float) ->
 func _on_drones_changed(active: int, total: int) -> void:
 	if _drones_label != null:
 		_drones_label.text = "Дроны %d/%d" % [active, total]
+
+
+## Обновляет строку задачи. Прогресс пересчитывается вместе со сводкой
+## по складам, то есть не чаще двух раз в секунду.
+func refresh_objective() -> void:
+	if _objective_button == null:
+		return
+	if story == null:
+		_objective_button.visible = false
+		return
+	if story.is_finished():
+		_objective_button.text = "✓ Экспедиция завершена"
+		return
+	var progress: String = story.progress_text()
+	_objective_button.text = "Задача: %s%s" % [
+		story.hint(), "" if progress.is_empty() else "  (%s)" % progress,
+	]
 
 
 func _on_pollution_changed(level: float, solar_factor: float) -> void:
