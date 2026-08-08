@@ -67,7 +67,9 @@ const DEFS: Dictionary[StringName, Dictionary] = {
 		"name": "Сборщик", "kind": Kind.ASSEMBLER, "size": Vector2i(2, 2),
 		"cost": {Items.IRON_PLATE: 12, Items.GEAR: 6},
 		"power_use": 60.0, "power_gen": 0.0, "power_range": 0,
-		"input": 80, "output": 60, "needs_ore": false, "tech": &"assembling",
+		# Сборщик доступен сразу: красные колбы делаются только в нём, и если
+		# запереть его за технологией, игра встанет намертво на первом же шаге.
+		"input": 80, "output": 60, "needs_ore": false, "tech": &"",
 		"description": "Собирает детали из пластин по выбранному рецепту.",
 	},
 	SOLAR: {

@@ -44,38 +44,38 @@ func test_all_technologies_are_listed() -> void:
 
 func test_locked_technology_shows_prerequisites() -> void:
 	panel.open()
-	var electronics: Button = row(Technologies.ELECTRONICS)
-	check(electronics.disabled, "технология без предшественников должна быть недоступна")
-	var detail: Label = electronics.find_child("Detail", true, false) as Label
+	var gated: Button = row(Technologies.MINING_2)
+	check(gated.disabled, "технология с невыполненными предшественниками недоступна")
+	var detail: Label = gated.find_child("Detail", true, false) as Label
 	check(detail.text.begins_with("Сначала:"), "игроку нужно видеть, чего не хватает: %s" % detail.text)
 
 
 func test_available_technology_shows_cost() -> void:
 	panel.open()
-	var detail: Label = row(Technologies.ASSEMBLING).find_child("Detail", true, false) as Label
+	var detail: Label = row(Technologies.MINING_1).find_child("Detail", true, false) as Label
 	check(detail.text.contains("колба"), "в строке должна быть цена: %s" % detail.text)
 
 
 func test_starting_research_updates_header() -> void:
 	panel.open()
-	row(Technologies.ASSEMBLING).pressed.emit()
-	check_eq(research.current, Technologies.ASSEMBLING)
-	check_eq(panel._current_label.text, Technologies.display_name(Technologies.ASSEMBLING))
+	row(Technologies.MINING_1).pressed.emit()
+	check_eq(research.current, Technologies.MINING_1)
+	check_eq(panel._current_label.text, Technologies.display_name(Technologies.MINING_1))
 	check(panel._cost_label.text.begins_with("Осталось:"))
 	check(panel._cancel_button.visible, "во время исследования доступна отмена")
 
 
 func test_progress_bar_follows_research() -> void:
 	panel.open()
-	research.start(Technologies.ASSEMBLING)
-	research.invested[Items.SCIENCE_RED] = int(Technologies.total_cost(Technologies.ASSEMBLING) / 2)
-	Events.research_progress_changed.emit(Technologies.ASSEMBLING, research.progress())
+	research.start(Technologies.MINING_1)
+	research.invested[Items.SCIENCE_RED] = int(Technologies.total_cost(Technologies.MINING_1) / 2)
+	Events.research_progress_changed.emit(Technologies.MINING_1, research.progress())
 	check_almost(panel._progress.value, 0.5, 0.05, "полоска должна показывать половину пути")
 
 
 func test_cancel_clears_current() -> void:
 	panel.open()
-	research.start(Technologies.ASSEMBLING)
+	research.start(Technologies.MINING_1)
 	panel._cancel_button.pressed.emit()
 	check_eq(research.current, &"")
 	check_eq(panel._current_label.text, "Ничего не изучается")
@@ -84,12 +84,14 @@ func test_cancel_clears_current() -> void:
 
 func test_completed_technology_moves_to_done() -> void:
 	panel.open()
-	world.research.complete(Technologies.ASSEMBLING)
-	Events.research_completed.emit(Technologies.ASSEMBLING)
-	var detail: Label = row(Technologies.ASSEMBLING).find_child("Detail", true, false) as Label
+	world.research.complete(Technologies.MINING_1)
+	Events.research_completed.emit(Technologies.MINING_1)
+	var detail: Label = row(Technologies.MINING_1).find_child("Detail", true, false) as Label
 	check(detail.text.begins_with("Изучено"), "изученная технология должна помечаться")
-	check(row(Technologies.ASSEMBLING).disabled, "повторно изучать нельзя")
-	check(not row(Technologies.ELECTRONICS).disabled, "открывшаяся технология должна стать доступной")
+	check(row(Technologies.MINING_1).disabled, "повторно изучать нельзя")
+	world.research.complete(Technologies.ELECTRONICS)
+	Events.research_completed.emit(Technologies.ELECTRONICS)
+	check(not row(Technologies.MINING_2).disabled, "открывшаяся технология должна стать доступной")
 
 
 func test_touch_targets() -> void:

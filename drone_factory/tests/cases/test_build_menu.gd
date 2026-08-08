@@ -54,14 +54,23 @@ func test_menu_lists_every_building() -> void:
 
 func test_locked_buildings_are_disabled_with_reason() -> void:
 	menu.open()
-	var assembler: Button = row(BuildingDefs.ASSEMBLER)
-	check(assembler.disabled, "закрытое здание должно быть недоступно")
-	var detail: Label = assembler.find_child("Detail", true, false) as Label
+	var accumulator: Button = row(BuildingDefs.ACCUMULATOR)
+	check(accumulator.disabled, "закрытое здание должно быть недоступно")
+	var detail: Label = accumulator.find_child("Detail", true, false) as Label
 	check(detail.text.begins_with("Нужно:"), "игроку нужно видеть, какая технология нужна")
 
-	world.research.complete(Technologies.ASSEMBLING)
+	world.research.complete(Technologies.POWER_STORAGE)
 	menu.refresh()
-	check(not row(BuildingDefs.ASSEMBLER).disabled, "после исследования здание открывается")
+	check(not row(BuildingDefs.ACCUMULATOR).disabled, "после исследования здание открывается")
+
+
+func test_starter_buildings_are_available_immediately() -> void:
+	# Сборщик обязателен для красных колб: закрыть его технологией — значит
+	# запереть всё развитие игры на первом шаге.
+	menu.open()
+	for def_id: StringName in [BuildingDefs.DRILL, BuildingDefs.FURNACE, BuildingDefs.ASSEMBLER,
+			BuildingDefs.LAB, BuildingDefs.STORAGE, BuildingDefs.SOLAR, BuildingDefs.DRONE_PORT]:
+		check(not row(def_id).disabled, "%s должно быть доступно с начала игры" % def_id)
 
 
 func test_row_shows_cost() -> void:

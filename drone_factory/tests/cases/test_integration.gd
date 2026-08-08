@@ -120,12 +120,12 @@ func test_research_can_be_started_and_finished() -> void:
 	check(lab != null, "лаборатория не поставилась")
 
 	var research: ResearchSystem = main.simulation.get_system(ResearchSystem) as ResearchSystem
-	check(research.start(Technologies.ASSEMBLING), "исследование должно запускаться")
+	check(research.start(Technologies.MINING_1), "исследование должно запускаться")
 	lab.input.add(Items.SCIENCE_RED, 40)
 	main.simulation.game_time = 0.0
 	run_seconds(60.0)
-	check(world.research.is_completed(Technologies.ASSEMBLING), "исследование должно завершиться")
-	check(world.research.is_building_unlocked(BuildingDefs.ASSEMBLER), "сборщик должен открыться")
+	check(world.research.is_completed(Technologies.MINING_1), "исследование должно завершиться")
+	check(world.research.bonus(Technologies.BONUS_MINING_SPEED) > 0.0, "бонус должен примениться")
 
 
 func test_long_session_stays_stable() -> void:

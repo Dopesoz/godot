@@ -7,7 +7,6 @@ extends RefCounted
 ## Дерево намеренно неглубокое: на телефоне играют короткими сессиями, и цель
 ## должна быть видна на один-два шага вперёд, а не на двадцать.
 
-const ASSEMBLING := &"assembling"
 const POWER_STORAGE := &"power_storage"
 const MINING_1 := &"mining_1"
 const ELECTRONICS := &"electronics"
@@ -34,11 +33,6 @@ const BONUS_PORT_RANGE := &"port_range"
 ##   bonuses     — постоянные прибавки;
 ##   description — одна строка для панели.
 const DEFS: Dictionary[StringName, Dictionary] = {
-	ASSEMBLING: {
-		"name": "Сборка", "cost": {Items.SCIENCE_RED: 20}, "requires": [],
-		"buildings": [BuildingDefs.ASSEMBLER], "recipes": [], "bonuses": {},
-		"description": "Открывает сборщик: детали из пластин.",
-	},
 	MINING_1: {
 		"name": "Буры II", "cost": {Items.SCIENCE_RED: 30}, "requires": [],
 		"buildings": [], "recipes": [], "bonuses": {BONUS_MINING_SPEED: 0.25},
@@ -50,7 +44,7 @@ const DEFS: Dictionary[StringName, Dictionary] = {
 		"bonuses": {}, "description": "Открывает аккумулятор: энергия на ночь.",
 	},
 	ELECTRONICS: {
-		"name": "Электроника", "cost": {Items.SCIENCE_RED: 60}, "requires": [ASSEMBLING],
+		"name": "Электроника", "cost": {Items.SCIENCE_RED: 60}, "requires": [],
 		"buildings": [], "recipes": [Recipes.CRAFT_CIRCUIT, Recipes.CRAFT_SCIENCE_GREEN],
 		"bonuses": {}, "description": "Микросхемы и зелёные колбы.",
 	},

@@ -87,15 +87,95 @@ func test_tech_tree_is_reachable_from_start() -> void:
 	check_eq(state.completed.size(), Technologies.all_ids().size(), "часть технологий недостижима")
 
 
+## Здание, в котором исполняется рецепт.
+func machine_building(machine_kind: int) -> StringName:
+	match machine_kind:
+		Recipes.Machine.FURNACE:
+			return BuildingDefs.FURNACE
+		Recipes.Machine.LAB:
+			return BuildingDefs.LAB
+		_:
+			return BuildingDefs.ASSEMBLER
+
+
+## Можно ли получить предмет при текущем наборе открытого.
+func item_producible(state: ResearchState, item_id: StringName, depth: int = 0) -> bool:
+	if depth > 8:
+		return false
+	for ore_type: int in Items.ORE_TO_ITEM:
+		if Items.ORE_TO_ITEM[ore_type] == item_id:
+			return state.is_building_unlocked(BuildingDefs.DRILL)
+	for recipe_id: StringName in Recipes.DEFS:
+		if not Recipes.outputs(recipe_id).has(item_id):
+			continue
+		if not state.is_recipe_unlocked(recipe_id):
+			continue
+		if not state.is_building_unlocked(machine_building(Recipes.machine(recipe_id))):
+			continue
+		var ok: bool = true
+		for input_id: StringName in Recipes.inputs(recipe_id):
+			if not item_producible(state, input_id, depth + 1):
+				ok = false
+				break
+		if ok:
+			return true
+	return false
+
+
+func test_every_tech_is_researchable_with_what_is_already_open() -> void:
+	# Настоящая проверка проходимости игры: технологию можно изучить, только
+	# если её колбы производятся тем, что открыто ДО неё. Именно на этом
+	# попался тупик, когда сборщик был заперт за технологией, которая сама
+	# требовала красные колбы из сборщика.
+	var state := ResearchState.new()
+	var researched: int = 0
+	var guard: int = 0
+	while guard < 60:
+		guard += 1
+		var progressed: bool = false
+		for tech_id: StringName in Technologies.all_ids():
+			if state.is_completed(tech_id) or not state.is_available(tech_id):
+				continue
+			var affordable: bool = true
+			for item_id: StringName in Technologies.cost(tech_id):
+				if not item_producible(state, item_id):
+					affordable = false
+					break
+			if affordable:
+				state.complete(tech_id)
+				researched += 1
+				progressed = true
+		if not progressed:
+			break
+
+	var blocked: PackedStringArray = PackedStringArray()
+	for tech_id: StringName in Technologies.all_ids():
+		if not state.is_completed(tech_id):
+			blocked.append(String(tech_id))
+	check(
+		blocked.is_empty(),
+		"эти технологии невозможно изучить — игра запирается: %s" % ", ".join(blocked)
+	)
+
+
+func test_first_research_is_possible_from_scratch() -> void:
+	# На старте игрок должен иметь всё, чтобы сделать первые красные колбы.
+	var state := ResearchState.new()
+	check(state.is_building_unlocked(BuildingDefs.ASSEMBLER), "сборщик нужен для колб")
+	check(state.is_building_unlocked(BuildingDefs.LAB), "лаборатория нужна для исследований")
+	check(item_producible(state, Items.SCIENCE_RED), "красные колбы недоступны на старте")
+
+
 func test_prerequisites_block_research() -> void:
-	check(research.can_start(Technologies.ASSEMBLING), "стартовая технология должна быть доступна")
-	check(not research.can_start(Technologies.ELECTRONICS), "электроника требует сборку")
-	world.research.complete(Technologies.ASSEMBLING)
-	check(research.can_start(Technologies.ELECTRONICS))
+	check(research.can_start(Technologies.MINING_1), "стартовая технология должна быть доступна")
+	check(not research.can_start(Technologies.MINING_2), "буры III требуют предшественников")
+	world.research.complete(Technologies.MINING_1)
+	world.research.complete(Technologies.ELECTRONICS)
+	check(research.can_start(Technologies.MINING_2))
 
 
 func test_lab_consumes_science_and_completes_research() -> void:
-	research.start(Technologies.ASSEMBLING)
+	research.start(Technologies.MINING_1)
 	lab.input.add(Items.SCIENCE_RED, 60)
 	var completed: Array[StringName] = []
 	var handler := func(tech_id: StringName) -> void: completed.append(tech_id)
@@ -104,14 +184,14 @@ func test_lab_consumes_science_and_completes_research() -> void:
 	run_ticks(Constants.TICKS_PER_SECOND * 60)
 	Events.research_completed.disconnect(handler)
 
-	check(world.research.is_completed(Technologies.ASSEMBLING), "исследование должно завершиться")
-	check_eq(completed, [Technologies.ASSEMBLING] as Array[StringName])
+	check(world.research.is_completed(Technologies.MINING_1), "исследование должно завершиться")
+	check_eq(completed, [Technologies.MINING_1] as Array[StringName])
 	check(lab.input.count(Items.SCIENCE_RED) < 60, "колбы должны тратиться")
 	check_eq(research.current, &"", "после завершения активного исследования нет")
 
 
 func test_research_without_science_does_not_progress() -> void:
-	research.start(Technologies.ASSEMBLING)
+	research.start(Technologies.MINING_1)
 	run_ticks(100)
 	check_almost(research.progress(), 0.0, 0.001, "без колб прогресса быть не должно")
 	check_eq(lab.status, Building.Status.NO_INPUT)
@@ -120,7 +200,7 @@ func test_research_without_science_does_not_progress() -> void:
 func test_lab_without_power_does_not_work() -> void:
 	for panel: Building in world.buildings.of_kind(BuildingDefs.Kind.SOLAR):
 		world.buildings.remove(panel.id)
-	research.start(Technologies.ASSEMBLING)
+	research.start(Technologies.MINING_1)
 	lab.input.add(Items.SCIENCE_RED, 20)
 	run_ticks(50)
 	check_eq(lab.status, Building.Status.NO_POWER)
@@ -128,7 +208,7 @@ func test_lab_without_power_does_not_work() -> void:
 
 
 func test_lab_requests_only_needed_science() -> void:
-	research.start(Technologies.ASSEMBLING)
+	research.start(Technologies.MINING_1)
 	simulation.tick()
 	var requests: Dictionary[StringName, int] = lab.requests()
 	check(requests.has(Items.SCIENCE_RED), "лаборатория должна просить красные колбы")
@@ -136,13 +216,14 @@ func test_lab_requests_only_needed_science() -> void:
 
 
 func test_unlocks_open_buildings_and_recipes() -> void:
-	check(not world.research.is_building_unlocked(BuildingDefs.ASSEMBLER), "сборщик закрыт на старте")
+	check(not world.research.is_building_unlocked(BuildingDefs.ACCUMULATOR), "аккумулятор закрыт на старте")
 	check(world.research.is_building_unlocked(BuildingDefs.FURNACE), "печь доступна сразу")
+	check(world.research.is_building_unlocked(BuildingDefs.ASSEMBLER), "сборщик доступен сразу")
 	check(not world.research.is_recipe_unlocked(Recipes.SMELT_STEEL), "сталь закрыта на старте")
 
-	world.research.complete(Technologies.ASSEMBLING)
-	check(world.research.is_building_unlocked(BuildingDefs.ASSEMBLER))
-	check(world.research.unlocked_buildings().has(BuildingDefs.ASSEMBLER))
+	world.research.complete(Technologies.POWER_STORAGE)
+	check(world.research.is_building_unlocked(BuildingDefs.ACCUMULATOR))
+	check(world.research.unlocked_buildings().has(BuildingDefs.ACCUMULATOR))
 
 	world.research.complete(Technologies.STEEL)
 	check(world.research.unlocked_recipes(Recipes.Machine.FURNACE).has(Recipes.SMELT_STEEL))
@@ -190,16 +271,16 @@ func test_locked_building_cannot_be_built() -> void:
 	Engine.get_main_loop().root.add_child(controller)
 	controller.setup(world, camera)
 
-	controller.start_building(BuildingDefs.ASSEMBLER)
+	controller.start_building(BuildingDefs.ACCUMULATOR)
 	check(not controller.is_building(), "закрытое здание не должно входить в режим стройки")
-	world.research.complete(Technologies.ASSEMBLING)
-	controller.start_building(BuildingDefs.ASSEMBLER)
+	world.research.complete(Technologies.POWER_STORAGE)
+	controller.start_building(BuildingDefs.ACCUMULATOR)
 	check(controller.is_building(), "после исследования здание должно стать доступным")
 	controller.free()
 
 
 func test_cancel_keeps_completed_but_drops_progress() -> void:
-	research.start(Technologies.ASSEMBLING)
+	research.start(Technologies.MINING_1)
 	lab.input.add(Items.SCIENCE_RED, 5)
 	run_ticks(60)
 	check(research.progress() > 0.0)
@@ -210,7 +291,7 @@ func test_cancel_keeps_completed_but_drops_progress() -> void:
 
 func test_research_state_survives_save() -> void:
 	world.research.complete(Technologies.MINING_1)
-	research.start(Technologies.ASSEMBLING)
+	research.start(Technologies.ELECTRONICS)
 	lab.input.add(Items.SCIENCE_RED, 10)
 	run_ticks(60)
 
@@ -223,7 +304,7 @@ func test_research_state_survives_save() -> void:
 	check_almost(restored.multiplier(Technologies.BONUS_MINING_SPEED), 1.25)
 
 	research.deserialize(system_data)
-	check_eq(research.current, Technologies.ASSEMBLING, "активное исследование должно сохраняться")
+	check_eq(research.current, Technologies.ELECTRONICS, "активное исследование должно сохраняться")
 	check(research.progress() > 0.0, "вложенные колбы должны сохраняться")
 
 
