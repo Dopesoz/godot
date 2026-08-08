@@ -83,17 +83,20 @@ jobs:
         run: |
           mkdir -p "${PROJECT_DIR}/build"
           godot --headless --path "${PROJECT_DIR}" \
+            --export-release "Android APK (arm64)" build/drone_factory_arm64.apk
+          godot --headless --path "${PROJECT_DIR}" \
             --export-release "Android APK (тест)" build/drone_factory.apk
           ls -la "${PROJECT_DIR}/build"
 
       - name: Проверить подпись
         run: |
-          "${ANDROID_SDK_ROOT}"/build-tools/34.0.0/apksigner verify --verbose \
-            "${PROJECT_DIR}/build/drone_factory.apk"
+          for apk in "${PROJECT_DIR}"/build/*.apk; do
+            "${ANDROID_SDK_ROOT}"/build-tools/34.0.0/apksigner verify --verbose "$apk"
+          done
 
       - name: Выложить APK в артефакты
         uses: actions/upload-artifact@v4
         with:
           name: drone-factory-apk
-          path: ${{ env.PROJECT_DIR }}/build/drone_factory.apk
+          path: ${{ env.PROJECT_DIR }}/build/*.apk
           retention-days: 30
