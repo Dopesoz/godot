@@ -14,10 +14,13 @@ var settings: GameSettings = null
 var save_system: SaveSystem = null
 var simulation: Simulation = null
 var hud: Hud = null
+var audio: AudioDirector = null
 
 var _load_button: Button = null
 ## Описания переключателей: имя узла -> подпись и ключ настройки.
 var _toggles: Dictionary[String, Dictionary] = {}
+## Кнопки с перебором значений: имя узла -> подпись.
+var _cycles: Dictionary[String, String] = {}
 var _confirm_new_game: bool = false
 var _new_game_button: Button = null
 
@@ -26,12 +29,14 @@ func setup(
 	game_settings: GameSettings,
 	game_save_system: SaveSystem,
 	game_simulation: Simulation,
-	game_hud: Hud
+	game_hud: Hud,
+	game_audio: AudioDirector = null
 ) -> void:
 	settings = game_settings
 	save_system = game_save_system
 	simulation = game_simulation
 	hud = game_hud
+	audio = game_audio
 	_refresh_toggles()
 
 
@@ -57,6 +62,15 @@ func _build_content(container: VBoxContainer) -> void:
 	achievements.name = "AchievementsButton"
 	achievements.pressed.connect(func() -> void: achievements_requested.emit())
 	container.add_child(achievements)
+
+	container.add_child(UiWidgets.separator())
+
+	# Значения по кругу, а не ползунками: попасть пальцем в ползунок на
+	# телефоне трудно, а четырёх ступеней громкости достаточно.
+	container.add_child(_cycle("MusicVolume", "Музыка"))
+	container.add_child(_cycle("SfxVolume", "Звуки"))
+	container.add_child(_cycle("UiScale", "Масштаб экрана"))
+	container.add_child(_cycle("MaxFps", "Кадров в секунду"))
 
 	container.add_child(UiWidgets.separator())
 
@@ -88,6 +102,45 @@ func _toggle(node_name: String, caption: String, key: StringName) -> Button:
 	return button
 
 
+## Кнопка, перебирающая значения по кругу: громкость, масштаб, лимит кадров.
+func _cycle(node_name: String, caption: String) -> Button:
+	var button: Button = UiWidgets.text_button("%s: —" % caption, UiTheme.TOUCH_MIN * 4)
+	button.name = node_name
+	_cycles[node_name] = caption
+	button.pressed.connect(func() -> void:
+		if settings == null:
+			return
+		match node_name:
+			"MusicVolume":
+				settings.music_volume = GameSettings.next_volume(settings.music_volume)
+			"SfxVolume":
+				settings.sfx_volume = GameSettings.next_volume(settings.sfx_volume)
+			"UiScale":
+				settings.ui_scale = GameSettings.next_scale(settings.ui_scale)
+			"MaxFps":
+				settings.max_fps = 30 if settings.max_fps == 60 else 60
+			_:
+				pass
+		_refresh_toggles()
+		_apply_settings()
+	)
+	return button
+
+
+func _cycle_value(node_name: String) -> String:
+	match node_name:
+		"MusicVolume":
+			return "%d%%" % int(round(settings.music_volume * 100.0))
+		"SfxVolume":
+			return "%d%%" % int(round(settings.sfx_volume * 100.0))
+		"UiScale":
+			return "%d%%" % int(round(settings.ui_scale * 100.0))
+		"MaxFps":
+			return str(settings.max_fps)
+		_:
+			return "—"
+
+
 ## Панель строится в _ready(), а настройки приходят позже в setup(): подписи
 ## переключателей обновляем отдельно.
 func _refresh_toggles() -> void:
@@ -101,6 +154,10 @@ func _refresh_toggles() -> void:
 		button.text = "%s: %s" % [
 			entry["caption"], "вкл" if settings.get_flag(entry["key"]) else "выкл",
 		]
+	for node_name: String in _cycles:
+		var cycle_button: Button = find_child(node_name, true, false) as Button
+		if cycle_button != null:
+			cycle_button.text = "%s: %s" % [_cycles[node_name], _cycle_value(node_name)]
 
 
 func _on_open() -> void:
@@ -121,7 +178,7 @@ func close() -> void:
 func _apply_settings() -> void:
 	if settings == null:
 		return
-	settings.apply(hud, save_system)
+	settings.apply(hud, save_system, audio)
 	settings.save_settings()
 
 

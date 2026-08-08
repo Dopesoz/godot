@@ -16,6 +16,7 @@ var settings_panel: SettingsPanel = null
 var achievements_panel: AchievementsPanel = null
 var story_panel: StoryPanel = null
 var settings: GameSettings = null
+var audio: AudioDirector = null
 
 
 func _ready() -> void:
@@ -67,6 +68,10 @@ func _ready() -> void:
 	save_system = SaveSystem.new()
 	save_system.name = "SaveSystem"
 	add_child(save_system)
+
+	audio = AudioDirector.new()
+	audio.name = "Audio"
+	add_child(audio)
 
 	hud = Hud.new()
 	hud.name = "Hud"
@@ -139,12 +144,13 @@ func start_new_game(seed_value: int) -> void:
 	)
 	story_panel.setup(simulation.get_system(StorySystem) as StorySystem)
 	achievements_panel.setup(simulation.get_system(AchievementSystem) as AchievementSystem)
-	settings_panel.setup(settings, save_system, simulation, hud)
+	audio.setup(world.buildings)
+	settings_panel.setup(settings, save_system, simulation, hud, audio)
 	settings_panel.achievements_requested.connect(func() -> void:
 		settings_panel.close()
 		achievements_panel.open()
 	)
-	settings.apply(hud, save_system)
+	settings.apply(hud, save_system, audio)
 
 	camera.focus_on_cell(start)
 	world.update_view(camera.visible_world_rect())
