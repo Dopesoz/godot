@@ -41,16 +41,26 @@ func test_icon_button_uses_atlas_icon() -> void:
 	button.free()
 
 
-func test_panel_and_scroll_helpers() -> void:
+func test_panel_helper() -> void:
 	var panel: PanelContainer = UiWidgets.panel()
 	check(UiWidgets.panel_content(panel) != null, "панель должна иметь контейнер содержимого")
 	panel.free()
 
-	var scroll: ScrollContainer = UiWidgets.scroll_list()
-	check(UiWidgets.scroll_list_content(scroll) != null, "список должен иметь контейнер строк")
-	check_eq(scroll.horizontal_scroll_mode, ScrollContainer.SCROLL_MODE_DISABLED,
-		"горизонтальная прокрутка мешает вертикальным спискам на телефоне")
-	scroll.free()
+
+func test_paragraph_does_not_widen_layout() -> void:
+	# Главное свойство переносимого текста: он не тянет раскладку вширь.
+	var long_text: String = "Очень длинная строка описания, ".repeat(6)
+	var plain: Label = UiWidgets.label(long_text, UiTheme.FONT_SMALL)
+	var wrapped: Label = UiWidgets.paragraph(long_text, UiTheme.FONT_SMALL)
+	check_eq(wrapped.autowrap_mode, TextServer.AUTOWRAP_WORD_SMART)
+	check(
+		wrapped.get_combined_minimum_size().x < plain.get_combined_minimum_size().x * 0.5,
+		"переносимый текст обязан ужиматься: %.0f против %.0f" % [
+			wrapped.get_combined_minimum_size().x, plain.get_combined_minimum_size().x,
+		]
+	)
+	plain.free()
+	wrapped.free()
 
 
 func test_clear_children() -> void:

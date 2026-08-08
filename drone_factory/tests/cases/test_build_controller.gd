@@ -94,7 +94,12 @@ func test_cannot_build_without_resources() -> void:
 	controller.start_building(BuildingDefs.SOLAR)
 	aim(Vector2i(0, 6))
 	check(not controller.can_confirm(), "без ресурсов строить нельзя")
-	check_eq(controller.confirm_blocker(), "Не хватает ресурсов")
+	# Отказ обязан называть предмет: «не хватает ресурсов» ничего не подсказывает.
+	var blocker: String = controller.confirm_blocker()
+	check(
+		blocker.contains(Items.display_name(Items.IRON_PLATE)),
+		"в отказе должен быть назван недостающий предмет, получено: %s" % blocker
+	)
 	check_eq(controller.confirm(), null)
 
 

@@ -26,9 +26,10 @@ func _build_content(container: VBoxContainer) -> void:
 	_summary = UiWidgets.label("", UiTheme.FONT_SMALL, Palette.UI_TEXT_DIM)
 	container.add_child(_summary)
 
-	var scroll: ScrollContainer = UiWidgets.scroll_list()
-	container.add_child(scroll)
-	_list = UiWidgets.scroll_list_content(scroll)
+	_list = VBoxContainer.new()
+	_list.name = "List"
+	_list.add_theme_constant_override("separation", UiTheme.PAD_S)
+	container.add_child(_list)
 
 
 func _on_open() -> void:

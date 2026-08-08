@@ -85,8 +85,13 @@ func confirm_blocker() -> String:
 	var error: int = world.buildings.check_placement(pending_def_id, pending_origin)
 	if error != BuildingRegistry.PlaceError.OK:
 		return BuildingRegistry.placement_error_text(error)
-	if not pool.has_all(BuildingDefs.cost(pending_def_id)):
-		return "Не хватает ресурсов"
+	var missing: Dictionary[StringName, int] = pool.missing(BuildingDefs.cost(pending_def_id))
+	if not missing.is_empty():
+		# Называем предмет: «не хватает ресурсов» не подсказывает игроку ничего.
+		var parts: PackedStringArray = PackedStringArray()
+		for item_id: StringName in missing:
+			parts.append("%s %d" % [Items.display_name(item_id), missing[item_id]])
+		return "Не хватает: " + ", ".join(parts)
 	return ""
 
 

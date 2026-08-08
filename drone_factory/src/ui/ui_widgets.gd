@@ -93,6 +93,21 @@ static func title(text: String) -> Label:
 	return label(text, UiTheme.FONT_LARGE)
 
 
+## Многострочный текст: описание, подсказка, кусок сюжета.
+##
+## Отдельная фабрика, а не флаг у label(), потому что перенос меняет поведение
+## в раскладке: у обычной подписи минимальная ширина равна всей строке, и такая
+## подпись раздвигает панель за край экрана. У переносимой минимум — самое
+## длинное слово, поэтому она честно ужимается под любой экран.
+static func paragraph(
+	text: String, size: int = UiTheme.FONT_SMALL, color: Color = Palette.UI_TEXT
+) -> Label:
+	var node: Label = label(text, size, color)
+	node.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	node.custom_minimum_size = Vector2(0, 0)
+	return node
+
+
 static func separator() -> HSeparator:
 	var line := HSeparator.new()
 	line.add_theme_constant_override("separation", UiTheme.PAD_S)
@@ -123,42 +138,32 @@ static func progress_bar(minimum_height: int = 14) -> ProgressBar:
 	return bar
 
 
-## Прокручиваемый список: на телефоне почти любой перечень длиннее экрана.
-static func scroll_list() -> ScrollContainer:
-	var scroll := ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var box := VBoxContainer.new()
-	box.name = "List"
-	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	box.add_theme_constant_override("separation", UiTheme.PAD_S)
-	scroll.add_child(box)
-	return scroll
-
-
-static func scroll_list_content(scroll: ScrollContainer) -> VBoxContainer:
-	return scroll.get_node("List") as VBoxContainer
-
-
-## Жёстко привязывает корневой Control интерфейса к видимой области вьюпорта.
+## Жёстко сажает корневой Control интерфейса на видимую область вьюпорта.
 ##
 ## Якоря у Control внутри CanvasLayer вычисляются от вьюпорта, но на Android
 ## окно получает настоящий размер уже после старта, и корень остаётся с прежними
-## габаритами — интерфейс уезжает за край экрана. Явная подписка на size_changed
-## снимает вопрос: размер всегда равен видимой области, чем бы она ни стала.
-static func bind_to_viewport(root: Control) -> void:
+## габаритами — интерфейс уезжает за край экрана. Поэтому размер выставляется
+## явно, а владелец интерфейса вызывает это ещё раз на каждый size_changed.
+##
+## Подписку сознательно оставляем вызывающему: сигнал нужно связывать с методом
+## самого узла, чтобы движок снял связь при удалении. Лямбда так не умеет — её
+## захват переживает узел и валится ошибкой на каждом изменении размера.
+static func fit_to_viewport(root: Control) -> void:
 	var viewport: Viewport = root.get_viewport()
 	if viewport == null:
 		return
-	var fit := func() -> void:
-		if not is_instance_valid(root):
-			return
-		root.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	# Штатный путь: якоря на всю площадь. Для Control внутри CanvasLayer
+	# «родительская площадь» — это и есть видимая область вьюпорта, и движок
+	# сам пересчитает её при любом изменении размера окна.
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+	# Страховка: если родительская область почему-то ещё старая (на Android
+	# сигнал о размере приходит раньше, чем вьюпорт пересчитает растяжение),
+	# дотягиваем размер руками. Следующий вызов вернёт честные якоря.
+	var visible: Vector2 = viewport.get_visible_rect().size
+	if not root.size.is_equal_approx(visible):
 		root.position = Vector2.ZERO
-		root.size = root.get_viewport().get_visible_rect().size
-	fit.call()
-	if not viewport.size_changed.is_connected(fit):
-		viewport.size_changed.connect(fit)
+		root.size = visible
 
 
 static func clear_children(node: Node) -> void:

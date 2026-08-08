@@ -1,5 +1,5 @@
 class_name UiPanel
-extends CanvasLayer
+extends UiLayer
 
 ## Базовая всплывающая панель — «нижний лист».
 ##
@@ -7,6 +7,13 @@ extends CanvasLayer
 ## (там карта и показатели), а всё содержимое попадает в зону большого пальца.
 ## Затемнение сверху одновременно гасит фон и ловит касание «мимо панели»,
 ## закрывая лист, — привычный на Android жест.
+##
+## Содержимое всегда лежит внутри прокрутки, и это не украшение, а защита.
+## Control в Godot не может стать уже своего минимального размера: одна длинная
+## строка без переносов внутри листа раздвигала бы весь лист за край экрана —
+## именно так интерфейс и «растягивался» на телефоне. У прокрутки с отключённым
+## показом горизонтальной полосы минимум по ширине не передаётся наружу, поэтому
+## лист физически не может вылезти за экран, что бы в него ни положили.
 
 signal opened()
 signal closed()
@@ -19,7 +26,9 @@ var title_text: String = "Панель"
 var _dim: ColorRect = null
 var _holder: MarginContainer = null
 var _panel: PanelContainer = null
+var _scroll: ScrollContainer = null
 var _content: VBoxContainer = null
+var _footer: HBoxContainer = null
 var _is_open: bool = false
 
 
@@ -31,10 +40,9 @@ func _ready() -> void:
 
 func _build() -> void:
 	var root := Control.new()
-	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.name = "Root"
 	root.theme = UiTheme.shared()
 	add_child(root)
-	UiWidgets.bind_to_viewport(root)
 
 	_dim = ColorRect.new()
 	_dim.color = Color(0, 0, 0, 0.45)
@@ -50,10 +58,7 @@ func _build() -> void:
 	holder.offset_top = 0
 	holder.offset_bottom = 0
 	root.add_child(holder)
-	_fit_content_width()
-	var viewport: Viewport = get_viewport()
-	if viewport != null and not viewport.size_changed.is_connected(_fit_content_width):
-		viewport.size_changed.connect(_fit_content_width)
+	attach_root(root)
 
 	_panel = PanelContainer.new()
 	holder.add_child(_panel)
@@ -78,13 +83,39 @@ func _build() -> void:
 
 	column.add_child(UiWidgets.separator())
 
+	_scroll = ScrollContainer.new()
+	_scroll.name = "Scroll"
+	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	# Вертикально — обычная прокрутка. Горизонтально — «никогда не показывать»:
+	# полосы нет, но и минимум по ширине наружу не уходит, а значит лист не
+	# растянется. SCROLL_MODE_DISABLED так не умеет — он как раз пробрасывает
+	# минимум родителю.
+	_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	column.add_child(_scroll)
+
 	_content = VBoxContainer.new()
 	_content.name = "Content"
+	# EXPAND по обеим осям: прокрутка растягивает такого ребёнка до своей
+	# ширины, вместо того чтобы оставить его в минимальном размере.
+	_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_content.add_theme_constant_override("separation", UiTheme.PAD_S)
-	column.add_child(_content)
+	_scroll.add_child(_content)
+
+	# Нижняя строка действий остаётся на месте при прокрутке: кнопки вроде
+	# «Разобрать» нельзя прятать за скроллом.
+	_footer = HBoxContainer.new()
+	_footer.name = "Footer"
+	_footer.visible = false
+	_footer.add_theme_constant_override("separation", UiTheme.PAD_M)
+	column.add_child(_footer)
 
 	_build_content(_content)
+
+
+func _fit_layout() -> void:
+	_fit_content_width()
 
 
 ## Ширина содержимого ограничена: на широком экране кнопка во всю ширину
@@ -113,6 +144,12 @@ func _on_open() -> void:
 
 func content() -> VBoxContainer:
 	return _content
+
+
+## Строка кнопок под прокруткой. Появляется, как только в неё что-то положили.
+func footer() -> HBoxContainer:
+	_footer.visible = true
+	return _footer
 
 
 func set_title(text: String) -> void:

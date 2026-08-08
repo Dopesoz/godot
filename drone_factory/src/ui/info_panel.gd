@@ -45,33 +45,31 @@ func _build_content(container: VBoxContainer) -> void:
 	_progress = UiWidgets.progress_bar()
 	container.add_child(_progress)
 
-	var scroll: ScrollContainer = UiWidgets.scroll_list()
-	container.add_child(scroll)
-	var list: VBoxContainer = UiWidgets.scroll_list_content(scroll)
-
 	_details = VBoxContainer.new()
 	_details.add_theme_constant_override("separation", 0)
-	list.add_child(_details)
+	container.add_child(_details)
 
 	_queue = VBoxContainer.new()
 	_queue.add_theme_constant_override("separation", UiTheme.PAD_S)
-	list.add_child(_queue)
+	container.add_child(_queue)
 
 	_recipes = VBoxContainer.new()
 	_recipes.add_theme_constant_override("separation", UiTheme.PAD_S)
-	list.add_child(_recipes)
+	container.add_child(_recipes)
 
-	var actions := HBoxContainer.new()
-	actions.add_theme_constant_override("separation", UiTheme.PAD_M)
-	container.add_child(actions)
+	# Кнопки действий — в закреплённой строке: искать «Разобрать» прокруткой
+	# после длинного списка рецептов игрок не должен.
+	var actions: HBoxContainer = footer()
 
-	_power_button = UiWidgets.text_button("Выключить", UiTheme.TOUCH_MIN * 3)
+	_power_button = UiWidgets.text_button("Выключить", UiTheme.TOUCH_MIN * 2)
 	_power_button.name = "PowerButton"
+	_power_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_power_button.pressed.connect(_on_toggle_enabled)
 	actions.add_child(_power_button)
 
-	var demolish: Button = UiWidgets.text_button("Разобрать", UiTheme.TOUCH_MIN * 3)
+	var demolish: Button = UiWidgets.text_button("Разобрать", UiTheme.TOUCH_MIN * 2)
 	demolish.name = "DemolishButton"
+	demolish.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	demolish.pressed.connect(_on_demolish)
 	actions.add_child(demolish)
 

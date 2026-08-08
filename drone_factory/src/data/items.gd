@@ -174,3 +174,28 @@ static func from_ore(ore_type: int) -> StringName:
 ## Здание, которое производит предмет само, без рецепта (&"" — такого нет).
 static func source_building(id: StringName) -> StringName:
 	return DEFS.get(id, {}).get("from_building", &"")
+
+
+## Где взять предмет — одним словом, для подсказок интерфейса.
+##
+## Без этого игра выглядит тупиковой там, где тупика нет: у котла в цене есть
+## кирпич, кирпич доступен с самого начала, но догадаться, что его плавят в
+## печи из камня, можно было только перебором рецептов.
+static func source_of(id: StringName) -> String:
+	var building: StringName = source_building(id)
+	if building != &"":
+		return BuildingDefs.display_name(building)
+	if ORE_TO_ITEM.values().has(id):
+		return BuildingDefs.display_name(BuildingDefs.DRILL)
+	var recipe: StringName = Recipes.producing(id)
+	if recipe == &"":
+		return ""
+	match Recipes.machine(recipe):
+		Recipes.Machine.FURNACE:
+			return BuildingDefs.display_name(BuildingDefs.FURNACE)
+		Recipes.Machine.ASSEMBLER:
+			return BuildingDefs.display_name(BuildingDefs.ASSEMBLER)
+		Recipes.Machine.LAB:
+			return BuildingDefs.display_name(BuildingDefs.LAB)
+		_:
+			return ""

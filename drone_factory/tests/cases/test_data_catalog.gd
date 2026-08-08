@@ -90,3 +90,21 @@ func _resolves_to_ore(recipe_id: StringName, depth: int) -> bool:
 		if source == &"" or not _resolves_to_ore(source, depth + 1):
 			return false
 	return true
+
+
+func test_every_build_material_is_obtainable() -> void:
+	# Здание, в цене которого есть предмет ниоткуда, — это тупик в развитии.
+	for def_id: StringName in BuildingDefs.all_ids():
+		for item_id: StringName in BuildingDefs.cost(def_id):
+			check(
+				not Items.source_of(item_id).is_empty(),
+				"%s стоит %s, но взять его негде" % [def_id, item_id]
+			)
+
+
+func test_every_item_says_where_it_comes_from() -> void:
+	for item_id: StringName in Items.all_ids():
+		check(
+			not Items.source_of(item_id).is_empty(),
+			"непонятно, где брать %s" % item_id
+		)

@@ -147,3 +147,37 @@ func test_touch_targets_in_menu() -> void:
 			row(def_id).custom_minimum_size.y >= UiTheme.TOUCH_MIN,
 			"строка %s мельче цели касания" % def_id
 		)
+
+
+func test_unaffordable_row_names_the_missing_item_and_its_source() -> void:
+	# Ровно тот случай, на который жаловался игрок: ресурсы вроде есть, а
+	# котёл не строится. Не хватает кирпича, и это должно быть написано.
+	world.research.complete(Technologies.STEAM_POWER)
+	for building: Building in controller.pool.stores():
+		building.output.clear()
+		building.output.add(Items.IRON_PLATE, 100)
+		building.output.add(Items.GEAR, 100)
+	menu.open()
+
+	var detail: Label = row(BuildingDefs.BOILER).find_child("Detail", true, false) as Label
+	check(
+		detail.text.contains(Items.display_name(Items.BRICK)),
+		"в строке должен быть назван недостающий кирпич, получено: %s" % detail.text
+	)
+	check(
+		not detail.text.contains(Items.display_name(Items.IRON_PLATE)),
+		"того, чего хватает, в строке нехватки быть не должно: %s" % detail.text
+	)
+	check(
+		detail.text.contains(BuildingDefs.display_name(BuildingDefs.FURNACE)),
+		"строка должна подсказывать, где делают кирпич: %s" % detail.text
+	)
+
+
+func test_affordable_row_shows_plain_cost() -> void:
+	menu.open()
+	var detail: Label = row(BuildingDefs.DRILL).find_child("Detail", true, false) as Label
+	check(
+		not detail.text.begins_with("Не хватает"),
+		"на бур ресурсов хватает с начала игры, получено: %s" % detail.text
+	)

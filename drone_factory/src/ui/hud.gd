@@ -1,5 +1,5 @@
 class_name Hud
-extends CanvasLayer
+extends UiLayer
 
 ## Основной интерфейс поверх карты.
 ##
@@ -99,21 +99,14 @@ func _process(delta: float) -> void:
 ## --- Раскладка -------------------------------------------------------------
 
 func _build_layout() -> void:
-	var margins: Vector4i = UiTheme.safe_area_margins()
-
 	var root := MarginContainer.new()
 	root.name = "Root"
-	root.set_anchors_preset(Control.PRESET_FULL_RECT)
-	root.add_theme_constant_override("margin_left", margins.x)
-	root.add_theme_constant_override("margin_top", margins.y)
-	root.add_theme_constant_override("margin_right", margins.z)
-	root.add_theme_constant_override("margin_bottom", margins.w)
+	# Отступы под безопасную зону выставит _fit_layout(): до того, как окно
+	# получило настоящий размер, они всё равно неизвестны.
 	# Пустое место интерфейса должно пропускать касания к карте.
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.theme = UiTheme.shared()
 	add_child(root)
-	# Размер корня задаётся явно и обновляется при смене размера окна.
-	UiWidgets.bind_to_viewport(root)
 
 	var column := VBoxContainer.new()
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -131,6 +124,8 @@ func _build_layout() -> void:
 	column.add_child(_build_map_controls())
 	column.add_child(_build_toast())
 	column.add_child(_build_bottom_bar())
+
+	attach_root(root)
 
 
 func _build_top_bar() -> Control:
@@ -232,6 +227,16 @@ func _build_bottom_bar() -> Control:
 	menu_button.pressed.connect(func() -> void: menu_requested.emit())
 	_bottom_bar.add_child(menu_button)
 	return _bottom_bar
+
+
+## Безопасная зона тоже известна только после того, как окно получило
+## настоящий размер, поэтому отступы пересчитываются вместе с раскладкой.
+func _fit_layout() -> void:
+	var margins: Vector4i = UiTheme.safe_area_margins()
+	_root.add_theme_constant_override("margin_left", margins.x)
+	_root.add_theme_constant_override("margin_top", margins.y)
+	_root.add_theme_constant_override("margin_right", margins.z)
+	_root.add_theme_constant_override("margin_bottom", margins.w)
 
 
 ## --- Обновление ------------------------------------------------------------

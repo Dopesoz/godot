@@ -24,19 +24,16 @@ func _ready() -> void:
 
 func _build_content(container: VBoxContainer) -> void:
 	set_title("Экспедиция")
-	var scroll: ScrollContainer = UiWidgets.scroll_list()
-	container.add_child(scroll)
-	var list: VBoxContainer = UiWidgets.scroll_list_content(scroll)
 
 	_current_box = VBoxContainer.new()
 	_current_box.add_theme_constant_override("separation", UiTheme.PAD_S)
-	list.add_child(_current_box)
+	container.add_child(_current_box)
 
-	list.add_child(UiWidgets.separator())
+	container.add_child(UiWidgets.separator())
 
 	_log_box = VBoxContainer.new()
 	_log_box.add_theme_constant_override("separation", UiTheme.PAD_S)
-	list.add_child(_log_box)
+	container.add_child(_log_box)
 
 
 func _on_open() -> void:
@@ -50,33 +47,31 @@ func refresh() -> void:
 	UiWidgets.clear_children(_log_box)
 
 	if story.is_finished():
-		_current_box.add_child(UiWidgets.label(Story.ENDING_TITLE, UiTheme.FONT_LARGE, Palette.OK))
+		_current_box.add_child(UiWidgets.paragraph(Story.ENDING_TITLE, UiTheme.FONT_LARGE, Palette.OK))
 		_current_box.add_child(_paragraph(Story.ENDING_TEXT))
 	else:
 		var chapter: Dictionary = story.chapter()
-		_current_box.add_child(UiWidgets.label(String(chapter["title"]), UiTheme.FONT_LARGE))
+		_current_box.add_child(UiWidgets.paragraph(String(chapter["title"]), UiTheme.FONT_LARGE))
 		_current_box.add_child(_paragraph(String(chapter["text"])))
-		_current_box.add_child(UiWidgets.label(
+		_current_box.add_child(UiWidgets.paragraph(
 			"Задача: %s" % story.hint(), UiTheme.FONT_NORMAL, Palette.ACCENT
 		))
 		var progress: String = story.progress_text()
 		if not progress.is_empty():
-			_current_box.add_child(UiWidgets.label(progress, UiTheme.FONT_SMALL, Palette.UI_TEXT_DIM))
+			_current_box.add_child(UiWidgets.paragraph(progress, UiTheme.FONT_SMALL, Palette.UI_TEXT_DIM))
 
 	# Журнал пройденного: короткая память о том, как далеко зашла экспедиция.
 	if story.current > 0:
 		_log_box.add_child(UiWidgets.label("Пройдено", UiTheme.FONT_SMALL, Palette.UI_TEXT_DIM))
 	for i: int in story.current:
 		var done: Dictionary = Story.chapter_at(i)
-		_log_box.add_child(UiWidgets.label(
+		_log_box.add_child(UiWidgets.paragraph(
 			"✓ %s" % String(done["title"]), UiTheme.FONT_SMALL, Palette.OK
 		))
 
 
 static func _paragraph(text: String) -> Label:
-	var label: Label = UiWidgets.label(text, UiTheme.FONT_SMALL, Palette.UI_TEXT)
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	return label
+	return UiWidgets.paragraph(text, UiTheme.FONT_SMALL, Palette.UI_TEXT)
 
 
 func _on_story_advanced(_finished_id: StringName, next_id: StringName) -> void:

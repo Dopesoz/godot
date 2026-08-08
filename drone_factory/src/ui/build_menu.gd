@@ -21,9 +21,9 @@ func setup(build_controller: BuildController, research_state: ResearchState) -> 
 
 func _build_content(container: VBoxContainer) -> void:
 	set_title("Строительство")
-	var scroll: ScrollContainer = UiWidgets.scroll_list()
-	container.add_child(scroll)
-	_list = UiWidgets.scroll_list_content(scroll)
+	# Прокрутку даёт сам лист: вкладывать её ещё раз — значит получить два
+	# перехватчика жеста, между которыми палец не выберет ни одного.
+	_list = container
 
 
 func _on_open() -> void:
@@ -81,9 +81,11 @@ func _build_row(def_id: StringName) -> Control:
 	elif not affordable:
 		# Не хватает ресурсов — кнопка остаётся нажимаемой: игрок может
 		# выбрать здание заранее и построить, когда дроны подвезут материалы.
+		detail = _missing_text(def_id)
 		detail_color = Palette.BAD
 	var detail_label: Label = UiWidgets.label(detail, UiTheme.FONT_SMALL, detail_color)
 	detail_label.name = "Detail"
+	detail_label.clip_text = true
 	detail_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	text.add_child(detail_label)
 	return button
@@ -94,6 +96,28 @@ static func _cost_text(def_id: StringName) -> String:
 	for item_id: StringName in BuildingDefs.cost(def_id):
 		parts.append("%s %d" % [Items.display_name(item_id), int(BuildingDefs.cost(def_id)[item_id])])
 	return ", ".join(parts)
+
+
+## Строка нехватки: сколько не достаёт и где это делают.
+##
+## Показывать всю цену красным бесполезно — игрок видит три позиции и не знает,
+## какая из них пустая. Поэтому перечисляем только недостающее, а к первому
+## пункту добавляем производителя: «Кирпич 10 — Печь».
+func _missing_text(def_id: StringName) -> String:
+	if pool == null:
+		return _cost_text(def_id)
+	var missing: Dictionary[StringName, int] = pool.missing(BuildingDefs.cost(def_id))
+	if missing.is_empty():
+		return _cost_text(def_id)
+
+	var parts: PackedStringArray = PackedStringArray()
+	for item_id: StringName in missing:
+		parts.append("%s %d" % [Items.display_name(item_id), missing[item_id]])
+	var text: String = "Не хватает: " + ", ".join(parts)
+
+	var first: StringName = missing.keys()[0]
+	var source: String = Items.source_of(first)
+	return text if source.is_empty() else "%s — делают тут: %s" % [text, source]
 
 
 func _on_row_pressed(def_id: StringName) -> void:

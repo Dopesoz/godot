@@ -36,6 +36,22 @@ func has_all(requirements: Dictionary) -> bool:
 	return true
 
 
+## Чего и сколько не хватает до набора. Пустой словарь — хватает всего.
+##
+## Отдельный метод, а не «да/нет»: игроку нужно знать не факт нехватки, а
+## конкретный недостающий предмет. Именно из-за этого котёл выглядел
+## недостижимым — в списке цены было три позиции, и какая из них пустая,
+## понять было нельзя.
+func missing(requirements: Dictionary) -> Dictionary[StringName, int]:
+	var result: Dictionary[StringName, int] = {}
+	var available: Dictionary[StringName, int] = totals()
+	for item_id: StringName in requirements:
+		var shortfall: int = int(requirements[item_id]) - available.get(item_id, 0)
+		if shortfall > 0:
+			result[item_id] = shortfall
+	return result
+
+
 ## Списывает набор целиком либо ничего: недостроенное здание, съевшее половину
 ## ресурсов, — худший из возможных исходов для игрока.
 func take_all(requirements: Dictionary) -> bool:

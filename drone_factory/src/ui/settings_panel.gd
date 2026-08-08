@@ -79,7 +79,7 @@ func _build_content(container: VBoxContainer) -> void:
 	container.add_child(_toggle("ScreenToggle", "Не гасить экран", &"keep_screen_on"))
 
 	container.add_child(UiWidgets.separator())
-	container.add_child(UiWidgets.label(
+	container.add_child(UiWidgets.paragraph(
 		"Управление: тап — выбрать, перетаскивание — карта, двойной тап и "
 		+ "протяжка — приближение, долгое нажатие — отмена.",
 		UiTheme.FONT_SMALL, Palette.UI_TEXT_DIM
