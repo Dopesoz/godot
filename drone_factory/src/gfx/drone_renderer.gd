@@ -17,6 +17,12 @@ var registry: BuildingRegistry = null
 ## Источник доли времени между тиками.
 var simulation: Simulation = null
 
+## Какие базы курьеров рисует этот слой и каким спрайтом. Дроны и носильщики
+## живут в разных атласных областях, поэтому у каждого свой MultiMesh —
+## но код отрисовки один.
+var courier_kind: int = BuildingDefs.Kind.DRONE_PORT
+var sprite_key: StringName = ObjectArt.DRONE
+
 var _capacity: int = 0
 var _visible_count: int = 0
 
@@ -28,7 +34,7 @@ func _ready() -> void:
 	multimesh = MultiMesh.new()
 	multimesh.transform_format = MultiMesh.TRANSFORM_2D
 	multimesh.use_colors = true
-	multimesh.mesh = _build_quad(Art.region(ObjectArt.DRONE))
+	multimesh.mesh = _build_quad(Art.region(sprite_key))
 	_ensure_capacity(CAPACITY_STEP)
 
 
@@ -43,7 +49,7 @@ func _process(_delta: float) -> void:
 	var alpha: float = 0.0 if simulation == null else simulation.tick_alpha()
 	var index: int = 0
 
-	for port_building: Building in registry.of_kind(BuildingDefs.Kind.DRONE_PORT):
+	for port_building: Building in registry.of_kind(courier_kind):
 		var port: DronePort = port_building
 		for drone: Drone in port.drones:
 			if index >= _capacity:
@@ -64,7 +70,12 @@ func visible_drones() -> int:
 ## MultiMesh живёт на стороне рендер-сервера и не читается в headless,
 ## поэтому проверяется именно расчёт.
 static func instance_transform(drone: Drone, alpha: float) -> Transform2D:
-	return Transform2D(drone.heading(), drone.render_position(alpha))
+	var transform := Transform2D(drone.heading(), drone.render_position(alpha))
+	# Дрон поворачивается по курсу, человечек всегда стоит вертикально
+	# и просто отражается по ходу движения.
+	if drone is Porter and (drone as Porter).faces_left():
+		transform = transform.scaled_local(Vector2(-1.0, 1.0))
+	return transform
 
 
 ## Гружёный дрон подсвечивается цветом груза: видно, что везут,

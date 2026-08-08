@@ -143,7 +143,7 @@ func _build_top_bar() -> Control:
 	_power_label = UiWidgets.label("0/0 кВт", UiTheme.FONT_SMALL, Palette.ENERGY)
 	status.add_child(_power_label)
 
-	_drones_label = UiWidgets.label("Дроны 0/0", UiTheme.FONT_SMALL, Palette.UI_TEXT_DIM)
+	_drones_label = UiWidgets.label("Курьеры 0/0", UiTheme.FONT_SMALL, Palette.UI_TEXT_DIM)
 	status.add_child(_drones_label)
 
 	_time_label = UiWidgets.label("День", UiTheme.FONT_SMALL, Palette.UI_TEXT_DIM)
@@ -271,7 +271,7 @@ func _on_power_changed(produced: float, consumed: float, satisfaction: float) ->
 
 func _on_drones_changed(active: int, total: int) -> void:
 	if _drones_label != null:
-		_drones_label.text = "Дроны %d/%d" % [active, total]
+		_drones_label.text = "Курьеры %d/%d" % [active, total]
 
 
 ## Обновляет строку задачи. Прогресс пересчитывается вместе со сводкой

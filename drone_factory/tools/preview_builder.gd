@@ -96,12 +96,15 @@ func _render(world: GameWorld, origin: Vector2i) -> Image:
 		var position: Vector2i = (building.origin - origin) * tile
 		_blit_rect(image, objects, region, position)
 
-	# Дроны.
-	var drone_region: Rect2i = Art.region(ObjectArt.DRONE)
-	for port_building: Building in world.buildings.of_kind(BuildingDefs.Kind.DRONE_PORT):
-		for drone: Drone in (port_building as DronePort).drones:
-			var position: Vector2i = Vector2i(drone.position) - origin * tile - drone_region.size / 2
-			_blit_rect(image, objects, drone_region, position)
+	# Курьеры: дроны в воздухе и носильщики пешком.
+	for kind: int in BuildingDefs.COURIER_KINDS:
+		var region: Rect2i = Art.region(
+			ObjectArt.PORTER if kind == BuildingDefs.Kind.PORTER_HUT else ObjectArt.DRONE
+		)
+		for port_building: Building in world.buildings.of_kind(kind):
+			for drone: Drone in (port_building as DronePort).drones:
+				var position: Vector2i = Vector2i(drone.position) - origin * tile - region.size / 2
+				_blit_rect(image, objects, region, position)
 	return image
 
 
@@ -124,6 +127,6 @@ func _blit_rect(target: Image, source: Image, region: Rect2i, to: Vector2i) -> v
 
 func _count_drones(world: GameWorld) -> int:
 	var count: int = 0
-	for port: Building in world.buildings.of_kind(BuildingDefs.Kind.DRONE_PORT):
+	for port: Building in LogisticsSystem.courier_bases(world.buildings):
 		count += (port as DronePort).drone_count()
 	return count

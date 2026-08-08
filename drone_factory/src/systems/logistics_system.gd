@@ -44,7 +44,7 @@ func reset() -> void:
 func tick(delta: float, context: Dictionary) -> void:
 	var registry: BuildingRegistry = context["registry"]
 	var research: ResearchState = context.get("research")
-	var ports: Array[Building] = registry.of_kind(BuildingDefs.Kind.DRONE_PORT)
+	var ports: Array[Building] = courier_bases(registry)
 
 	var active: int = 0
 	var total: int = 0
@@ -82,6 +82,14 @@ func tick(delta: float, context: Dictionary) -> void:
 		_active_drones = active
 		_total_drones = total
 		Events.drone_count_changed.emit(active, total)
+
+
+## Все базы курьеров: порты дронов и хижины носильщиков.
+static func courier_bases(registry: BuildingRegistry) -> Array[Building]:
+	var result: Array[Building] = []
+	for kind: int in BuildingDefs.COURIER_KINDS:
+		result.append_array(registry.of_kind(kind))
+	return result
 
 
 func active_drones() -> int:
@@ -180,11 +188,23 @@ func _assign_task(
 	# Если дрон почему-то держит груз (например, задание отменили) — сначала
 	# отвезём его на склад.
 	if drone.has_cargo():
-		return _assign_unload(drone, neighbours)
+		return _assign_unload(drone, registry, neighbours)
 
 	if _assign_request(drone, port, registry, neighbours):
 		return true
 	return _assign_haul(drone, port, registry, neighbours)
+
+
+## Проходим ли курьер весь маршрут: база -> поставщик -> получатель.
+## Дрону всё равно, носильщик не пойдёт через воду и такое задание не возьмёт.
+static func _route_is_walkable(
+	drone: Drone, registry: BuildingRegistry, source: Building, target: Building
+) -> bool:
+	var home: Vector2 = drone.position
+	return (
+		drone.can_travel(registry.grid, home, source.center())
+		and drone.can_travel(registry.grid, source.center(), target.center())
+	)
 
 
 ## Задание «привезти сырьё тому, кто просит».
@@ -204,6 +224,8 @@ func _assign_request(
 			var available: int = source.output.count(item_id) - _reserved(_outgoing, source.id, item_id)
 			amount = mini(amount, available)
 			if amount <= 0:
+				continue
+			if not _route_is_walkable(drone, registry, source, consumer):
 				continue
 			_start_task(drone, port, source, consumer, item_id, amount)
 			return true
@@ -233,15 +255,21 @@ func _assign_haul(
 			var storage: Building = _find_storage(neighbours, item_id, amount)
 			if storage == null:
 				continue
+			if not _route_is_walkable(drone, registry, producer, storage):
+				continue
 			_start_task(drone, port, producer, storage, item_id, amount)
 			return true
 	return false
 
 
 ## Дрон с «осиротевшим» грузом просто везёт его на склад.
-func _assign_unload(drone: Drone, neighbours: Array[Building]) -> bool:
+func _assign_unload(
+	drone: Drone, registry: BuildingRegistry, neighbours: Array[Building]
+) -> bool:
 	var storage: Building = _find_storage(neighbours, drone.cargo_item, drone.cargo_count)
 	if storage == null:
+		return false
+	if not drone.can_travel(registry.grid, drone.position, storage.center()):
 		return false
 	drone.state = Drone.State.TO_TARGET
 	drone.target_id = storage.id
@@ -340,7 +368,7 @@ static func _release(
 func rebuild_reservations(registry: BuildingRegistry) -> void:
 	_incoming.clear()
 	_outgoing.clear()
-	for port_building: Building in registry.of_kind(BuildingDefs.Kind.DRONE_PORT):
+	for port_building: Building in courier_bases(registry):
 		for drone: Drone in (port_building as DronePort).drones:
 			if drone.cargo_count <= 0 or drone.cargo_item == &"":
 				continue

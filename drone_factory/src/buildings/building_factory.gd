@@ -35,6 +35,8 @@ static func _instantiate(kind: int) -> Building:
 			return Lab.new()
 		BuildingDefs.Kind.DRONE_PORT:
 			return DronePort.new()
+		BuildingDefs.Kind.PORTER_HUT:
+			return PorterHut.new()
 		BuildingDefs.Kind.SOLAR:
 			return SolarPanel.new()
 		BuildingDefs.Kind.WIND:

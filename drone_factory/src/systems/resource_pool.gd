@@ -17,7 +17,8 @@ func _init(building_registry: BuildingRegistry) -> void:
 ## Хранилища, из которых можно брать и в которые можно класть.
 func stores() -> Array[Building]:
 	var result: Array[Building] = registry.of_kind(BuildingDefs.Kind.STORAGE)
-	result.append_array(registry.of_kind(BuildingDefs.Kind.DRONE_PORT))
+	for kind: int in BuildingDefs.COURIER_KINDS:
+		result.append_array(registry.of_kind(kind))
 	return result
 
 

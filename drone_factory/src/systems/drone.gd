@@ -48,6 +48,18 @@ func clear_task() -> void:
 	cargo_count = 0
 
 
+## Базовая скорость. Метод, а не только константа: наземный носильщик
+## медленнее дрона, а константы в GDScript не переопределяются наследником.
+func base_speed() -> float:
+	return SPEED
+
+
+## Может ли курьер добраться от одной точки к другой. Дрону всё равно,
+## носильщик обходит воду.
+func can_travel(_grid: Grid, _from: Vector2, _to: Vector2) -> bool:
+	return true
+
+
 func fly_to(destination: Vector2) -> void:
 	target_position = destination
 
@@ -60,7 +72,7 @@ func advance(delta: float) -> bool:
 	if distance <= ARRIVE_DISTANCE:
 		position = target_position
 		return true
-	var step: float = SPEED * speed_multiplier * delta
+	var step: float = base_speed() * speed_multiplier * delta
 	if step >= distance:
 		position = target_position
 		return true

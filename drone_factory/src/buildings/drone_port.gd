@@ -37,6 +37,11 @@ func drone_count() -> int:
 	return drones.size()
 
 
+## Строка о составе для панели здания. У хижины другие слова и другой предел.
+func courier_caption() -> String:
+	return "Дронов: %d из %d" % [drone_count(), MAX_DRONES]
+
+
 func idle_drones() -> Array[Drone]:
 	var result: Array[Drone] = []
 	for drone: Drone in drones:
@@ -76,8 +81,14 @@ func _absorb_drone_items() -> void:
 		pass
 
 
+## Какой курьер живёт на этой базе. Наследник подменяет вид, всё остальное —
+## спавн, сериализация, учёт — общее.
+func _make_courier() -> Drone:
+	return Drone.new()
+
+
 func _spawn_drone() -> Drone:
-	var drone := Drone.new()
+	var drone: Drone = _make_courier()
 	drone.id = _next_drone_id
 	_next_drone_id += 1
 	drone.port_id = id
@@ -114,7 +125,7 @@ func _serialize_extra() -> Dictionary:
 func _deserialize_extra(data: Dictionary) -> void:
 	drones.clear()
 	for entry: Variant in data.get("drones", []):
-		var drone := Drone.new()
+		var drone: Drone = _make_courier()
 		drone.deserialize(entry)
 		drone.port_id = id
 		drones.append(drone)

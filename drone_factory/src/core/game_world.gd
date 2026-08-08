@@ -17,6 +17,8 @@ var stats: GameStats = GameStats.new()
 var terrain_renderer: TerrainRenderer = null
 var building_renderer: BuildingRenderer = null
 var drone_renderer: DroneRenderer = null
+## Носильщики рисуются отдельным слоем: другой спрайт — другой MultiMesh.
+var porter_renderer: DroneRenderer = null
 
 ## Ссылка на симуляцию нужна только отрисовке дронов — для интерполяции.
 var simulation: Simulation = null
@@ -40,6 +42,13 @@ func _ready() -> void:
 	drone_renderer.name = "DroneRenderer"
 	add_child(drone_renderer)
 
+	porter_renderer = DroneRenderer.new()
+	porter_renderer.name = "PorterRenderer"
+	# Вид и спрайт задаются до входа в дерево: меш собирается в _ready().
+	porter_renderer.courier_kind = BuildingDefs.Kind.PORTER_HUT
+	porter_renderer.sprite_key = ObjectArt.PORTER
+	add_child(porter_renderer)
+
 
 ## Создаёт новый мир. Возвращает стартовую клетку.
 func new_game(seed_value: int) -> Vector2i:
@@ -53,6 +62,7 @@ func new_game(seed_value: int) -> Vector2i:
 	terrain_renderer.setup(grid)
 	building_renderer.setup(buildings)
 	drone_renderer.setup(buildings, simulation)
+	porter_renderer.setup(buildings, simulation)
 	Events.world_generated.emit(seed_value)
 	return start_cell
 
@@ -68,6 +78,7 @@ func prepare_for_load(seed_value: int) -> void:
 	terrain_renderer.setup(grid)
 	building_renderer.setup(buildings)
 	drone_renderer.setup(buildings, simulation)
+	porter_renderer.setup(buildings, simulation)
 	_visible_cells = Rect2i(0, 0, 0, 0)
 
 

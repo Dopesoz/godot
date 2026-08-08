@@ -12,10 +12,14 @@ const BADGE_NO_INPUT := &"badge_no_input"
 const BADGE_FULL := &"badge_full"
 const BADGE_NO_ORE := &"badge_no_ore"
 const DRONE := &"drone_sprite"
+const PORTER := &"porter_sprite"
 const SELECTION := &"selection"
 
 const BADGE_SIZE: int = 10
 const DRONE_SIZE: int = 12
+## Носильщик ниже дрона по ширине и выше по росту: силуэт человека должен
+## читаться с одного взгляда даже при отдалённой камере.
+const PORTER_SIZE: Vector2i = Vector2i(8, 12)
 const ICON_SIZE: int = 16
 
 
@@ -30,6 +34,7 @@ static func draw_all() -> Dictionary[StringName, PixelCanvas]:
 		sprites[item_id] = _draw_item(item_id)
 
 	sprites[DRONE] = _draw_drone()
+	sprites[PORTER] = _draw_porter()
 	sprites[SELECTION] = _draw_selection()
 	sprites[BADGE_NO_POWER] = _draw_badge(Palette.WARN, "power")
 	sprites[BADGE_NO_INPUT] = _draw_badge(Palette.BAD, "input")
@@ -60,6 +65,8 @@ static func _draw_building(def_id: StringName) -> PixelCanvas:
 			_draw_pole(canvas)
 		BuildingDefs.Kind.DRONE_PORT:
 			_draw_drone_port(canvas)
+		BuildingDefs.Kind.PORTER_HUT:
+			_draw_porter_hut(canvas)
 		BuildingDefs.Kind.ASSEMBLER:
 			_draw_assembler(canvas)
 		BuildingDefs.Kind.WATER_PUMP:
@@ -391,6 +398,61 @@ static func _draw_drone() -> PixelCanvas:
 	canvas.put(2, 8, Palette.ACCENT)
 	canvas.outline(Palette.OUTLINE)
 	return canvas
+
+
+## Носильщик: маленькая фигурка в комбинезоне с ящиком за спиной.
+## Смотрит вправо, отражением получается ход влево.
+static func _draw_porter() -> PixelCanvas:
+	var canvas := PixelCanvas.new(PORTER_SIZE.x, PORTER_SIZE.y)
+	# Каска — самая заметная деталь на фоне травы.
+	canvas.rect(2, 1, 4, 2, Palette.ACCENT)
+	# Лицо.
+	canvas.rect(3, 3, 3, 2, Palette.DIRT_LIGHT)
+	# Комбинезон.
+	canvas.rect(2, 5, 4, 4, Palette.GLASS_DARK)
+	# Ящик за спиной.
+	canvas.rect(0, 5, 2, 3, Palette.DIRT)
+	# Ноги в шаге.
+	canvas.vline(2, 9, 3, Palette.METAL_DARK)
+	canvas.vline(5, 9, 2, Palette.METAL_DARK)
+	canvas.outline(Palette.OUTLINE)
+	return canvas
+
+
+## Хижина носильщиков: единственная постройка-жильё среди механизмов, поэтому
+## силуэт нарочно другой — двускатная крыша, дверь и ящики у стены.
+static func _draw_porter_hut(canvas: PixelCanvas) -> void:
+	var width: int = canvas.width
+	var height: int = canvas.height
+	var roof_height: int = height / 2 - 2
+	var center: int = width / 2
+
+	# Стены с досками.
+	canvas.rect(4, roof_height, width - 8, height - roof_height - 1, Palette.DIRT)
+	for x: int in range(6, width - 6, 5):
+		canvas.vline(x, roof_height + 1, height - roof_height - 3, Palette.DIRT_DARK)
+
+	# Крыша: треугольник, расширяющийся книзу.
+	for row: int in roof_height:
+		var half: int = maxi((center - 2) * (row + 1) / roof_height, 1)
+		canvas.hline(center - half, 2 + row, half * 2, Palette.DIRT_DARK)
+	canvas.hline(center - 1, 1, 2, Palette.OUTLINE)
+	canvas.hline(center - roof_height + 2, roof_height + 1, (roof_height - 2) * 2, Palette.OUTLINE)
+
+	# Дверь.
+	var door_width: int = maxi(width / 6, 4)
+	var door_height: int = height - roof_height - 4
+	canvas.rect(center - door_width / 2, height - 1 - door_height, door_width, door_height, Palette.OUTLINE)
+	canvas.rect(
+		center - door_width / 2 + 1, height - door_height,
+		door_width - 2, door_height - 1, Palette.DIRT_LIGHT
+	)
+
+	# Ящики у стен: сразу видно, что здание про грузы.
+	var box: int = maxi(width / 7, 3)
+	for x: int in [5, width - 5 - box] as Array[int]:
+		canvas.rect(x, height - 1 - box, box, box, Palette.METAL_DARK)
+		canvas.hline(x + 1, height - 1 - box / 2, box - 2, Palette.ACCENT)
 
 
 static func _draw_selection() -> PixelCanvas:

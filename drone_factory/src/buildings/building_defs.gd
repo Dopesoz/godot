@@ -17,6 +17,7 @@ enum Kind {
 	ACCUMULATOR,
 	POLE,
 	DRONE_PORT,
+	PORTER_HUT,
 	LAB,
 	WATER_PUMP,
 	BOILER,
@@ -34,6 +35,7 @@ const WIND := &"wind"
 const ACCUMULATOR := &"accumulator"
 const POLE := &"pole"
 const DRONE_PORT := &"drone_port"
+const PORTER_HUT := &"porter_hut"
 const LAB := &"lab"
 const WATER_PUMP := &"water_pump"
 const BOILER := &"boiler"
@@ -122,6 +124,15 @@ const DEFS: Dictionary[StringName, Dictionary] = {
 		"input": 0, "output": 200, "needs_ore": false, "tech": &"",
 		"description": "База дронов. Развозит ресурсы в радиусе действия.",
 	},
+	PORTER_HUT: {
+		"name": "Хижина носильщиков", "kind": Kind.PORTER_HUT, "size": Vector2i(2, 2),
+		"cost": {Items.STONE: 25, Items.IRON_PLATE: 4},
+		"power_use": 0.0, "power_gen": 0.0, "power_range": 0,
+		"input": 0, "output": 150, "needs_ore": false, "tech": &"",
+		"description": "Бригада разносит грузы пешком и без электричества. "
+			+ "Дешёвая логистика для дальних залежей, куда не тянуть провода. "
+			+ "Медленнее дрона и через воду не ходит.",
+	},
 	WATER_PUMP: {
 		"name": "Водозабор", "kind": Kind.WATER_PUMP, "size": Vector2i(2, 2),
 		"cost": {Items.IRON_PLATE: 10, Items.GEAR: 4},
@@ -170,9 +181,13 @@ const DEFS: Dictionary[StringName, Dictionary] = {
 
 ## Порядок кнопок в меню строительства: от «поставь первым» к сложному.
 const BUILD_ORDER: Array[StringName] = [
-	DRILL, FURNACE, STORAGE, SOLAR, WIND, DRONE_PORT, ASSEMBLER, LAB, POLE, ACCUMULATOR,
-	WATER_PUMP, BOILER, REACTOR, BEACON,
+	DRILL, FURNACE, STORAGE, PORTER_HUT, SOLAR, WIND, DRONE_PORT, ASSEMBLER, LAB, POLE,
+	ACCUMULATOR, WATER_PUMP, BOILER, REACTOR, BEACON,
 ]
+
+## Базы курьеров: и порт дронов, и хижина носильщиков раздают задания
+## по одним и тем же правилам, поэтому логистика перебирает оба вида.
+const COURIER_KINDS: Array[int] = [Kind.DRONE_PORT, Kind.PORTER_HUT]
 
 ## Ёмкость аккумулятора, кДж.
 const ACCUMULATOR_CAPACITY: float = 900.0

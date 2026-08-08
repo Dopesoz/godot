@@ -151,9 +151,7 @@ func _refresh_details(building: Building) -> void:
 		))
 	elif building is DronePort:
 		var port: DronePort = building
-		_details.add_child(UiWidgets.label(
-			"Дронов: %d из %d" % [port.drone_count(), DronePort.MAX_DRONES], UiTheme.FONT_SMALL
-		))
+		_details.add_child(UiWidgets.label(port.courier_caption(), UiTheme.FONT_SMALL))
 		_details.add_child(UiWidgets.label(
 			"Радиус: %d клеток" % int(port.service_radius()), UiTheme.FONT_SMALL, Palette.UI_TEXT_DIM
 		))

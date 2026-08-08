@@ -92,7 +92,7 @@ func test_power_label_colours_by_satisfaction() -> void:
 
 func test_drone_counter() -> void:
 	Events.drone_count_changed.emit(3, 5)
-	check_eq(hud._drones_label.text, "Дроны 3/5")
+	check_eq(hud._drones_label.text, "Курьеры 3/5")
 
 
 func test_toast_shows_and_fades() -> void:
