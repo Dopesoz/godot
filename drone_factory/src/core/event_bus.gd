@@ -60,6 +60,13 @@ signal game_saved()
 signal game_loaded()
 signal game_reset()
 ## Короткое сообщение игроку (тост).
+## --- Оборона ---------------------------------------------------------------
+
+signal building_damaged(building_id: int)
+signal wave_started(wave_number: int, size: int)
+signal monster_killed(monster_id: int)
+signal turret_fired(turret_id: int)
+
 signal notify(text: String)
 ## Игрок выбрал здание на карте (-1 — выбор снят).
 signal selection_changed(building_id: int)

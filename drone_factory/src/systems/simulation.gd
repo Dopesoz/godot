@@ -84,6 +84,7 @@ func tick() -> void:
 		"daylight": daylight(),
 		"wind": wind(),
 		"tick": tick_count,
+		"time": game_time,
 	}
 
 	for system: GameSystem in systems:

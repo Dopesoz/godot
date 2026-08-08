@@ -40,7 +40,7 @@ func test_recipes_are_well_formed() -> void:
 		check(Recipes.craft_time(id) > 0.0, "нулевое время у рецепта %s" % id)
 		check(not Recipes.outputs(id).is_empty(), "рецепт %s ничего не производит" % id)
 		check(
-			Recipes.machine(id) in [Recipes.Machine.FURNACE, Recipes.Machine.ASSEMBLER, Recipes.Machine.LAB],
+			Recipes.machine(id) in Recipes.Machine.values(),
 			"неизвестная машина у рецепта %s" % id
 		)
 		# Рецепт, который потребляет свой же продукт, зациклит производство.

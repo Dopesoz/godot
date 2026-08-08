@@ -13,6 +13,7 @@ const BADGE_FULL := &"badge_full"
 const BADGE_NO_ORE := &"badge_no_ore"
 const DRONE := &"drone_sprite"
 const PORTER := &"porter_sprite"
+const MONSTER := &"monster_sprite"
 const SELECTION := &"selection"
 
 const BADGE_SIZE: int = 10
@@ -20,6 +21,8 @@ const DRONE_SIZE: int = 12
 ## Носильщик ниже дрона по ширине и выше по росту: силуэт человека должен
 ## читаться с одного взгляда даже при отдалённой камере.
 const PORTER_SIZE: Vector2i = Vector2i(8, 12)
+## Жук чуть крупнее дрона: стая должна читаться на карте без приближения.
+const MONSTER_SIZE: int = 14
 const ICON_SIZE: int = 16
 
 
@@ -35,6 +38,7 @@ static func draw_all() -> Dictionary[StringName, PixelCanvas]:
 
 	sprites[DRONE] = _draw_drone()
 	sprites[PORTER] = _draw_porter()
+	sprites[MONSTER] = _draw_monster()
 	sprites[SELECTION] = _draw_selection()
 	sprites[BADGE_NO_POWER] = _draw_badge(Palette.WARN, "power")
 	sprites[BADGE_NO_INPUT] = _draw_badge(Palette.BAD, "input")
@@ -67,6 +71,16 @@ static func _draw_building(def_id: StringName) -> PixelCanvas:
 			_draw_drone_port(canvas)
 		BuildingDefs.Kind.PORTER_HUT:
 			_draw_porter_hut(canvas)
+		BuildingDefs.Kind.TURRET:
+			_draw_turret(canvas)
+		BuildingDefs.Kind.WALL:
+			_draw_wall(canvas)
+		BuildingDefs.Kind.NEST:
+			_draw_nest(canvas)
+		BuildingDefs.Kind.TRITIUM_PLANT:
+			_draw_tritium_plant(canvas)
+		BuildingDefs.Kind.FUSION:
+			_draw_fusion(canvas)
 		BuildingDefs.Kind.ASSEMBLER:
 			_draw_assembler(canvas)
 		BuildingDefs.Kind.WATER_PUMP:
@@ -453,6 +467,100 @@ static func _draw_porter_hut(canvas: PixelCanvas) -> void:
 	for x: int in [5, width - 5 - box] as Array[int]:
 		canvas.rect(x, height - 1 - box, box, box, Palette.METAL_DARK)
 		canvas.hline(x + 1, height - 1 - box / 2, box - 2, Palette.ACCENT)
+
+
+## Турель: тумба с поворотным стволом. Ствол смотрит вправо-вверх, чтобы
+## силуэт не путался с трубой котла.
+static func _draw_turret(canvas: PixelCanvas) -> void:
+	_draw_base(canvas, Palette.METAL_DARK)
+	var cx: int = canvas.width / 2
+	var cy: int = canvas.height / 2
+	canvas.circle(cx, cy, canvas.width / 3, Palette.METAL)
+	canvas.circle(cx, cy, canvas.width / 4, Palette.METAL_LIGHT)
+	# Ствол.
+	canvas.rect(cx, cy - 2, canvas.width / 2 - 2, 4, Palette.METAL_DARK)
+	canvas.rect(cx + 2, cy - 1, canvas.width / 2 - 5, 2, Palette.METAL_HILIGHT)
+	# Красная метка: боевое здание должно отличаться от производственного.
+	canvas.rect(cx - 3, cy - 3, 3, 3, Palette.BAD)
+
+
+## Стена: каменная кладка на всю клетку.
+static func _draw_wall(canvas: PixelCanvas) -> void:
+	canvas.rect(0, 0, canvas.width, canvas.height, Palette.METAL_DARK)
+	canvas.rect(1, 1, canvas.width - 2, canvas.height - 2, Palette.STONE_ORE)
+	# Швы кладки в разбежку.
+	for y: int in range(4, canvas.height - 2, 6):
+		canvas.hline(1, y, canvas.width - 2, Palette.METAL_DARK)
+		var offset: int = 0 if (y / 6) % 2 == 0 else canvas.width / 2
+		canvas.vline(1 + offset + canvas.width / 4, y, 6, Palette.METAL_DARK)
+
+
+## Гнездо: тёмный холм с прогрызенным входом.
+static func _draw_nest(canvas: PixelCanvas) -> void:
+	var cx: int = canvas.width / 2
+	var cy: int = canvas.height / 2
+	canvas.circle(cx, cy + 2, canvas.width / 2 - 2, Palette.DIRT_DARK)
+	canvas.circle(cx, cy + 1, canvas.width / 3, Color8(76, 58, 70))
+	# Вход.
+	canvas.circle(cx, cy + 3, canvas.width / 6, Palette.OUTLINE)
+	# Ядовитые пятна: гнездо должно читаться как опасность, а не как холмик.
+	for i: int in 4:
+		var px: int = cx + Rng.range_int(i, 3, 8821, -canvas.width / 3, canvas.width / 3)
+		var py: int = cy + Rng.range_int(i, 9, 8821, -canvas.height / 3, canvas.height / 4)
+		canvas.blob(px, py, 2.0, Palette.BAD, 8821 + i)
+
+
+## Тритиевый завод: колонна с водой и подсветкой.
+static func _draw_tritium_plant(canvas: PixelCanvas) -> void:
+	_draw_base(canvas, Palette.METAL_DARK)
+	var cx: int = canvas.width / 2
+	canvas.rect(cx - 6, 5, 12, canvas.height - 10, Palette.GLASS_DARK)
+	canvas.rect(cx - 4, 7, 8, canvas.height - 14, Color8(150, 240, 220))
+	canvas.rect(cx - 4, 7, 8, 3, Color8(220, 255, 250))
+	canvas.rect(cx - 8, canvas.height - 7, 16, 4, Palette.METAL)
+	canvas.rect(cx - 8, 3, 16, 3, Palette.METAL)
+
+
+## Термоядерный реактор: кольцо-тор со светящейся сердцевиной.
+static func _draw_fusion(canvas: PixelCanvas) -> void:
+	_draw_base(canvas, Palette.METAL_DARK)
+	var cx: int = canvas.width / 2
+	var cy: int = canvas.height / 2
+	canvas.circle(cx, cy, canvas.width / 2 - 3, Palette.METAL)
+	canvas.circle(cx, cy, canvas.width / 2 - 6, Palette.METAL_DARK)
+	canvas.circle(cx, cy, canvas.width / 4, Color8(150, 240, 220))
+	canvas.circle(cx, cy, canvas.width / 8, Color8(240, 255, 255))
+	# Четыре катушки по сторонам кольца.
+	for offset: Vector2i in [
+		Vector2i(0, -1), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(1, 0)
+	] as Array[Vector2i]:
+		canvas.rect(
+			cx + offset.x * (canvas.width / 2 - 5) - 3,
+			cy + offset.y * (canvas.height / 2 - 5) - 3,
+			6, 6, Palette.METAL_LIGHT
+		)
+
+
+## Жук: тёмное тело, жвалы и лапы. Смотрит вправо, поворот задаёт трансформ.
+static func _draw_monster() -> PixelCanvas:
+	var canvas := PixelCanvas.new(MONSTER_SIZE, MONSTER_SIZE)
+	var cy: int = MONSTER_SIZE / 2
+	# Брюшко и грудь. Цвет нарочно тёплый и светлее гнезда: иначе стая
+	# сливается с холмом, из которого вылезла, и на карте её не видно.
+	canvas.blob(4, cy, 3.4, Color8(170, 74, 62), 3301)
+	canvas.blob(8, cy, 2.6, Color8(208, 112, 76), 3302)
+	canvas.put(7, cy - 1, Color8(240, 170, 120))
+	# Жвалы.
+	canvas.put(11, cy - 2, Palette.WARN)
+	canvas.put(11, cy + 2, Palette.WARN)
+	canvas.put(12, cy - 1, Palette.WARN)
+	canvas.put(12, cy + 1, Palette.WARN)
+	# Лапы.
+	for x: int in [3, 6, 9] as Array[int]:
+		canvas.put(x, cy - 4, Palette.OUTLINE)
+		canvas.put(x, cy + 4, Palette.OUTLINE)
+	canvas.outline(Palette.OUTLINE)
+	return canvas
 
 
 static func _draw_selection() -> PixelCanvas:

@@ -7,7 +7,7 @@ extends RefCounted
 
 ## Виды машин. Строка вида «печь принимает только рецепты печи» — базовое
 ## правило, из-за которого производство остаётся понятным на маленьком экране.
-enum Machine { FURNACE, ASSEMBLER, LAB }
+enum Machine { FURNACE, ASSEMBLER, LAB, TRITIUM_PLANT }
 
 const SMELT_IRON := &"smelt_iron"
 const SMELT_COPPER := &"smelt_copper"
@@ -18,6 +18,8 @@ const CRAFT_WIRE := &"craft_wire"
 const CRAFT_CIRCUIT := &"craft_circuit"
 const CRAFT_DRONE := &"craft_drone"
 const CRAFT_FUEL_ROD := &"craft_fuel_rod"
+const CRAFT_AMMO := &"craft_ammo"
+const EXTRACT_TRITIUM := &"extract_tritium"
 const CRAFT_SCIENCE_RED := &"craft_science_red"
 const CRAFT_SCIENCE_GREEN := &"craft_science_green"
 
@@ -68,6 +70,16 @@ const DEFS: Dictionary[StringName, Dictionary] = {
 		"name": "Топливный стержень", "machine": Machine.ASSEMBLER, "time": 12.0,
 		"inputs": {Items.URANIUM_ORE: 10, Items.STEEL: 2},
 		"outputs": {Items.FUEL_ROD: 1}, "tech": &"nuclear",
+	},
+	CRAFT_AMMO: {
+		"name": "Патроны", "machine": Machine.ASSEMBLER, "time": 1.4,
+		"inputs": {Items.IRON_PLATE: 2}, "outputs": {Items.AMMO: 4},
+		"tech": &"defence",
+	},
+	EXTRACT_TRITIUM: {
+		"name": "Тритий", "machine": Machine.TRITIUM_PLANT, "time": 6.0,
+		"inputs": {Items.WATER: 40}, "outputs": {Items.TRITIUM: 1},
+		"tech": &"fusion",
 	},
 	CRAFT_SCIENCE_RED: {
 		"name": "Красная колба", "machine": Machine.ASSEMBLER, "time": 3.0,

@@ -19,6 +19,10 @@ var building_renderer: BuildingRenderer = null
 var drone_renderer: DroneRenderer = null
 ## Носильщики рисуются отдельным слоем: другой спрайт — другой MultiMesh.
 var porter_renderer: DroneRenderer = null
+## Жуки рисуются тем же способом, что и курьеры.
+var monster_renderer: MonsterRenderer = null
+## Шкалы выработки над энергетическими зданиями.
+var power_gauges: PowerGauges = null
 
 ## Ссылка на симуляцию нужна только отрисовке дронов — для интерполяции.
 var simulation: Simulation = null
@@ -49,6 +53,14 @@ func _ready() -> void:
 	porter_renderer.sprite_key = ObjectArt.PORTER
 	add_child(porter_renderer)
 
+	monster_renderer = MonsterRenderer.new()
+	monster_renderer.name = "MonsterRenderer"
+	add_child(monster_renderer)
+
+	power_gauges = PowerGauges.new()
+	power_gauges.name = "PowerGauges"
+	add_child(power_gauges)
+
 
 ## Создаёт новый мир. Возвращает стартовую клетку.
 func new_game(seed_value: int) -> Vector2i:
@@ -63,6 +75,8 @@ func new_game(seed_value: int) -> Vector2i:
 	building_renderer.setup(buildings)
 	drone_renderer.setup(buildings, simulation)
 	porter_renderer.setup(buildings, simulation)
+	monster_renderer.setup(simulation)
+	power_gauges.setup(buildings, simulation)
 	Events.world_generated.emit(seed_value)
 	return start_cell
 
@@ -99,6 +113,8 @@ func prepare_for_load(seed_value: int) -> void:
 	building_renderer.setup(buildings)
 	drone_renderer.setup(buildings, simulation)
 	porter_renderer.setup(buildings, simulation)
+	monster_renderer.setup(simulation)
+	power_gauges.setup(buildings, simulation)
 	_visible_cells = Rect2i(0, 0, 0, 0)
 
 
@@ -120,6 +136,7 @@ func update_view(visible_world_rect: Rect2) -> void:
 	_visible_cells = cells
 	terrain_renderer.update_visible(cells)
 	building_renderer.set_view(cells)
+	power_gauges.set_view(cells)
 
 
 ## Куда возвращать камеру по кнопке «К базе»: порт дронов, если он есть,

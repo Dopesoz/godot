@@ -62,7 +62,10 @@ func test_sprites_are_not_blank() -> void:
 					solid += 1
 		var fill: float = float(solid) / float(region.size.x * region.size.y)
 		check(fill > 0.2, "спрайт %s почти пустой (заполнение %.2f)" % [key, fill])
-		check(fill < 1.0, "спрайт %s не имеет прозрачных краёв" % key)
+		# Стена — единственное здание, которое обязано заполнять клетку
+		# целиком: забор из плиток с прозрачными углами выглядит дырявым.
+		if key != BuildingDefs.WALL:
+			check(fill < 1.0, "спрайт %s не имеет прозрачных краёв" % key)
 
 
 func test_icon_textures_are_cached() -> void:

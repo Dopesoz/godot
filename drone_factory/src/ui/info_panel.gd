@@ -16,6 +16,7 @@ var controller: BuildController = null
 
 var _building_id: int = 0
 var _status_label: Label = null
+var _health_label: Label = null
 var _progress: ProgressBar = null
 var _details: VBoxContainer = null
 var _recipes: VBoxContainer = null
@@ -41,6 +42,11 @@ func _build_content(container: VBoxContainer) -> void:
 
 	_status_label = UiWidgets.label("", UiTheme.FONT_SMALL, Palette.UI_TEXT_DIM)
 	container.add_child(_status_label)
+
+	_health_label = UiWidgets.label("", UiTheme.FONT_SMALL, Palette.WARN)
+	_health_label.name = "HealthLabel"
+	_health_label.visible = false
+	container.add_child(_health_label)
 
 	_progress = UiWidgets.progress_bar()
 	container.add_child(_progress)
@@ -102,10 +108,24 @@ func refresh() -> void:
 	_status_label.add_theme_color_override("font_color", _status_color(building))
 	_power_button.text = "Включить" if not building.enabled else "Выключить"
 
+	_refresh_health(building)
 	_refresh_progress(building)
 	_refresh_details(building)
 	_refresh_queue(building)
 	_refresh_recipes(building)
+
+
+## Прочность показывается только повреждённым: у целого здания эта строка
+## была бы шумом, а у погрызенного жуками — самое важное на экране.
+func _refresh_health(building: Building) -> void:
+	if building.health >= building.max_health():
+		_health_label.visible = false
+		return
+	_health_label.visible = true
+	_health_label.text = "Прочность: %d / %d" % [building.health, building.max_health()]
+	_health_label.add_theme_color_override(
+		"font_color", Palette.BAD if building.health_ratio() < 0.35 else Palette.WARN
+	)
 
 
 static func _status_line(building: Building) -> String:

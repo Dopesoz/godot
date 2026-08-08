@@ -178,3 +178,32 @@ func test_pool_take_all_is_atomic() -> void:
 	var iron: int = pool.count(Items.IRON_PLATE)
 	check(not pool.take_all({Items.IRON_PLATE: iron + 1, Items.GEAR: 1}), "неполный набор не списывается")
 	check_eq(pool.count(Items.IRON_PLATE), iron, "ресурсы не должны пропадать при отказе")
+
+
+func test_walls_and_poles_go_up_with_a_single_tap() -> void:
+	# Забор вокруг базы — это десятки клеток. По два тапа на каждую делали бы
+	# оборону утомительной вознёй, а промах стеной из двух кирпичей ничего
+	# не стоит.
+	world.research.complete(Technologies.DEFENCE)
+	controller.pool.give(Items.BRICK, 40)
+	controller.start_building(BuildingDefs.WALL)
+	var before: int = world.buildings.count()
+	for i: int in 4:
+		controller.on_tap(camera.world_to_screen(Grid.cell_to_world_center(world.start_cell + Vector2i(i + 4, 8))))
+	check_eq(
+		world.buildings.count(), before + 4,
+		"каждый тап должен ставить секцию забора"
+	)
+	check_eq(controller.pending_def_id, BuildingDefs.WALL, "режим стройки не должен сбрасываться")
+
+
+func test_machines_still_need_confirmation() -> void:
+	# У больших зданий двойное подтверждение остаётся: палец закрывает цель,
+	# а промах стоит ресурсов и сноса.
+	controller.start_building(BuildingDefs.STORAGE)
+	var before: int = world.buildings.count()
+	var screen: Vector2 = camera.world_to_screen(Grid.cell_to_world_center(world.start_cell + Vector2i(8, 8)))
+	controller.on_tap(screen)
+	check_eq(world.buildings.count(), before, "первый тап только наводит призрак")
+	controller.on_tap(screen)
+	check_eq(world.buildings.count(), before + 1, "второй тап по тому же месту ставит здание")

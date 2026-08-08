@@ -122,9 +122,19 @@ func confirm() -> Building:
 	Events.notify.emit("%s построен" % BuildingDefs.display_name(def_id))
 	# Режим строительства остаётся включённым: подряд ставят по несколько
 	# одинаковых зданий, и каждый раз лезть в меню утомительно.
-	follow_center = true
-	_move_ghost(camera.screen_to_cell(camera.view_size() * 0.5))
+	#
+	# У мелочи призрак остаётся на месте: строя забор, игрок идёт вдоль линии,
+	# и отбрасывать прицел в центр экрана после каждой клетки — значит мешать
+	# ровно тому, ради чего быстрая постановка и сделана.
+	if not is_quick_build(def_id):
+		follow_center = true
+		_move_ghost(camera.screen_to_cell(camera.view_size() * 0.5))
 	return building
+
+
+## Ставится ли здание с одного тапа: мелкое и дешёвое, промах ничего не стоит.
+static func is_quick_build(def_id: StringName) -> bool:
+	return BuildingDefs.size_of(def_id) == Vector2i.ONE
 
 
 ## --- Жесты -----------------------------------------------------------------
@@ -132,8 +142,20 @@ func confirm() -> Building:
 func on_tap(screen_position: Vector2) -> void:
 	var cell: Vector2i = camera.screen_to_cell(screen_position)
 	if pending_def_id != &"":
-		# Первый тап переносит призрак, повторный по тому же месту — ставит.
 		var target: Vector2i = _origin_for_cell(cell)
+		# Мелочь вроде забора и столбов ставится с одного тапа.
+		#
+		# Подтверждение двумя тапами придумано для машин: палец закрывает цель,
+		# а промах стоит дорого. У стены из двух кирпичей это не так, зато
+		# забор вокруг базы — это полсотни клеток, и по два тапа на каждую
+		# превращают оборону в утомительную возню.
+		if is_quick_build(pending_def_id):
+			follow_center = false
+			_move_ghost(target)
+			confirm()
+			return
+
+		# Первый тап переносит призрак, повторный по тому же месту — ставит.
 		if target == pending_origin and not follow_center:
 			confirm()
 		else:

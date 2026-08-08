@@ -24,6 +24,11 @@ enum Kind {
 	REACTOR,
 	BEACON,
 	WRECK,
+	TURRET,
+	WALL,
+	NEST,
+	TRITIUM_PLANT,
+	FUSION,
 }
 
 const STORAGE := &"storage"
@@ -42,6 +47,11 @@ const BOILER := &"boiler"
 const REACTOR := &"reactor"
 const BEACON := &"beacon"
 const WRECK := &"wreck"
+const TURRET := &"turret"
+const WALL := &"wall"
+const NEST := &"nest"
+const TRITIUM_PLANT := &"tritium_plant"
+const FUSION := &"fusion"
 
 ## Поля описания:
 ##   name          — подпись в интерфейсе;
@@ -56,6 +66,7 @@ const WRECK := &"wreck"
 ##   needs_water   — требует воду вплотную к площадке (насос);
 ##   player_built  — доступно ли в меню строительства (обломки только падают);
 ##   pollution     — сколько загрязнения даёт в секунду при работе;
+##   health        — прочность; 0 означает «взять значение по умолчанию»;
 ##   tech          — технология, открывающая постройку (&"" — доступно сразу);
 ##   description   — одна строка для панели информации.
 const DEFS: Dictionary[StringName, Dictionary] = {
@@ -170,6 +181,44 @@ const DEFS: Dictionary[StringName, Dictionary] = {
 		"player_built": false,
 		"description": "Упал с неба. Дроны разберут его на золото и алмазы.",
 	},
+	TURRET: {
+		"name": "Турель", "kind": Kind.TURRET, "size": Vector2i(2, 2),
+		"cost": {Items.IRON_PLATE: 20, Items.GEAR: 10, Items.CIRCUIT: 2},
+		"power_use": 15.0, "power_gen": 0.0, "power_range": 0,
+		"input": 40, "output": 0, "needs_ore": false, "tech": &"defence",
+		"health": 400,
+		"description": "Бьёт жуков в радиусе. Ест патроны и немного тока.",
+	},
+	WALL: {
+		"name": "Стена", "kind": Kind.WALL, "size": Vector2i(1, 1),
+		"cost": {Items.BRICK: 2},
+		"power_use": 0.0, "power_gen": 0.0, "power_range": 0,
+		"input": 0, "output": 0, "needs_ore": false, "tech": &"defence",
+		"health": 900,
+		"description": "Забор вокруг базы. Жуки грызут её вместо машин.",
+	},
+	NEST: {
+		"name": "Гнездо жуков", "kind": Kind.NEST, "size": Vector2i(2, 2),
+		"cost": {}, "power_use": 0.0, "power_gen": 0.0, "power_range": 0,
+		"input": 0, "output": 0, "needs_ore": false, "tech": &"",
+		"player_built": false, "health": 600,
+		"description": "Отсюда приходят жуки. Разрушьте его, чтобы стало тише.",
+	},
+	TRITIUM_PLANT: {
+		"name": "Тритиевый завод", "kind": Kind.TRITIUM_PLANT, "size": Vector2i(2, 2),
+		"cost": {Items.STEEL: 25, Items.CIRCUIT: 20, Items.BRICK: 20},
+		"power_use": 180.0, "power_gen": 0.0, "power_range": 0,
+		"input": 200, "output": 60, "needs_ore": false, "tech": &"fusion",
+		"description": "Выделяет тритий из воды. Прожорлив, но без копоти.",
+	},
+	FUSION: {
+		"name": "Термоядерный реактор", "kind": Kind.FUSION, "size": Vector2i(4, 4),
+		"cost": {Items.STEEL: 120, Items.CIRCUIT: 90, Items.BRICK: 60, Items.GOLD: 20},
+		"power_use": 0.0, "power_gen": 2200.0, "power_range": 9,
+		"input": 240, "output": 0, "needs_ore": false, "tech": &"fusion",
+		"health": 1200,
+		"description": "Тритий и вода дают энергию без предела и без копоти.",
+	},
 	LAB: {
 		"name": "Лаборатория", "kind": Kind.LAB, "size": Vector2i(2, 2),
 		"cost": {Items.IRON_PLATE: 15, Items.GEAR: 10, Items.CIRCUIT: 2},
@@ -182,7 +231,7 @@ const DEFS: Dictionary[StringName, Dictionary] = {
 ## Порядок кнопок в меню строительства: от «поставь первым» к сложному.
 const BUILD_ORDER: Array[StringName] = [
 	DRILL, FURNACE, STORAGE, PORTER_HUT, SOLAR, WIND, DRONE_PORT, ASSEMBLER, LAB, POLE,
-	ACCUMULATOR, WATER_PUMP, BOILER, REACTOR, BEACON,
+	ACCUMULATOR, WALL, TURRET, WATER_PUMP, BOILER, REACTOR, TRITIUM_PLANT, FUSION, BEACON,
 ]
 
 ## Базы курьеров: и порт дронов, и хижина носильщиков раздают задания
@@ -258,6 +307,21 @@ static func needs_water(def_id: StringName) -> bool:
 ## Сколько загрязнения даёт здание в секунду при работе.
 static func pollution(def_id: StringName) -> float:
 	return DEFS.get(def_id, {}).get("pollution", 0.0)
+
+
+## Прочность по умолчанию: её хватает, чтобы одиночный жук грыз машину
+## заметно долго, но стая справилась без турелей.
+const DEFAULT_HEALTH: int = 300
+
+
+static func max_health(def_id: StringName) -> int:
+	var value: int = DEFS.get(def_id, {}).get("health", 0)
+	return value if value > 0 else DEFAULT_HEALTH
+
+
+## Мешает ли здание проходу жуков. Стены для того и ставят.
+static func blocks_monsters(def_id: StringName) -> bool:
+	return kind(def_id) == Kind.WALL
 
 
 static func required_tech(def_id: StringName) -> StringName:

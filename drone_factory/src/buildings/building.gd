@@ -36,6 +36,36 @@ var connected: bool = false
 var enabled: bool = true
 var status: int = Status.IDLE
 
+## Оставшаяся прочность. Хранится числом, а не долей: так понятнее в отладке
+## и не накапливается ошибка при частом уроне.
+var health: int = 0
+
+
+func max_health() -> int:
+	return BuildingDefs.max_health(def_id)
+
+
+func health_ratio() -> float:
+	var limit: int = max_health()
+	return 1.0 if limit <= 0 else clampf(float(health) / float(limit), 0.0, 1.0)
+
+
+## Наносит урон. Возвращает true, если здание разрушено.
+func take_damage(amount: int) -> bool:
+	if amount <= 0:
+		return false
+	health = maxi(health - amount, 0)
+	Events.building_damaged.emit(id)
+	return health <= 0
+
+
+func repair(amount: int) -> void:
+	health = mini(health + maxi(amount, 0), max_health())
+
+
+func is_wrecked() -> bool:
+	return health <= 0
+
 
 ## Вызывается сразу после создания: настраивает инвентари по описанию.
 func setup(building_def_id: StringName, cell: Vector2i) -> void:
@@ -46,6 +76,7 @@ func setup(building_def_id: StringName, cell: Vector2i) -> void:
 	var output_capacity: int = BuildingDefs.output_capacity(def_id)
 	input = Inventory.new(input_capacity) if input_capacity > 0 else null
 	output = Inventory.new(output_capacity) if output_capacity > 0 else null
+	health = max_health()
 	_on_setup()
 
 
@@ -144,6 +175,8 @@ func serialize() -> Dictionary:
 		"y": origin.y,
 		"enabled": enabled,
 	}
+	if health != max_health():
+		data["hp"] = health
 	if input != null and not input.is_empty():
 		data["in"] = input.serialize()
 	if output != null and not output.is_empty():
@@ -156,6 +189,7 @@ func serialize() -> Dictionary:
 
 func deserialize(data: Dictionary) -> void:
 	enabled = bool(data.get("enabled", true))
+	health = clampi(int(data.get("hp", max_health())), 0, max_health())
 	if input != null and data.has("in"):
 		input.deserialize(data["in"])
 	if output != null and data.has("out"):

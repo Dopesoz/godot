@@ -60,6 +60,7 @@ func _ready() -> void:
 	simulation.add_system(LogisticsSystem.new())
 	simulation.add_system(AchievementSystem.new())
 	simulation.add_system(StorySystem.new())
+	simulation.add_system(CombatSystem.new())
 	simulation.add_system(EventSystem.new())
 	add_child(simulation)
 
@@ -133,6 +134,9 @@ func start_new_game(seed_value: int) -> void:
 	simulation.reset()
 	build_controller.setup(world, camera)
 	GameSetup.create_starting_base(world)
+	# Гнёзда расставляются один раз при создании партии: в сохранении они
+	# лежат обычными зданиями и заново не появляются.
+	(simulation.get_system(CombatSystem) as CombatSystem).populate_nests()
 
 	save_system.setup(world, simulation, camera)
 	hud.setup(world, simulation)

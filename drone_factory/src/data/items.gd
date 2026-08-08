@@ -24,6 +24,8 @@ const WOOD := &"wood"
 const WATER := &"water"
 const URANIUM_ORE := &"uranium_ore"
 const FUEL_ROD := &"fuel_rod"
+const AMMO := &"ammo"
+const TRITIUM := &"tritium"
 const GOLD := &"gold"
 const DIAMOND := &"diamond"
 const SCIENCE_RED := &"science_red"
@@ -98,6 +100,16 @@ const DEFS: Dictionary[StringName, Dictionary] = {
 	FUEL_ROD: {
 		"name": "Топливный стержень", "shape": Shape.ROD,
 		"color": Color8(120, 200, 110), "accent": Palette.METAL_LIGHT, "stack": 50,
+	},
+	AMMO: {
+		"name": "Патроны", "shape": Shape.ROD,
+		"color": Palette.METAL_LIGHT, "accent": Palette.WARN, "stack": 200,
+	},
+	TRITIUM: {
+		"name": "Тритий", "shape": Shape.DROPLET,
+		"color": Color8(150, 240, 220), "accent": Color8(220, 255, 250), "stack": 100,
+		# Тритий выделяют из воды на отдельном заводе, а не крафтят в сборщике.
+		"from_building": BuildingDefs.TRITIUM_PLANT,
 	},
 	GOLD: {
 		"name": "Золото", "shape": Shape.INGOT,
@@ -203,5 +215,7 @@ static func source_of(id: StringName) -> String:
 			return BuildingDefs.display_name(BuildingDefs.ASSEMBLER)
 		Recipes.Machine.LAB:
 			return BuildingDefs.display_name(BuildingDefs.LAB)
+		Recipes.Machine.TRITIUM_PLANT:
+			return BuildingDefs.display_name(BuildingDefs.TRITIUM_PLANT)
 		_:
 			return ""

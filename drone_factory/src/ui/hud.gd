@@ -42,6 +42,11 @@ var _fps_label: Label = null
 var _toast: Label = null
 var _bottom_bar: HBoxContainer = null
 
+## Не чаще одного напоминания об уроне в этот интервал, секунды.
+const DAMAGE_TOAST_COOLDOWN: float = 6.0
+
+var _time: float = 0.0
+var _last_damage_toast: float = -999.0
 var _stats_timer: float = 0.0
 var _toast_timer: float = 0.0
 var _stats_dirty: bool = true
@@ -60,6 +65,8 @@ func _ready() -> void:
 	Events.power_stats_changed.connect(_on_power_changed)
 	Events.drone_count_changed.connect(_on_drones_changed)
 	Events.pollution_changed.connect(_on_pollution_changed)
+	Events.wave_started.connect(_on_wave_started)
+	Events.building_damaged.connect(_on_building_damaged)
 	Events.story_advanced.connect(func(_a: StringName, _b: StringName) -> void: refresh_objective())
 	Events.notify.connect(show_toast)
 	Events.unlocks_changed.connect(func() -> void: _stats_dirty = true)
@@ -75,6 +82,7 @@ func setup(game_world: GameWorld, game_simulation: Simulation) -> void:
 
 
 func _process(delta: float) -> void:
+	_time += delta
 	_stats_timer += delta
 	if _stats_dirty and _stats_timer >= STATS_REFRESH_INTERVAL:
 		_stats_timer = 0.0
@@ -311,6 +319,21 @@ func _set_objective_text(text: String) -> void:
 ## Текст текущей задачи — то, что игрок читает в строке под показателями.
 func objective_text() -> String:
 	return "" if _objective_label == null else _objective_label.text
+
+
+## Нападение — редкое событие, и о нём нужно сказать заметно: игрок может
+## смотреть в меню строительства и не видеть карту.
+func _on_wave_started(wave_number: int, size: int) -> void:
+	show_toast("Волна %d: к базе идут жуки (%d)" % [wave_number, size])
+
+
+## Урон по зданию не спамит сообщениями: их было бы десятки в секунду.
+## Вместо этого не чаще раза в несколько секунд напоминаем, что базу грызут.
+func _on_building_damaged(_building_id: int) -> void:
+	if _time - _last_damage_toast < DAMAGE_TOAST_COOLDOWN:
+		return
+	_last_damage_toast = _time
+	show_toast("Жуки грызут постройки!")
 
 
 func _on_pollution_changed(level: float, solar_factor: float) -> void:

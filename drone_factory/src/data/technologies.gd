@@ -19,6 +19,9 @@ const SOLAR_EFFICIENCY := &"solar_efficiency"
 const PORT_RANGE := &"port_range"
 const MINING_2 := &"mining_2"
 const NUCLEAR := &"nuclear"
+const DEFENCE := &"defence"
+const TURRET_DAMAGE := &"turret_damage"
+const FUSION := &"fusion"
 const BEACON := &"beacon"
 
 ## Ключи бонусов. Значение — прибавка в долях (0.25 = +25%).
@@ -27,6 +30,7 @@ const BONUS_DRONE_SPEED := &"drone_speed"
 const BONUS_DRONE_CAPACITY := &"drone_capacity"
 const BONUS_SOLAR_OUTPUT := &"solar_output"
 const BONUS_PORT_RANGE := &"port_range"
+const BONUS_TURRET_DAMAGE := &"turret_damage"
 
 ## Поля технологии:
 ##   name        — подпись;
@@ -103,6 +107,26 @@ const DEFS: Dictionary[StringName, Dictionary] = {
 		"requires": [ELECTRONICS, STEEL],
 		"buildings": [BuildingDefs.BEACON], "recipes": [], "bonuses": {},
 		"description": "Передатчик, который позовёт помощь.",
+	},
+	DEFENCE: {
+		"name": "Оборона", "cost": {Items.SCIENCE_RED: 40}, "requires": [],
+		"buildings": [BuildingDefs.WALL, BuildingDefs.TURRET],
+		"recipes": [Recipes.CRAFT_AMMO], "bonuses": {},
+		"description": "Стены, турели и патроны к ним.",
+	},
+	TURRET_DAMAGE: {
+		"name": "Бронебойные патроны",
+		"cost": {Items.SCIENCE_RED: 70, Items.SCIENCE_GREEN: 30},
+		"requires": [DEFENCE, ELECTRONICS], "buildings": [], "recipes": [],
+		"bonuses": {BONUS_TURRET_DAMAGE: 0.75},
+		"description": "Урон турелей +75%.",
+	},
+	FUSION: {
+		"name": "Термоядерный синтез",
+		"cost": {Items.SCIENCE_RED: 220, Items.SCIENCE_GREEN: 160},
+		"requires": [NUCLEAR], "buildings": [BuildingDefs.TRITIUM_PLANT, BuildingDefs.FUSION],
+		"recipes": [Recipes.EXTRACT_TRITIUM], "bonuses": {},
+		"description": "Тритий из воды и реактор на 2200 кВт.",
 	},
 	MINING_2: {
 		"name": "Буры III", "cost": {Items.SCIENCE_RED: 80, Items.SCIENCE_GREEN: 40},
