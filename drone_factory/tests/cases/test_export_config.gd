@@ -135,6 +135,17 @@ func test_tests_and_tools_are_excluded() -> void:
 			check(filter.contains("tools/"), "%s: утилиты не исключены из сборки" % section)
 
 
+func test_project_is_locked_to_portrait() -> void:
+	# Одной ориентации мало: экспорт Android пишет android:resizeableActivity
+	# из настройки resizable, а для растягиваемой активности система вправе
+	# игнорировать блокировку ориентации на больших экранах и в многооконном
+	# режиме — игра тогда открывается «поперёк».
+	check_eq(int(ProjectSettings.get_setting("display/window/handheld/orientation", -1)), 1,
+		"ориентация должна быть портретной")
+	check_eq(bool(ProjectSettings.get_setting("display/window/size/resizable", true)), false,
+		"растягиваемая активность ломает блокировку ориентации")
+
+
 func test_project_is_configured_for_mobile() -> void:
 	check_eq(
 		String(ProjectSettings.get_setting("rendering/renderer/rendering_method.mobile", "")),

@@ -146,3 +146,24 @@ func test_home_cell_points_at_the_port() -> void:
 func test_home_cell_falls_back_to_start() -> void:
 	world.buildings.clear()
 	check_eq(world.home_cell(), world.start_cell, "без зданий возвращаемся к точке старта")
+
+
+func test_top_bar_fits_narrow_screen() -> void:
+	# Верхняя панель не должна вылезать за базовую ширину: на узком экране
+	# показатели обрежутся, и игрок увидит «поломанный» интерфейс.
+	hud._refresh_stats()
+	var base_width: float = float(ProjectSettings.get_setting(
+		"display/window/size/viewport_width", 720
+	))
+	var margins: Vector4i = UiTheme.safe_area_margins()
+	var available: float = base_width - float(margins.x + margins.z)
+	var needed: float = hud._top_bar.get_combined_minimum_size().x
+	check(needed <= available, "верхняя панель требует %.0f при доступных %.0f" % [needed, available])
+
+
+func test_objective_line_fits_narrow_screen() -> void:
+	hud.refresh_objective()
+	var button: Button = hud.find_child("ObjectiveButton", true, false) as Button
+	check(button != null, "нужна строка задачи")
+	if button != null:
+		check(button.clip_text, "длинная задача должна обрезаться, а не растягивать панель")

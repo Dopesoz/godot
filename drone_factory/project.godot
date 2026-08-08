@@ -30,6 +30,10 @@ gdscript/warnings/unsafe_method_access=0
 
 window/size/viewport_width=720
 window/size/viewport_height=1280
+; Экспорт Android пишет это значение в манифест как android:resizeableActivity.
+; С resizeable=true система на больших экранах и в многооконном режиме
+; игнорирует блокировку ориентации, и игра открывается «поперёк».
+window/size/resizable=false
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 window/handheld/orientation=1
