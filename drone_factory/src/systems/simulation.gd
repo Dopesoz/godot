@@ -82,11 +82,41 @@ func tick() -> void:
 		"registry": world.buildings,
 		"research": world.research,
 		"daylight": daylight(),
+		"wind": wind(),
 		"tick": tick_count,
 	}
 
 	for system: GameSystem in systems:
 		system.tick(Constants.TICK_DELTA, context)
+
+
+## Сила ветра 0..1. Меняется медленно и неравномерно, но никогда не падает
+## до нуля надолго: ветряк слабее солнца, зато работает и ночью.
+func wind() -> float:
+	return wind_at(game_time)
+
+
+static func wind_at(time: float) -> float:
+	# Две несоразмерные волны дают неповторяющийся, но предсказуемо плавный
+	# рисунок: порывы и затишья без резких скачков.
+	var slow: float = sin(time / 47.0)
+	var fast: float = sin(time / 13.0 + 1.7)
+	return clampf(0.55 + 0.3 * slow + 0.15 * fast, WIND_MIN, 1.0)
+
+
+## Ниже этого значения ветер не опускается: полный штиль на всю ночь означал бы
+## мёртвую фабрику без права на ошибку.
+const WIND_MIN: float = 0.15
+
+
+## Словесная оценка ветра для интерфейса.
+func wind_text() -> String:
+	var value: float = wind()
+	if value > 0.75:
+		return "Сильный ветер"
+	if value > 0.4:
+		return "Ветер"
+	return "Затишье"
 
 
 ## Освещённость 0..1: день, плавные сумерки, ночь.

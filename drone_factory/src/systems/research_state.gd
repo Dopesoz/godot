@@ -57,7 +57,7 @@ func is_recipe_unlocked(recipe_id: StringName) -> bool:
 func unlocked_buildings() -> Array[StringName]:
 	var result: Array[StringName] = []
 	for def_id: StringName in BuildingDefs.BUILD_ORDER:
-		if is_building_unlocked(def_id):
+		if BuildingDefs.is_player_built(def_id) and is_building_unlocked(def_id):
 			result.append(def_id)
 	return result
 

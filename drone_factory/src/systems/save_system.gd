@@ -26,6 +26,7 @@ var logistics: LogisticsSystem = null
 var pollution: PollutionSystem = null
 var achievements: AchievementSystem = null
 var story: StorySystem = null
+var events: EventSystem = null
 
 ## Автосохранение можно выключить в настройках.
 var autosave_enabled: bool = true
@@ -46,6 +47,7 @@ func setup(
 	pollution = simulation.get_system(PollutionSystem) as PollutionSystem
 	achievements = simulation.get_system(AchievementSystem) as AchievementSystem
 	story = simulation.get_system(StorySystem) as StorySystem
+	events = simulation.get_system(EventSystem) as EventSystem
 
 
 func _process(delta: float) -> void:
@@ -146,6 +148,7 @@ func collect() -> Dictionary:
 		"stats": world.stats.serialize(),
 		"achievements": achievements.serialize() if achievements != null else [],
 		"story": story.serialize() if story != null else {},
+		"events": events.serialize() if events != null else {},
 	}
 
 
@@ -177,6 +180,8 @@ func apply(data: Dictionary) -> bool:
 		achievements.deserialize(data.get("achievements", []))
 	if story != null:
 		story.deserialize(data.get("story", {}))
+	if events != null:
+		events.deserialize(data.get("events", {}))
 	simulation.game_time = float(data.get("time", 0.0))
 	simulation.tick_count = int(data.get("tick", 0))
 

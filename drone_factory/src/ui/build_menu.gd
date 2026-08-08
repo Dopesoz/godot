@@ -35,7 +35,8 @@ func refresh() -> void:
 		return
 	UiWidgets.clear_children(_list)
 	for def_id: StringName in BuildingDefs.BUILD_ORDER:
-		_list.add_child(_build_row(def_id))
+		if BuildingDefs.is_player_built(def_id):
+			_list.add_child(_build_row(def_id))
 
 
 func _build_row(def_id: StringName) -> Control:

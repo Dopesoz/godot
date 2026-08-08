@@ -59,6 +59,7 @@ func _ready() -> void:
 	simulation.add_system(LogisticsSystem.new())
 	simulation.add_system(AchievementSystem.new())
 	simulation.add_system(StorySystem.new())
+	simulation.add_system(EventSystem.new())
 	add_child(simulation)
 
 	world.simulation = simulation

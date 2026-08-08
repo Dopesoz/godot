@@ -7,6 +7,15 @@ extends GameSystem
 ## исследований потребовала бы отдельного экрана управления, а выигрыш дала бы
 ## только опытному игроку.
 
+## Курс обмена добычи с метеоритов: сколько предмета за сколько единиц
+## прогресса. Обмен — не замена производству колб, а способ пустить в дело
+## редкую находку: за целый метеорит выходит примерно одно небольшое
+## исследование.
+const TRADE_RATES: Dictionary[StringName, Vector2i] = {
+	Items.GOLD: Vector2i(10, 15),
+	Items.DIAMOND: Vector2i(2, 20),
+}
+
 var state: ResearchState = null
 
 ## Что изучаем сейчас (&"" — ничего).
@@ -75,6 +84,51 @@ func remaining_cost() -> Dictionary[StringName, int]:
 		if left > 0:
 			remaining[item_id] = left
 	return remaining
+
+
+## --- Обмен добычи ----------------------------------------------------------
+
+func trade_cost(item_id: StringName) -> int:
+	return TRADE_RATES.get(item_id, Vector2i.ZERO).x
+
+
+func trade_gain(item_id: StringName) -> int:
+	return TRADE_RATES.get(item_id, Vector2i.ZERO).y
+
+
+func can_trade(item_id: StringName) -> bool:
+	if current == &"" or not TRADE_RATES.has(item_id) or remaining_cost().is_empty():
+		return false
+	return ResourcePool.new(world.buildings).count(item_id) >= trade_cost(item_id)
+
+
+## Меняет находку на прогресс текущего исследования.
+func trade(item_id: StringName) -> bool:
+	if not can_trade(item_id):
+		return false
+	var pool := ResourcePool.new(world.buildings)
+	if not pool.take_all({item_id: trade_cost(item_id)}):
+		return false
+	_add_progress(trade_gain(item_id))
+	Events.notify.emit("%s пущено в дело" % Items.display_name(item_id))
+	return true
+
+
+## Раскладывает очки прогресса по недостающим колбам, начиная с первой.
+func _add_progress(points: int) -> void:
+	var left: int = points
+	while left > 0:
+		var remaining: Dictionary[StringName, int] = remaining_cost()
+		if remaining.is_empty():
+			break
+		for item_id: StringName in remaining:
+			var take: int = mini(left, int(remaining[item_id]))
+			invested[item_id] = invested.get(item_id, 0) + take
+			left -= take
+			break
+	Events.research_progress_changed.emit(current, progress())
+	if remaining_cost().is_empty():
+		_complete()
 
 
 ## --- Симуляция -------------------------------------------------------------

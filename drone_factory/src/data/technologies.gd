@@ -7,6 +7,7 @@ extends RefCounted
 ## Дерево намеренно неглубокое: на телефоне играют короткими сессиями, и цель
 ## должна быть видна на один-два шага вперёд, а не на двадцать.
 
+const WIND_POWER := &"wind_power"
 const STEAM_POWER := &"steam_power"
 const POWER_STORAGE := &"power_storage"
 const MINING_1 := &"mining_1"
@@ -40,6 +41,11 @@ const DEFS: Dictionary[StringName, Dictionary] = {
 		"name": "Буры II", "cost": {Items.SCIENCE_RED: 30}, "requires": [],
 		"buildings": [], "recipes": [], "bonuses": {BONUS_MINING_SPEED: 0.25},
 		"description": "Скорость добычи +25%.",
+	},
+	WIND_POWER: {
+		"name": "Ветроэнергетика", "cost": {Items.SCIENCE_RED: 20}, "requires": [],
+		"buildings": [BuildingDefs.WIND], "recipes": [], "bonuses": {},
+		"description": "Ветряк: слабее панели, зато крутится и ночью.",
 	},
 	STEAM_POWER: {
 		"name": "Паровая энергия", "cost": {Items.SCIENCE_RED: 25}, "requires": [],

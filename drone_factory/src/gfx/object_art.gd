@@ -52,6 +52,8 @@ static func _draw_building(def_id: StringName) -> PixelCanvas:
 			_draw_storage(canvas)
 		BuildingDefs.Kind.SOLAR:
 			_draw_solar(canvas)
+		BuildingDefs.Kind.WIND:
+			_draw_wind(canvas)
 		BuildingDefs.Kind.ACCUMULATOR:
 			_draw_accumulator(canvas)
 		BuildingDefs.Kind.POLE:
@@ -68,6 +70,8 @@ static func _draw_building(def_id: StringName) -> PixelCanvas:
 			_draw_reactor(canvas)
 		BuildingDefs.Kind.BEACON:
 			_draw_beacon(canvas)
+		BuildingDefs.Kind.WRECK:
+			_draw_wreck(canvas)
 		BuildingDefs.Kind.LAB:
 			_draw_lab(canvas)
 		_:
@@ -135,6 +139,28 @@ static func _draw_solar(canvas: PixelCanvas) -> void:
 		canvas.vline(x, 4, canvas.height - 7, Palette.METAL_DARK)
 	# Блик.
 	canvas.line(Vector2i(4, canvas.height - 5), Vector2i(canvas.width - 6, 4), Palette.GLASS)
+
+
+static func _draw_wind(canvas: PixelCanvas) -> void:
+	# Бетонная площадка под мачтой: без неё ветряк был почти прозрачным
+	# силуэтом и терялся на траве.
+	_draw_base(canvas, Palette.ROCK_DARK)
+	canvas.rect(2, canvas.height - 7, canvas.width - 4, 6, Palette.ROCK)
+	canvas.speckle(2, canvas.height - 7, canvas.width - 4, 6, Palette.ROCK_LIGHT, 0.15, 61)
+
+	var cx: int = canvas.width / 2
+	# Мачта с утолщением книзу.
+	canvas.rect(cx - 2, canvas.height - 9, 5, 4, Palette.METAL_DARK)
+	canvas.rect(cx - 1, 8, 3, canvas.height - 16, Palette.METAL_LIGHT)
+	canvas.vline(cx + 1, 8, canvas.height - 16, Palette.METAL)
+
+	# Три лопасти от втулки: силуэт должен читаться даже в 32 пикселя.
+	canvas.circle(cx, 8, 2, Palette.METAL_HILIGHT)
+	for offset: int in [0, 1]:
+		canvas.line(Vector2i(cx + offset, 8), Vector2i(cx + offset, 1), Palette.METAL_HILIGHT)
+		canvas.line(Vector2i(cx, 8 + offset), Vector2i(cx - 7, 12 + offset), Palette.METAL_HILIGHT)
+		canvas.line(Vector2i(cx, 8 + offset), Vector2i(cx + 7, 12 + offset), Palette.METAL_HILIGHT)
+	canvas.put(cx, 0, Palette.GLASS)
 
 
 static func _draw_accumulator(canvas: PixelCanvas) -> void:
@@ -261,6 +287,17 @@ static func _draw_beacon(canvas: PixelCanvas) -> void:
 	canvas.put(cx, 3, Palette.ACCENT)
 
 
+static func _draw_wreck(canvas: PixelCanvas) -> void:
+	# Оплавленный обломок в воронке: должен выглядеть как «упало», а не как
+	# построено. Поэтому никакой ровной плиты в основании.
+	canvas.circle(canvas.width / 2, canvas.height / 2 + 2, canvas.width / 2 - 1, Palette.DIRT_DARK)
+	canvas.circle(canvas.width / 2, canvas.height / 2 + 1, canvas.width / 3, Palette.ROCK_DARK)
+	canvas.blob(canvas.width / 2, canvas.height / 2, 4.0, Palette.ROCK, 7)
+	canvas.blob(canvas.width / 2 - 3, canvas.height / 2 - 2, 2.0, Color8(226, 184, 66), 13)
+	canvas.put(canvas.width / 2 + 3, canvas.height / 2 + 1, Color8(168, 226, 255))
+	canvas.put(canvas.width / 2 + 2, canvas.height / 2 - 3, Palette.WARN)
+
+
 ## --- Предметы --------------------------------------------------------------
 
 static func _draw_item(item_id: StringName) -> PixelCanvas:
@@ -321,6 +358,14 @@ static func _draw_item(item_id: StringName) -> PixelCanvas:
 			canvas.rect(5, 1, 6, 2, Palette.METAL_LIGHT)
 			canvas.rect(5, 13, 6, 2, Palette.METAL_LIGHT)
 			canvas.vline(7, 4, 8, accent)
+		Items.Shape.GEM:
+			# Огранённый камень: широкая верхушка и клин вниз.
+			canvas.hline(4, 5, 8, accent)
+			canvas.hline(3, 6, 10, color)
+			for i: int in 5:
+				canvas.hline(4 + i, 7 + i, 8 - i * 2, color)
+			canvas.put(6, 6, accent)
+			canvas.put(9, 8, accent)
 		Items.Shape.FLASK:
 			canvas.rect(6, 2, 4, 3, Palette.METAL_LIGHT)
 			canvas.rect(5, 5, 6, 8, color)

@@ -15,6 +15,7 @@ var _progress: ProgressBar = null
 var _cost_label: Label = null
 var _list: VBoxContainer = null
 var _cancel_button: Button = null
+var _trade_box: HBoxContainer = null
 
 
 func setup(research_system: ResearchSystem, research_state: ResearchState) -> void:
@@ -49,6 +50,10 @@ func _build_content(container: VBoxContainer) -> void:
 	_cancel_button.pressed.connect(_on_cancel)
 	container.add_child(_cancel_button)
 
+	_trade_box = HBoxContainer.new()
+	_trade_box.add_theme_constant_override("separation", UiTheme.PAD_S)
+	container.add_child(_trade_box)
+
 	var scroll: ScrollContainer = UiWidgets.scroll_list()
 	container.add_child(scroll)
 	_list = UiWidgets.scroll_list_content(scroll)
@@ -62,6 +67,8 @@ func refresh() -> void:
 	if _list == null or state == null:
 		return
 	_refresh_header()
+
+	_refresh_trade()
 
 	UiWidgets.clear_children(_list)
 	var available: Array[StringName] = []
@@ -95,6 +102,28 @@ func _refresh_header() -> void:
 	for item_id: StringName in research.remaining_cost():
 		parts.append("%s %d" % [Items.display_name(item_id), int(research.remaining_cost()[item_id])])
 	_cost_label.text = "Осталось: " + ", ".join(parts) if not parts.is_empty() else "Почти готово"
+
+
+## Кнопки обмена находок с метеоритов. Показываются только когда обмен
+## действительно возможен: пустая кнопка «нельзя» только раздражает.
+func _refresh_trade() -> void:
+	if _trade_box == null or research == null:
+		return
+	UiWidgets.clear_children(_trade_box)
+	for item_id: StringName in ResearchSystem.TRADE_RATES:
+		if not research.can_trade(item_id):
+			continue
+		var button: Button = UiWidgets.text_button("%s %d → +%d" % [
+			Items.display_name(item_id),
+			research.trade_cost(item_id),
+			research.trade_gain(item_id),
+		], UiTheme.TOUCH_MIN * 3)
+		button.name = "Trade_" + String(item_id)
+		button.pressed.connect(func() -> void:
+			research.trade(item_id)
+			refresh()
+		)
+		_trade_box.add_child(button)
 
 
 func _add_section(caption: String, techs: Array[StringName]) -> void:

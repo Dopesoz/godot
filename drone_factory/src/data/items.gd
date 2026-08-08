@@ -23,11 +23,13 @@ const COAL := &"coal"
 const WATER := &"water"
 const URANIUM_ORE := &"uranium_ore"
 const FUEL_ROD := &"fuel_rod"
+const GOLD := &"gold"
+const DIAMOND := &"diamond"
 const SCIENCE_RED := &"science_red"
 const SCIENCE_GREEN := &"science_green"
 
 ## Форма иконки: по ней процедурный генератор рисует спрайт предмета.
-enum Shape { CHUNK, PLATE, INGOT, GEAR, WIRE, CIRCUIT, DRONE, FLASK, DROPLET, ROD }
+enum Shape { CHUNK, PLATE, INGOT, GEAR, WIRE, CIRCUIT, DRONE, FLASK, DROPLET, ROD, GEM }
 
 const DEFS: Dictionary[StringName, Dictionary] = {
 	STONE: {
@@ -91,6 +93,17 @@ const DEFS: Dictionary[StringName, Dictionary] = {
 	FUEL_ROD: {
 		"name": "Топливный стержень", "shape": Shape.ROD,
 		"color": Color8(120, 200, 110), "accent": Palette.METAL_LIGHT, "stack": 50,
+	},
+	GOLD: {
+		"name": "Золото", "shape": Shape.INGOT,
+		"color": Color8(226, 184, 66), "accent": Color8(255, 226, 140), "stack": 100,
+		# Золото не добывается буром и не крафтится: только из упавших метеоритов.
+		"from_building": BuildingDefs.WRECK,
+	},
+	DIAMOND: {
+		"name": "Алмаз", "shape": Shape.GEM,
+		"color": Color8(168, 226, 255), "accent": Color8(238, 250, 255), "stack": 50,
+		"from_building": BuildingDefs.WRECK,
 	},
 	SCIENCE_RED: {
 		"name": "Красная колба", "shape": Shape.FLASK,

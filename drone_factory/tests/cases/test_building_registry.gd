@@ -22,10 +22,11 @@ func test_defs_are_consistent() -> void:
 		check(not BuildingDefs.description(def_id).is_empty(), "нет описания у %s" % def_id)
 	for def_id: StringName in BuildingDefs.BUILD_ORDER:
 		check(BuildingDefs.exists(def_id), "меню строительства ссылается на %s" % def_id)
-	check_eq(
-		BuildingDefs.BUILD_ORDER.size(), BuildingDefs.all_ids().size(),
-		"каждое здание должно попасть в меню строительства"
-	)
+		check(BuildingDefs.is_player_built(def_id), "в меню попало непостроимое здание: %s" % def_id)
+	# Каждое здание, которое игрок может построить, обязано быть в меню.
+	for def_id: StringName in BuildingDefs.all_ids():
+		if BuildingDefs.is_player_built(def_id):
+			check(BuildingDefs.BUILD_ORDER.has(def_id), "здание %s не попало в меню" % def_id)
 
 
 func test_place_and_lookup() -> void:

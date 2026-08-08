@@ -13,6 +13,7 @@ enum Kind {
 	FURNACE,
 	ASSEMBLER,
 	SOLAR,
+	WIND,
 	ACCUMULATOR,
 	POLE,
 	DRONE_PORT,
@@ -21,6 +22,7 @@ enum Kind {
 	BOILER,
 	REACTOR,
 	BEACON,
+	WRECK,
 }
 
 const STORAGE := &"storage"
@@ -28,6 +30,7 @@ const DRILL := &"drill"
 const FURNACE := &"furnace"
 const ASSEMBLER := &"assembler"
 const SOLAR := &"solar"
+const WIND := &"wind"
 const ACCUMULATOR := &"accumulator"
 const POLE := &"pole"
 const DRONE_PORT := &"drone_port"
@@ -36,6 +39,7 @@ const WATER_PUMP := &"water_pump"
 const BOILER := &"boiler"
 const REACTOR := &"reactor"
 const BEACON := &"beacon"
+const WRECK := &"wreck"
 
 ## Поля описания:
 ##   name          — подпись в интерфейсе;
@@ -48,6 +52,7 @@ const BEACON := &"beacon"
 ##   input/output  — ёмкости инвентарей;
 ##   needs_ore     — требует руду под собой (бур);
 ##   needs_water   — требует воду вплотную к площадке (насос);
+##   player_built  — доступно ли в меню строительства (обломки только падают);
 ##   pollution     — сколько загрязнения даёт в секунду при работе;
 ##   tech          — технология, открывающая постройку (&"" — доступно сразу);
 ##   description   — одна строка для панели информации.
@@ -88,6 +93,13 @@ const DEFS: Dictionary[StringName, Dictionary] = {
 		"power_use": 0.0, "power_gen": 60.0, "power_range": 6,
 		"input": 0, "output": 0, "needs_ore": false, "tech": &"",
 		"description": "Даёт энергию днём. Ночью питание идёт из аккумуляторов.",
+	},
+	WIND: {
+		"name": "Ветряк", "kind": Kind.WIND, "size": Vector2i(2, 2),
+		"cost": {Items.IRON_PLATE: 12, Items.GEAR: 8},
+		"power_use": 0.0, "power_gen": 45.0, "power_range": 6,
+		"input": 0, "output": 0, "needs_ore": false, "tech": &"wind_power",
+		"description": "Слабее панели, но работает и ночью. Зависит от ветра.",
 	},
 	ACCUMULATOR: {
 		"name": "Аккумулятор", "kind": Kind.ACCUMULATOR, "size": Vector2i(2, 2),
@@ -140,6 +152,13 @@ const DEFS: Dictionary[StringName, Dictionary] = {
 		"input": 0, "output": 0, "needs_ore": false, "tech": &"beacon",
 		"description": "Передатчик спасательного сигнала. Нужен постоянный ток.",
 	},
+	WRECK: {
+		"name": "Обломок метеорита", "kind": Kind.WRECK, "size": Vector2i(2, 2),
+		"cost": {}, "power_use": 0.0, "power_gen": 0.0, "power_range": 0,
+		"input": 0, "output": 120, "needs_ore": false, "tech": &"",
+		"player_built": false,
+		"description": "Упал с неба. Дроны разберут его на золото и алмазы.",
+	},
 	LAB: {
 		"name": "Лаборатория", "kind": Kind.LAB, "size": Vector2i(2, 2),
 		"cost": {Items.IRON_PLATE: 15, Items.GEAR: 10, Items.CIRCUIT: 2},
@@ -151,7 +170,7 @@ const DEFS: Dictionary[StringName, Dictionary] = {
 
 ## Порядок кнопок в меню строительства: от «поставь первым» к сложному.
 const BUILD_ORDER: Array[StringName] = [
-	DRILL, FURNACE, STORAGE, SOLAR, DRONE_PORT, ASSEMBLER, LAB, POLE, ACCUMULATOR,
+	DRILL, FURNACE, STORAGE, SOLAR, WIND, DRONE_PORT, ASSEMBLER, LAB, POLE, ACCUMULATOR,
 	WATER_PUMP, BOILER, REACTOR, BEACON,
 ]
 
@@ -212,6 +231,11 @@ static func needs_ore(def_id: StringName) -> bool:
 
 
 ## Требует ли здание воду вплотную к площадке.
+## Можно ли построить это здание из меню. Обломки метеоритов только падают.
+static func is_player_built(def_id: StringName) -> bool:
+	return DEFS.get(def_id, {}).get("player_built", true)
+
+
 static func needs_water(def_id: StringName) -> bool:
 	return DEFS.get(def_id, {}).get("needs_water", false)
 
