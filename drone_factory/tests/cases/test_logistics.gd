@@ -278,3 +278,23 @@ func test_delivery_resumes_after_supplier_is_demolished() -> void:
 		furnace.input.count(Items.IRON_ORE) > 0 or furnace.output.count(Items.IRON_PLATE) > 0,
 		"после сноса поставщика доставка обязана возобновиться"
 	)
+
+
+func test_crafted_drones_reach_the_port_and_take_off() -> void:
+	# Сквозная проверка на жалобу игрока: дроны собраны, лежат на складе,
+	# а летают всё те же стартовые. Отправной точкой ошибки был не порт
+	# и не сборщик, а то, что никто не просил везти дронов в порт.
+	var storage: Building = place(BuildingDefs.STORAGE, Vector2i(-4, 0))
+	storage.output.add(Items.DRONE, 4)
+	var before: int = port.drone_count()
+	check(before < DronePort.MAX_DRONES, "для проверки нужен порт с местом")
+
+	run_ticks(400)
+	check(
+		port.drone_count() > before,
+		"собранные дроны должны долететь до порта и подняться в воздух"
+	)
+	check(
+		storage.output.count(Items.DRONE) < 4,
+		"дроны должны уходить со склада, а не лежать там вечно"
+	)

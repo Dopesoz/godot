@@ -198,6 +198,13 @@ func demolish(building_id: int) -> bool:
 	if building == null:
 		return false
 	var def_id: StringName = building.def_id
+	if not BuildingDefs.can_demolish(def_id):
+		Events.notify.emit("%s так не разобрать — нужна техника" % BuildingDefs.display_name(def_id))
+		return false
+
+	# Танки возвращаются предметами вместе с дронами.
+	if building is TankDepot:
+		(building as TankDepot).pack_tanks_back()
 
 	# Летающие дроны возвращаются предметами, иначе снос порта их уничтожит.
 	if building is DronePort:

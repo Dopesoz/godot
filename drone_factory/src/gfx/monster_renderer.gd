@@ -7,12 +7,20 @@ extends MultiMeshInstance2D
 ## а в боевой системе, и красятся по остатку здоровья, а не по грузу.
 
 const CAPACITY_STEP: int = 32
+## Сколько шагов лапами в секунду. Медленнее выглядит вяло, быстрее — дрожью.
+const STEP_RATE: float = 6.0
 
 var simulation: Simulation = null
 var combat: CombatSystem = null
 
+## Второй кадр анимации. MultiMesh рисует все экземпляры одним мешем, поэтому
+## два положения лап — это два слоя, между которыми стая делится по фазе шага.
+## Цена — один лишний вызов отрисовки на всю стаю, и это дёшево.
+var _alternate: MultiMeshInstance2D = null
+
 var _capacity: int = 0
 var _visible_count: int = 0
+var _time: float = 0.0
 
 
 func _ready() -> void:
@@ -23,6 +31,16 @@ func _ready() -> void:
 	multimesh.transform_format = MultiMesh.TRANSFORM_2D
 	multimesh.use_colors = true
 	multimesh.mesh = DroneRenderer._build_quad(Art.region(ObjectArt.MONSTER))
+
+	_alternate = MultiMeshInstance2D.new()
+	_alternate.name = "AlternateFrame"
+	_alternate.texture = Art.object_texture
+	_alternate.multimesh = MultiMesh.new()
+	_alternate.multimesh.transform_format = MultiMesh.TRANSFORM_2D
+	_alternate.multimesh.use_colors = true
+	_alternate.multimesh.mesh = DroneRenderer._build_quad(Art.region(ObjectArt.MONSTER_ALT))
+	add_child(_alternate)
+
 	_ensure_capacity(CAPACITY_STEP)
 
 
@@ -31,21 +49,42 @@ func setup(game_simulation: Simulation) -> void:
 	combat = null if simulation == null else simulation.get_system(CombatSystem) as CombatSystem
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if combat == null:
 		return
+	_time += delta
 	var alpha: float = 0.0 if simulation == null else simulation.tick_alpha()
-	var index: int = 0
+	var main_index: int = 0
+	var alt_index: int = 0
+
 	for monster: Monster in combat.monsters:
 		if not monster.is_alive():
 			continue
-		if index >= _capacity:
+		if maxi(main_index, alt_index) >= _capacity:
 			_ensure_capacity(_capacity + CAPACITY_STEP)
-		multimesh.set_instance_transform_2d(index, instance_transform(monster, alpha))
-		multimesh.set_instance_color(index, instance_color(monster))
-		index += 1
-	_visible_count = index
-	multimesh.visible_instance_count = index
+		var transform: Transform2D = instance_transform(monster, alpha)
+		var colour: Color = instance_color(monster)
+		# Фаза сдвинута по номеру жука: стая не должна маршировать в ногу.
+		if is_stepping(_time, monster):
+			_alternate.multimesh.set_instance_transform_2d(alt_index, transform)
+			_alternate.multimesh.set_instance_color(alt_index, colour)
+			alt_index += 1
+		else:
+			multimesh.set_instance_transform_2d(main_index, transform)
+			multimesh.set_instance_color(main_index, colour)
+			main_index += 1
+
+	_visible_count = main_index + alt_index
+	multimesh.visible_instance_count = main_index
+	_alternate.multimesh.visible_instance_count = alt_index
+
+
+## На каком кадре шага находится жук прямо сейчас.
+static func is_stepping(time: float, monster: Monster) -> bool:
+	# Стоящий жук лапами не перебирает: анимация должна означать движение.
+	if monster.state == Monster.State.ATTACKING:
+		return false
+	return int(time * STEP_RATE + float(monster.id)) % 2 == 1
 
 
 func visible_monsters() -> int:
@@ -68,4 +107,6 @@ func _ensure_capacity(capacity: int) -> void:
 		return
 	_capacity = capacity
 	multimesh.instance_count = capacity
-	multimesh.visible_instance_count = _visible_count
+	multimesh.visible_instance_count = 0
+	_alternate.multimesh.instance_count = capacity
+	_alternate.multimesh.visible_instance_count = 0

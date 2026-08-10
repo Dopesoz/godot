@@ -268,7 +268,10 @@ func _refresh_stats() -> void:
 	UiWidgets.clear_children(_stats_box)
 	var totals: Dictionary[StringName, int] = pool.totals()
 	for item_id: StringName in _tracked_items:
-		_stats_box.add_child(UiWidgets.stat_row(item_id, UiWidgets.short_number(totals.get(item_id, 0))))
+		_stats_box.add_child(UiWidgets.item_button(
+			item_id, UiWidgets.short_number(totals.get(item_id, 0)),
+			func(id: StringName) -> void: Events.item_inspected.emit(id)
+		))
 
 
 func _on_inventory_changed(_building_id: int) -> void:

@@ -20,6 +20,7 @@ const CRAFT_DRONE := &"craft_drone"
 const CRAFT_FUEL_ROD := &"craft_fuel_rod"
 const CRAFT_AMMO := &"craft_ammo"
 const EXTRACT_TRITIUM := &"extract_tritium"
+const CRAFT_TANK := &"craft_tank"
 const CRAFT_SCIENCE_RED := &"craft_science_red"
 const CRAFT_SCIENCE_GREEN := &"craft_science_green"
 
@@ -75,6 +76,11 @@ const DEFS: Dictionary[StringName, Dictionary] = {
 		"name": "Патроны", "machine": Machine.ASSEMBLER, "time": 1.4,
 		"inputs": {Items.IRON_PLATE: 2}, "outputs": {Items.AMMO: 4},
 		"tech": &"defence",
+	},
+	CRAFT_TANK: {
+		"name": "Танк", "machine": Machine.ASSEMBLER, "time": 20.0,
+		"inputs": {Items.STEEL: 12, Items.CIRCUIT: 6, Items.GEAR: 10},
+		"outputs": {Items.TANK: 1}, "tech": &"armour",
 	},
 	EXTRACT_TRITIUM: {
 		"name": "Тритий", "machine": Machine.TRITIUM_PLANT, "time": 6.0,

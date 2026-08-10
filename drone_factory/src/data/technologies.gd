@@ -21,6 +21,7 @@ const MINING_2 := &"mining_2"
 const NUCLEAR := &"nuclear"
 const DEFENCE := &"defence"
 const TURRET_DAMAGE := &"turret_damage"
+const ARMOUR := &"armour"
 const FUSION := &"fusion"
 const BEACON := &"beacon"
 
@@ -120,6 +121,14 @@ const DEFS: Dictionary[StringName, Dictionary] = {
 		"requires": [DEFENCE, ELECTRONICS], "buildings": [], "recipes": [],
 		"bonuses": {BONUS_TURRET_DAMAGE: 0.75},
 		"description": "Урон турелей +75%.",
+	},
+	ARMOUR: {
+		"name": "Бронетехника",
+		"cost": {Items.SCIENCE_RED: 90, Items.SCIENCE_GREEN: 40},
+		"requires": [DEFENCE, STEEL],
+		"buildings": [BuildingDefs.TANK_DEPOT], "recipes": [Recipes.CRAFT_TANK],
+		"bonuses": {},
+		"description": "Танки и ангар. Только ими берут гнёзда.",
 	},
 	FUSION: {
 		"name": "Термоядерный синтез",

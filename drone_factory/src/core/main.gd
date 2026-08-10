@@ -11,6 +11,7 @@ var hud: Hud = null
 var build_menu: BuildMenu = null
 var build_bar: BuildBar = null
 var info_panel: InfoPanel = null
+var item_panel: ItemPanel = null
 var research_panel: ResearchPanel = null
 var settings_panel: SettingsPanel = null
 var achievements_panel: AchievementsPanel = null
@@ -82,6 +83,10 @@ func _ready() -> void:
 	build_menu.name = "BuildMenu"
 	add_child(build_menu)
 
+	item_panel = ItemPanel.new()
+	item_panel.name = "ItemPanel"
+	add_child(item_panel)
+
 	info_panel = InfoPanel.new()
 	info_panel.name = "InfoPanel"
 	add_child(info_panel)
@@ -126,6 +131,7 @@ func _ready() -> void:
 	touch.tapped.connect(build_controller.on_tap)
 	touch.long_pressed.connect(build_controller.on_long_press)
 	Events.notify.connect(func(text: String) -> void: Log.debug("Сообщение: " + text))
+	Events.item_inspected.connect(item_panel.show_item)
 
 
 func start_new_game(seed_value: int) -> void:
@@ -142,7 +148,9 @@ func start_new_game(seed_value: int) -> void:
 	hud.setup(world, simulation)
 	build_menu.setup(build_controller, world.research)
 	build_bar.setup(build_controller)
-	info_panel.setup(world, build_controller)
+	info_panel.setup(world, build_controller, simulation.get_system(CombatSystem) as CombatSystem)
+	item_panel.setup(world)
+	ItemInfo.forget_reserves()
 	research_panel.setup(
 		simulation.get_system(ResearchSystem) as ResearchSystem, world.research
 	)

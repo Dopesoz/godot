@@ -145,3 +145,31 @@ func test_starting_base_has_flying_drones() -> void:
 		(ports[0] as DronePort).drone_count() > 0,
 		"стартовые дроны должны быть в воздухе, а не лежать на складе"
 	)
+
+
+func test_port_asks_for_drones_so_they_reach_it() -> void:
+	# Именно этого не хватало: собранные дроны оседали на складе навсегда,
+	# потому что порт ни о чём не просил, а логистика возит только по запросам.
+	var free_slots: int = DronePort.MAX_DRONES - port.drone_count()
+	check(free_slots > 0, "для проверки нужен порт с местом под дронов")
+	var wanted: Dictionary = port.requests()
+	check(wanted.has(Items.DRONE), "порт с пустыми местами обязан просить дронов")
+	check_eq(int(wanted[Items.DRONE]), free_slots, "порт должен просить ровно недостающих")
+
+
+func test_full_port_asks_for_nothing() -> void:
+	port.output.add(Items.DRONE, DronePort.MAX_DRONES)
+	port.tick(Constants.TICK_DELTA, {})
+	check_eq(port.drone_count(), DronePort.MAX_DRONES, "порт должен принять всех дронов")
+	check(not port.requests().has(Items.DRONE), "полный порт не должен просить ещё")
+
+
+func test_pending_drones_are_not_requested_twice() -> void:
+	# Дрон уже лежит в порту и вот-вот взлетит — просить на его место второго
+	# нельзя, иначе склад опустеет впустую.
+	var before: int = int(port.requests().get(Items.DRONE, 0))
+	port.output.add(Items.DRONE, 1)
+	check_eq(
+		int(port.requests().get(Items.DRONE, 0)), before - 1,
+		"дрон, ожидающий взлёта, должен считаться занятым местом"
+	)

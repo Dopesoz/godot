@@ -29,6 +29,7 @@ enum Kind {
 	NEST,
 	TRITIUM_PLANT,
 	FUSION,
+	TANK_DEPOT,
 }
 
 const STORAGE := &"storage"
@@ -52,6 +53,7 @@ const WALL := &"wall"
 const NEST := &"nest"
 const TRITIUM_PLANT := &"tritium_plant"
 const FUSION := &"fusion"
+const TANK_DEPOT := &"tank_depot"
 
 ## Поля описания:
 ##   name          — подпись в интерфейсе;
@@ -201,8 +203,17 @@ const DEFS: Dictionary[StringName, Dictionary] = {
 		"name": "Гнездо жуков", "kind": Kind.NEST, "size": Vector2i(2, 2),
 		"cost": {}, "power_use": 0.0, "power_gen": 0.0, "power_range": 0,
 		"input": 0, "output": 0, "needs_ore": false, "tech": &"",
-		"player_built": false, "health": 600,
-		"description": "Отсюда приходят жуки. Разрушьте его, чтобы стало тише.",
+		"player_built": false, "demolishable": false, "health": 600,
+		"description": "Отсюда приходят жуки. Голыми руками не разобрать — "
+			+ "нужна техника. Чем старше гнездо, тем больше танков потребуется.",
+	},
+	TANK_DEPOT: {
+		"name": "Танковый ангар", "kind": Kind.TANK_DEPOT, "size": Vector2i(3, 3),
+		"cost": {Items.STEEL: 30, Items.CIRCUIT: 15, Items.GEAR: 20},
+		"power_use": 20.0, "power_gen": 0.0, "power_range": 0,
+		"input": 0, "output": 120, "needs_ore": false, "tech": &"armour",
+		"health": 500,
+		"description": "Дом для танков. Отсюда их отправляют жечь гнёзда.",
 	},
 	TRITIUM_PLANT: {
 		"name": "Тритиевый завод", "kind": Kind.TRITIUM_PLANT, "size": Vector2i(2, 2),
@@ -231,7 +242,8 @@ const DEFS: Dictionary[StringName, Dictionary] = {
 ## Порядок кнопок в меню строительства: от «поставь первым» к сложному.
 const BUILD_ORDER: Array[StringName] = [
 	DRILL, FURNACE, STORAGE, PORTER_HUT, SOLAR, WIND, DRONE_PORT, ASSEMBLER, LAB, POLE,
-	ACCUMULATOR, WALL, TURRET, WATER_PUMP, BOILER, REACTOR, TRITIUM_PLANT, FUSION, BEACON,
+	ACCUMULATOR, WALL, TURRET, TANK_DEPOT, WATER_PUMP, BOILER, REACTOR,
+	TRITIUM_PLANT, FUSION, BEACON,
 ]
 
 ## Базы курьеров: и порт дронов, и хижина носильщиков раздают задания
@@ -317,6 +329,11 @@ const DEFAULT_HEALTH: int = 300
 static func max_health(def_id: StringName) -> int:
 	var value: int = DEFS.get(def_id, {}).get("health", 0)
 	return value if value > 0 else DEFAULT_HEALTH
+
+
+## Можно ли снести здание вручную. Гнездо — нельзя: его берут только техникой.
+static func can_demolish(def_id: StringName) -> bool:
+	return DEFS.get(def_id, {}).get("demolishable", true)
 
 
 ## Мешает ли здание проходу жуков. Стены для того и ставят.

@@ -66,9 +66,14 @@ signal building_damaged(building_id: int)
 signal wave_started(wave_number: int, size: int)
 signal monster_killed(monster_id: int)
 signal turret_fired(turret_id: int)
+signal nest_evolved(nest_id: int)
+signal nest_destroyed(nest_id: int)
 
 signal notify(text: String)
 ## Игрок выбрал здание на карте (-1 — выбор снят).
+## Игрок тапнул по иконке ресурса и хочет о нём почитать.
+signal item_inspected(item_id: StringName)
+
 signal selection_changed(building_id: int)
 ## Игрок выбрал здание для постройки (&"" — режим строительства выключен).
 signal build_selection_changed(def_id: StringName)

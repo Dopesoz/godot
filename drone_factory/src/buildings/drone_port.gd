@@ -69,6 +69,22 @@ func tick(_delta: float, _context: Dictionary) -> void:
 	status = Status.WORKING
 
 
+## Порт просит дронов так же, как печь просит руду.
+##
+## Без этого собранные дроны навсегда оседали на складе: порт умеет поднимать
+## в воздух только то, что лежит в нём самом, а привозить туда груз некому —
+## логистика возит по запросам, а порт ни о чём не просил. Игрок собирал
+## дронов, видел их на складе и не понимал, почему летают всё те же двое.
+func requests() -> Dictionary[StringName, int]:
+	var needed: Dictionary[StringName, int] = {}
+	if not enabled or output == null:
+		return needed
+	var free_slots: int = MAX_DRONES - drones.size() - output.count(Items.DRONE)
+	if free_slots > 0:
+		needed[Items.DRONE] = mini(free_slots, output.free_space())
+	return needed
+
+
 ## Превращает предметы-дроны в летающие машины.
 func _absorb_drone_items() -> void:
 	var stored: int = output.count(Items.DRONE)

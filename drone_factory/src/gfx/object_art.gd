@@ -14,6 +14,11 @@ const BADGE_NO_ORE := &"badge_no_ore"
 const DRONE := &"drone_sprite"
 const PORTER := &"porter_sprite"
 const MONSTER := &"monster_sprite"
+const TANK := &"tank_sprite"
+const MONSTER_ALT := &"monster_sprite_alt"
+const TURRET_BARREL := &"turret_barrel"
+const DAMAGE_LIGHT := &"damage_light"
+const DAMAGE_HEAVY := &"damage_heavy"
 const SELECTION := &"selection"
 
 const BADGE_SIZE: int = 10
@@ -23,6 +28,8 @@ const DRONE_SIZE: int = 12
 const PORTER_SIZE: Vector2i = Vector2i(8, 12)
 ## Жук чуть крупнее дрона: стая должна читаться на карте без приближения.
 const MONSTER_SIZE: int = 14
+## Танк крупнее жука: колонна должна читаться как техника, а не как стая.
+const TANK_SIZE: int = 16
 const ICON_SIZE: int = 16
 
 
@@ -39,6 +46,11 @@ static func draw_all() -> Dictionary[StringName, PixelCanvas]:
 	sprites[DRONE] = _draw_drone()
 	sprites[PORTER] = _draw_porter()
 	sprites[MONSTER] = _draw_monster()
+	sprites[TANK] = _draw_tank()
+	sprites[MONSTER_ALT] = _draw_monster(true)
+	sprites[TURRET_BARREL] = _draw_turret_barrel()
+	sprites[DAMAGE_LIGHT] = _draw_damage(false)
+	sprites[DAMAGE_HEAVY] = _draw_damage(true)
 	sprites[SELECTION] = _draw_selection()
 	sprites[BADGE_NO_POWER] = _draw_badge(Palette.WARN, "power")
 	sprites[BADGE_NO_INPUT] = _draw_badge(Palette.BAD, "input")
@@ -77,6 +89,8 @@ static func _draw_building(def_id: StringName) -> PixelCanvas:
 			_draw_wall(canvas)
 		BuildingDefs.Kind.NEST:
 			_draw_nest(canvas)
+		BuildingDefs.Kind.TANK_DEPOT:
+			_draw_tank_depot(canvas)
 		BuildingDefs.Kind.TRITIUM_PLANT:
 			_draw_tritium_plant(canvas)
 		BuildingDefs.Kind.FUSION:
@@ -477,9 +491,8 @@ static func _draw_turret(canvas: PixelCanvas) -> void:
 	var cy: int = canvas.height / 2
 	canvas.circle(cx, cy, canvas.width / 3, Palette.METAL)
 	canvas.circle(cx, cy, canvas.width / 4, Palette.METAL_LIGHT)
-	# Ствол.
-	canvas.rect(cx, cy - 2, canvas.width / 2 - 2, 4, Palette.METAL_DARK)
-	canvas.rect(cx + 2, cy - 1, canvas.width / 2 - 5, 2, Palette.METAL_HILIGHT)
+	# Ствол здесь не рисуется: он живёт отдельным спрайтом и поворачивается
+	# за целью. Нарисованный в атласе, он бы навсегда смотрел вправо.
 	# Красная метка: боевое здание должно отличаться от производственного.
 	canvas.rect(cx - 3, cy - 3, 3, 3, Palette.BAD)
 
@@ -542,7 +555,9 @@ static func _draw_fusion(canvas: PixelCanvas) -> void:
 
 
 ## Жук: тёмное тело, жвалы и лапы. Смотрит вправо, поворот задаёт трансформ.
-static func _draw_monster() -> PixelCanvas:
+## Жук. Второй кадр отличается положением лап — этого достаточно, чтобы
+## стая читалась как бегущая, а не как ползущие по экрану картинки.
+static func _draw_monster(alternate: bool = false) -> PixelCanvas:
 	var canvas := PixelCanvas.new(MONSTER_SIZE, MONSTER_SIZE)
 	var cy: int = MONSTER_SIZE / 2
 	# Брюшко и грудь. Цвет нарочно тёплый и светлее гнезда: иначе стая
@@ -555,12 +570,85 @@ static func _draw_monster() -> PixelCanvas:
 	canvas.put(11, cy + 2, Palette.WARN)
 	canvas.put(12, cy - 1, Palette.WARN)
 	canvas.put(12, cy + 1, Palette.WARN)
-	# Лапы.
-	for x: int in [3, 6, 9] as Array[int]:
-		canvas.put(x, cy - 4, Palette.OUTLINE)
-		canvas.put(x, cy + 4, Palette.OUTLINE)
+	# Лапы: в двух кадрах они разведены в противофазе.
+	var lift: int = 1 if alternate else 0
+	for index: int in 3:
+		var x: int = 3 + index * 3
+		var phase: int = (index + lift) % 2
+		canvas.put(x, cy - 4 - phase, Palette.OUTLINE)
+		canvas.put(x, cy + 4 + (1 - phase), Palette.OUTLINE)
 	canvas.outline(Palette.OUTLINE)
 	return canvas
+
+
+## Ствол турели: рисуется поверх тумбы и поворачивается за целью.
+## Начало ствола — в центре спрайта, чтобы поворот шёл вокруг башни.
+static func _draw_turret_barrel() -> PixelCanvas:
+	var size: int = Constants.TILE_SIZE
+	var canvas := PixelCanvas.new(size, size)
+	var cy: int = size / 2
+	canvas.rect(size / 2, cy - 2, size / 2 - 2, 4, Palette.METAL_DARK)
+	canvas.rect(size / 2 + 2, cy - 1, size / 2 - 5, 2, Palette.METAL_HILIGHT)
+	canvas.circle(size / 2, cy, 4, Palette.METAL_LIGHT)
+	canvas.circle(size / 2, cy, 2, Palette.METAL_DARK)
+	return canvas
+
+
+## Накладка разрушений: трещины поверх здания. Полупрозрачная и без фона,
+## поэтому кладётся на любой спрайт и тайлится по площади крупных построек.
+static func _draw_damage(heavy: bool) -> PixelCanvas:
+	var size: int = Constants.TILE_SIZE
+	var canvas := PixelCanvas.new(size, size)
+	var seed_value: int = 6600 + (13 if heavy else 0)
+	var cracks: int = 5 if heavy else 3
+	for i: int in cracks:
+		var x: int = Rng.range_int(i, 1, seed_value, 3, size - 4)
+		var y: int = Rng.range_int(i, 2, seed_value, 3, size - 4)
+		var length: int = Rng.range_int(i, 3, seed_value, 4, 10)
+		var horizontal: bool = Rng.value01(i, 4, seed_value) > 0.5
+		for step: int in length:
+			var px: int = x + (step if horizontal else step / 3)
+			var py: int = y + (step / 3 if horizontal else step)
+			canvas.put(px, py, Palette.OUTLINE)
+			canvas.put(px + 1, py, Color(0.0, 0.0, 0.0, 0.35))
+	if heavy:
+		# Выжженное пятно: тяжёлые повреждения должны читаться издалека.
+		canvas.blob(size / 2, size / 2, 5.0, Color(0.0, 0.0, 0.0, 0.35), seed_value)
+	return canvas
+
+
+## Танк: корпус с башней и пушкой. Смотрит вправо, поворот задаёт трансформ.
+static func _draw_tank() -> PixelCanvas:
+	var canvas := PixelCanvas.new(TANK_SIZE, TANK_SIZE)
+	var cy: int = TANK_SIZE / 2
+	# Гусеницы.
+	canvas.rect(2, cy - 6, 11, 3, Palette.METAL_DARK)
+	canvas.rect(2, cy + 3, 11, 3, Palette.METAL_DARK)
+	# Корпус.
+	canvas.rect(2, cy - 3, 11, 6, Palette.METAL)
+	canvas.rect(3, cy - 2, 9, 2, Palette.METAL_LIGHT)
+	# Башня и ствол.
+	canvas.circle(7, cy, 3, Palette.METAL_LIGHT)
+	canvas.rect(10, cy - 1, 6, 2, Palette.METAL_DARK)
+	canvas.put(6, cy - 1, Palette.BAD)
+	canvas.outline(Palette.OUTLINE)
+	return canvas
+
+
+## Танковый ангар: широкие ворота и площадка перед ними.
+static func _draw_tank_depot(canvas: PixelCanvas) -> void:
+	_draw_base(canvas, Palette.METAL_DARK)
+	canvas.rect(3, 4, canvas.width - 6, canvas.height - 8, Palette.METAL)
+	# Ворота во всю ширину.
+	var gate: int = canvas.width - 14
+	canvas.rect(7, canvas.height - 12, gate, 10, Palette.OUTLINE)
+	canvas.rect(8, canvas.height - 11, gate - 2, 8, Palette.GLASS_DARK)
+	for x: int in range(9, 7 + gate - 2, 4):
+		canvas.vline(x, canvas.height - 11, 8, Palette.METAL_DARK)
+	# Косые предупреждающие полосы над воротами.
+	for i: int in range(4, canvas.width - 4, 6):
+		canvas.rect(i, 5, 3, 3, Palette.WARN)
+	canvas.rect(3, 4, canvas.width - 6, 1, Palette.METAL_HILIGHT)
 
 
 static func _draw_selection() -> PixelCanvas:

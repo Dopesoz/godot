@@ -81,6 +81,28 @@ static func stat_row(sprite_key: StringName, value: String) -> HBoxContainer:
 	return row
 
 
+## Строка показателя, по которой можно тапнуть, чтобы открыть справку.
+##
+## Кнопка-обёртка, а не обработчик на самой строке: тап должен ловиться по
+## всей площади вместе с иконкой и цифрой, а на телефоне мелкая цель — это
+## промах. Внутри — тот же stat_row, поэтому вид не расходится.
+static func item_button(item_id: StringName, value: String, action: Callable) -> Button:
+	var button := Button.new()
+	button.name = String(item_id)
+	button.focus_mode = Control.FOCUS_NONE
+	button.flat = true
+	button.custom_minimum_size = Vector2(0, UiTheme.TOUCH_MIN * 0.6)
+	button.pressed.connect(func() -> void: action.call(item_id))
+
+	var row: HBoxContainer = stat_row(item_id, value)
+	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for child: Node in row.get_children():
+		(child as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button.add_child(row)
+	return button
+
+
 static func label(text: String, size: int = UiTheme.FONT_NORMAL, color: Color = Palette.UI_TEXT) -> Label:
 	var node := Label.new()
 	node.text = text

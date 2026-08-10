@@ -66,10 +66,29 @@ func test_stats_show_stored_resources() -> void:
 	hud._refresh_stats()
 	var found: bool = false
 	for row: Node in hud._stats_box.get_children():
-		var value: Label = row.get_node("Value")
-		if value.text != "0":
+		# Строка показателя теперь кнопка: цифра лежит внутри неё.
+		var value: Label = row.find_child("Value", true, false) as Label
+		check(value != null, "в строке показателя должна быть цифра")
+		if value != null and value.text != "0":
 			found = true
 	check(found, "верхняя панель должна показывать стартовые запасы")
+
+
+func test_tapping_a_resource_asks_for_its_description() -> void:
+	# Тап по иконке ресурса — единственный вход в справку о предмете.
+	hud._refresh_stats()
+	var asked: Array[StringName] = []
+	var listener := func(item_id: StringName) -> void: asked.append(item_id)
+	Events.item_inspected.connect(listener)
+
+	var button: Button = hud._stats_box.get_child(0) as Button
+	check(button != null, "показатель должен быть кнопкой")
+	if button != null:
+		button.pressed.emit()
+	Events.item_inspected.disconnect(listener)
+
+	check_eq(asked.size(), 1, "тап должен запрашивать справку ровно один раз")
+	check(Items.exists(asked[0]) if not asked.is_empty() else false, "запрошен несуществующий предмет")
 
 
 func test_stats_refresh_is_throttled() -> void:

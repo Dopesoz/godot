@@ -25,12 +25,17 @@ var selected_id: int = 0
 var _visible_cells := Rect2i(0, 0, 0, 0)
 var _dirty: bool = true
 
+## Не чаще одной перерисовки на повреждения в этот интервал, секунды.
+const DAMAGE_REDRAW_INTERVAL: float = 0.3
+var _last_damage_redraw: float = -1000.0
+
 
 func _ready() -> void:
 	z_index = 2
 	Events.building_placed.connect(_on_building_changed)
 	Events.building_removed.connect(_on_building_changed)
 	Events.building_state_changed.connect(_on_building_changed)
+	Events.building_damaged.connect(_on_building_damaged)
 	Events.selection_changed.connect(_on_selection_changed)
 
 
@@ -88,6 +93,8 @@ func _draw_building(atlas: Texture2D, building: Building) -> void:
 	var position: Vector2 = Grid.cell_to_world(building.origin)
 	draw_texture_rect_region(atlas, Rect2(position, Vector2(region.size)), Rect2(region))
 
+	_draw_damage(atlas, building, position)
+
 	var badge: StringName = _badge_for(building)
 	if badge != &"":
 		var badge_region: Rect2i = Art.region(badge)
@@ -98,6 +105,28 @@ func _draw_building(atlas: Texture2D, building: Building) -> void:
 		draw_texture_rect_region(
 			atlas, Rect2(badge_position, Vector2(badge_region.size)), Rect2(badge_region)
 		)
+
+
+## Трещины поверх повреждённого здания.
+##
+## Накладка тайлится по всей занятой площади: у здания 3x3 одна кракелюра
+## в углу выглядела бы случайной точкой, а не разрушением.
+func _draw_damage(atlas: Texture2D, building: Building, position: Vector2) -> void:
+	var ratio: float = building.health_ratio()
+	if ratio >= 0.85:
+		return
+	var key: StringName = ObjectArt.DAMAGE_HEAVY if ratio < 0.4 else ObjectArt.DAMAGE_LIGHT
+	var region: Rect2i = Art.region(key)
+	if region.size == Vector2i.ZERO:
+		return
+	var tile: int = Constants.TILE_SIZE
+	for y: int in building.size.y:
+		for x: int in building.size.x:
+			draw_texture_rect_region(
+				atlas,
+				Rect2(position + Vector2(float(x * tile), float(y * tile)), Vector2(region.size)),
+				Rect2(region)
+			)
 
 
 func _draw_selection(atlas: Texture2D) -> void:
@@ -152,6 +181,17 @@ static func _badge_for(building: Building) -> StringName:
 			return ObjectArt.BADGE_NO_ORE
 		_:
 			return &""
+
+
+## Урон приходит десятками сообщений в секунду, а перерисовка слоя обходит
+## все видимые здания. Поэтому на повреждения слой откликается не чаще
+## нескольких раз в секунду — глазу этого достаточно.
+func _on_building_damaged(_building_id: int) -> void:
+	var now: float = float(Time.get_ticks_msec()) / 1000.0
+	if now - _last_damage_redraw < DAMAGE_REDRAW_INTERVAL:
+		return
+	_last_damage_redraw = now
+	_dirty = true
 
 
 func _on_building_changed(_building_id: int) -> void:

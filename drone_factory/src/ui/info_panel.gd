@@ -22,12 +22,19 @@ var _details: VBoxContainer = null
 var _recipes: VBoxContainer = null
 var _queue: VBoxContainer = null
 var _power_button: Button = null
+var _demolish_button: Button = null
+var _attack_button: Button = null
+var combat: CombatSystem = null
 var _timer: float = 0.0
 
 
-func setup(game_world: GameWorld, build_controller: BuildController) -> void:
+func setup(
+	game_world: GameWorld, build_controller: BuildController,
+	combat_system: CombatSystem = null
+) -> void:
 	world = game_world
 	controller = build_controller
+	combat = combat_system
 
 
 func _ready() -> void:
@@ -73,11 +80,20 @@ func _build_content(container: VBoxContainer) -> void:
 	_power_button.pressed.connect(_on_toggle_enabled)
 	actions.add_child(_power_button)
 
-	var demolish: Button = UiWidgets.text_button("Разобрать", UiTheme.TOUCH_MIN * 2)
-	demolish.name = "DemolishButton"
-	demolish.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	demolish.pressed.connect(_on_demolish)
-	actions.add_child(demolish)
+	_demolish_button = UiWidgets.text_button("Разобрать", UiTheme.TOUCH_MIN * 2)
+	_demolish_button.name = "DemolishButton"
+	_demolish_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_demolish_button.pressed.connect(_on_demolish)
+	actions.add_child(_demolish_button)
+
+	# Кнопка атаки живёт в той же строке и появляется только у гнёзд: держать
+	# её постоянно значило бы предлагать «атаковать» собственную печь.
+	_attack_button = UiWidgets.text_button("Атаковать", UiTheme.TOUCH_MIN * 2)
+	_attack_button.name = "AttackButton"
+	_attack_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_attack_button.visible = false
+	_attack_button.pressed.connect(_on_attack)
+	actions.add_child(_attack_button)
 
 
 func _process(delta: float) -> void:
@@ -107,6 +123,10 @@ func refresh() -> void:
 	_status_label.text = _status_line(building)
 	_status_label.add_theme_color_override("font_color", _status_color(building))
 	_power_button.text = "Включить" if not building.enabled else "Выключить"
+	var is_nest: bool = building is Nest
+	_attack_button.visible = is_nest
+	_power_button.visible = not is_nest
+	_demolish_button.disabled = not BuildingDefs.can_demolish(building.def_id)
 
 	_refresh_health(building)
 	_refresh_progress(building)
@@ -160,6 +180,12 @@ func _refresh_progress(building: Building) -> void:
 func _refresh_details(building: Building) -> void:
 	UiWidgets.clear_children(_details)
 
+	# Описание здания читается прямо в панели, а не только в меню строительства:
+	# через полчаса игры игрок уже не помнит, зачем ставил эту коробку.
+	var description: String = BuildingDefs.description(building.def_id)
+	if not description.is_empty():
+		_details.add_child(UiWidgets.paragraph(description, UiTheme.FONT_SMALL, Palette.UI_TEXT_DIM))
+
 	if building is Drill:
 		var drill: Drill = building
 		_details.add_child(UiWidgets.label(
@@ -180,6 +206,25 @@ func _refresh_details(building: Building) -> void:
 		_details.add_child(UiWidgets.label(
 			"Заряд: %d%%" % int(accumulator.charge_ratio() * 100.0), UiTheme.FONT_SMALL
 		))
+	elif building is TankDepot:
+		var depot: TankDepot = building
+		_details.add_child(UiWidgets.label(
+			"Танков: %d из %d" % [depot.tank_count(), TankDepot.MAX_TANKS], UiTheme.FONT_SMALL
+		))
+		_details.add_child(UiWidgets.label(
+			"Свободно: %d" % depot.idle_tanks().size(), UiTheme.FONT_SMALL, Palette.UI_TEXT_DIM
+		))
+	elif building is Nest:
+		var nest: Nest = building
+		_details.add_child(UiWidgets.label(
+			"Нужно танков одновременно: %d" % nest.required_tanks(),
+			UiTheme.FONT_NORMAL, Palette.WARN
+		))
+		_details.add_child(UiWidgets.paragraph(
+			"Гнездо нельзя разобрать. Отправьте колонну из ангара: приедет "
+			+ "меньше — техника только погибнет.",
+			UiTheme.FONT_SMALL, Palette.UI_TEXT_DIM
+		))
 
 	_add_inventory(building.input, "Приём")
 	_add_inventory(building.output, "Выдача")
@@ -198,7 +243,10 @@ func _add_inventory(inventory: Inventory, caption: String) -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", UiTheme.PAD_M)
 	for item_id: StringName in inventory.item_ids():
-		row.add_child(UiWidgets.stat_row(item_id, str(inventory.count(item_id))))
+		row.add_child(UiWidgets.item_button(
+			item_id, str(inventory.count(item_id)),
+			func(id: StringName) -> void: Events.item_inspected.emit(id)
+		))
 	_details.add_child(row)
 
 
@@ -308,6 +356,15 @@ func _on_toggle_enabled() -> void:
 	building.enabled = not building.enabled
 	Events.building_state_changed.emit(building.id)
 	refresh()
+
+
+## Приказ колонне. Панель не закрывается: игрок должен увидеть сообщение
+## о том, сколько танков выехало и хватает ли их.
+func _on_attack() -> void:
+	var nest: Nest = selected_building() as Nest
+	if nest == null or combat == null:
+		return
+	combat.order_attack(world.buildings, nest.id)
 
 
 func _on_demolish() -> void:

@@ -20,10 +20,19 @@ const RELOAD_SECONDS: float = 0.5
 const DAMAGE: int = 12
 ## Сколько патронов уходит на выстрел.
 const AMMO_PER_SHOT: int = 1
+## Сколько держится вспышка выстрела, секунды.
+##
+## Заметно больше одного тика: логика идёт 10 раз в секунду, а кадры — 60,
+## и вспышка короче тика мигала бы через раз.
+const FLASH_SECONDS: float = 0.18
 ## Сколько патронов турель просит про запас.
 const AMMO_STOCK: int = 40
 
 var reload_left: float = 0.0
+## Куда смотрит ствол. Ставит боевая система: только она знает, где цель.
+var aim_angle: float = 0.0
+## Сколько ещё секунд рисовать вспышку у среза ствола.
+var flash_left: float = 0.0
 ## Множитель урона от исследований. Ставит боевая система.
 var damage_multiplier: float = 1.0
 
@@ -57,6 +66,7 @@ func can_fire() -> bool:
 func fire() -> int:
 	input.remove(Items.AMMO, AMMO_PER_SHOT)
 	reload_left = RELOAD_SECONDS
+	flash_left = FLASH_SECONDS
 	Events.inventory_changed.emit(id)
 	return damage()
 
@@ -66,6 +76,7 @@ func tick(delta: float, _context: Dictionary) -> void:
 		status = Status.DISABLED
 		return
 	reload_left = maxf(reload_left - delta, 0.0)
+	flash_left = maxf(flash_left - delta, 0.0)
 	if not has_power():
 		status = Status.NO_POWER
 	elif input == null or input.count(Items.AMMO) < AMMO_PER_SHOT:

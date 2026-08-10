@@ -252,13 +252,35 @@ static func _route_is_walkable(
 	)
 
 
+## Что вообще лежит в окрестностях базы.
+##
+## Считается один раз на попытку и заменяет обход соседей ради каждого
+## запроса. Разница видна там, где просят то, чего рядом нет: порт постоянно
+## просит дронов, и без этого списка каждый такой запрос запускал полный обход
+## окрестностей впустую — на фабрике с десятками портов это заметная доля тика.
+static func _available_items(neighbours: Array[Building]) -> Dictionary[StringName, bool]:
+	var available: Dictionary[StringName, bool] = {}
+	for candidate: Building in neighbours:
+		if candidate.output == null:
+			continue
+		for item_id: StringName in candidate.output.item_ids():
+			available[item_id] = true
+	return available
+
+
 ## Задание «привезти сырьё тому, кто просит».
 func _assign_request(
 	drone: Drone, port: DronePort, registry: BuildingRegistry, neighbours: Array[Building]
 ) -> bool:
+	var on_hand: Dictionary[StringName, bool] = _available_items(neighbours)
+	if on_hand.is_empty():
+		return false
 	for consumer: Building in neighbours:
 		var requests: Dictionary[StringName, int] = consumer.requests()
 		for item_id: StringName in requests:
+			# Просят то, чего рядом нет, — обходить соседей ради этого незачем.
+			if not on_hand.has(item_id):
+				continue
 			var needed: int = int(requests[item_id]) - _reserved(_incoming, consumer.id, item_id)
 			if needed <= 0:
 				continue

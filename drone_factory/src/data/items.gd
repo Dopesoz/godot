@@ -26,6 +26,7 @@ const URANIUM_ORE := &"uranium_ore"
 const FUEL_ROD := &"fuel_rod"
 const AMMO := &"ammo"
 const TRITIUM := &"tritium"
+const TANK := &"tank"
 const GOLD := &"gold"
 const DIAMOND := &"diamond"
 const SCIENCE_RED := &"science_red"
@@ -110,6 +111,10 @@ const DEFS: Dictionary[StringName, Dictionary] = {
 		"color": Color8(150, 240, 220), "accent": Color8(220, 255, 250), "stack": 100,
 		# Тритий выделяют из воды на отдельном заводе, а не крафтят в сборщике.
 		"from_building": BuildingDefs.TRITIUM_PLANT,
+	},
+	TANK: {
+		"name": "Танк", "shape": Shape.DRONE,
+		"color": Palette.METAL, "accent": Palette.BAD, "stack": 20,
 	},
 	GOLD: {
 		"name": "Золото", "shape": Shape.INGOT,

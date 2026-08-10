@@ -10,7 +10,12 @@ extends GameSystem
 ##   * волны редкие и предупреждаются заранее — игрок не обязан сидеть у экрана;
 ##   * жуки идут к ближайшей постройке по прямой, без хитростей;
 ##   * стена и турель полностью закрывают вопрос, если их построили;
-##   * гнёзда можно снести, и тогда оттуда никто больше не придёт.
+##   * гнездо можно выжечь танками, и тогда оттуда больше никто не придёт.
+##
+## Гнездо нарочно нельзя разобрать как обычную постройку. Иначе вся ветка
+## обороны сводилась бы к «дойти и нажать снести», а танки оставались бы
+## украшением. Взамен гнездо требует колонну, и чем дольше оно стоит, тем
+## колонна больше — это единственная в игре причина строить армию.
 ##
 ## Из этого следует важное свойство баланса: наказание за отсутствие обороны
 ## — потеря нескольких зданий на краю базы, а не проигрыш. Проиграть в этой
@@ -93,7 +98,8 @@ func tick(delta: float, context: Dictionary) -> void:
 	_ticks += 1
 
 	_advance_monsters(registry, delta)
-	_fire_turrets(registry, research, delta)
+	_advance_tanks(registry, delta)
+	_fire_turrets(registry, research)
 	_maybe_start_wave(registry, float(context.get("time", 0.0)))
 	_cleanup()
 
@@ -123,6 +129,12 @@ func _maybe_start_wave(registry: BuildingRegistry, game_time: float) -> void:
 		return
 
 	wave_number += 1
+	# Гнёзда взрослеют вместе с волнами: чем дольше их терпят, тем большая
+	# колонна понадобится, чтобы выжечь.
+	if wave_number % Nest.WAVES_PER_LEVEL == 0:
+		for nest_building: Building in nests:
+			if (nest_building as Nest).evolve():
+				Events.nest_evolved.emit(nest_building.id)
 	var size: int = mini(
 		BASE_WAVE_SIZE + int(float(wave_number) * WAVE_GROWTH), MAX_WAVE_SIZE
 	)
@@ -206,11 +218,115 @@ func _destroy(registry: BuildingRegistry, building: Building) -> void:
 	registry.remove(building.id)
 
 
+## --- Танки -----------------------------------------------------------------
+
+## Все ангары, у которых есть свободная техника.
+static func depots(registry: BuildingRegistry) -> Array[Building]:
+	return registry.of_kind(BuildingDefs.Kind.TANK_DEPOT)
+
+
+## Сколько танков сейчас готово выехать.
+func idle_tank_count(registry: BuildingRegistry) -> int:
+	var count: int = 0
+	for depot: Building in depots(registry):
+		count += (depot as TankDepot).idle_tanks().size()
+	return count
+
+
+## Приказ: отправить всю свободную технику на гнездо.
+##
+## Возвращает, сколько танков выехало. Ноль означает «ехать некому», и это
+## отдельный от «танков мало» случай: игрок должен различать «ангар пуст»
+## и «гнездо слишком крепкое для такой колонны».
+func order_attack(registry: BuildingRegistry, nest_id: int) -> int:
+	var nest: Nest = registry.get_building(nest_id) as Nest
+	if nest == null:
+		return 0
+	var sent: int = 0
+	for depot: Building in depots(registry):
+		if not (depot as TankDepot).is_operational():
+			continue
+		for tank: Tank in (depot as TankDepot).idle_tanks():
+			tank.state = Tank.State.DRIVING
+			tank.target_id = nest_id
+			sent += 1
+	if sent == 0:
+		Events.notify.emit("Нет свободных танков")
+		return 0
+	if sent < nest.required_tanks():
+		Events.notify.emit(
+			"Отправлено %d, а гнезду нужно %d одновременно" % [sent, nest.required_tanks()]
+		)
+	else:
+		Events.notify.emit("Танки выехали: %d" % sent)
+	return sent
+
+
+func _advance_tanks(registry: BuildingRegistry, delta: float) -> void:
+	# Сначала считаем, сколько танков уже стоит у каждого гнезда: урон
+	# начисляется только когда их набралось достаточно.
+	var attackers: Dictionary[int, int] = {}
+	for depot_building: Building in depots(registry):
+		for tank: Tank in (depot_building as TankDepot).tanks:
+			if tank.state == Tank.State.ATTACKING and tank.is_alive():
+				attackers[tank.target_id] = attackers.get(tank.target_id, 0) + 1
+
+	for depot_building: Building in depots(registry):
+		var depot: TankDepot = depot_building
+		var survivors: Array[Tank] = []
+		for tank: Tank in depot.tanks:
+			if tank.is_alive():
+				_advance_tank(tank, depot, registry, attackers, delta)
+			if tank.is_alive():
+				survivors.append(tank)
+			else:
+				Events.notify.emit("Танк потерян")
+		if survivors.size() != depot.tanks.size():
+			depot.tanks = survivors
+
+
+func _advance_tank(
+	tank: Tank, depot: TankDepot, registry: BuildingRegistry,
+	attackers: Dictionary[int, int], delta: float
+) -> void:
+	match tank.state:
+		Tank.State.DRIVING:
+			var nest: Nest = registry.get_building(tank.target_id) as Nest
+			if nest == null:
+				tank.state = Tank.State.RETURNING
+				return
+			if tank.drive_to(nest.center(), delta):
+				tank.state = Tank.State.ATTACKING
+		Tank.State.ATTACKING:
+			var nest: Nest = registry.get_building(tank.target_id) as Nest
+			if nest == null:
+				tank.state = Tank.State.RETURNING
+				return
+			# Гнездо огрызается независимо от того, хватает колонны или нет:
+			# приехать малым числом — значит потерять технику зря.
+			tank.take_damage_over_time(float(Nest.RETALIATION), delta)
+			if attackers.get(tank.target_id, 0) < nest.required_tanks():
+				return
+			tank.damage_carry += float(Tank.DAMAGE_PER_SECOND) * delta
+			var whole: int = int(tank.damage_carry)
+			if whole <= 0:
+				return
+			tank.damage_carry -= float(whole)
+			if nest.take_damage(whole):
+				Events.notify.emit("Гнездо уничтожено")
+				Events.nest_destroyed.emit(nest.id)
+				registry.remove(nest.id)
+		Tank.State.RETURNING:
+			if tank.drive_to(depot.center(), delta):
+				tank.state = Tank.State.IDLE
+				tank.target_id = 0
+		_:
+			pass
+
+
 ## --- Турели ----------------------------------------------------------------
 
-func _fire_turrets(
-	registry: BuildingRegistry, research: ResearchState, delta: float
-) -> void:
+func _fire_turrets(registry: BuildingRegistry, research: ResearchState) -> void:
 	var turrets: Array[Building] = registry.of_kind(BuildingDefs.Kind.TURRET)
 	if turrets.is_empty():
 		return
@@ -220,11 +336,15 @@ func _fire_turrets(
 	for building: Building in turrets:
 		var turret: Turret = building
 		turret.damage_multiplier = bonus
-		turret.reload_left = maxf(turret.reload_left - delta, 0.0)
-		if not turret.can_fire():
-			continue
+		# Часы турели крутит она сама в своём tick(): здесь их трогать нельзя.
+		# Двойное уменьшение делало перезарядку вдвое короче заявленной.
+
+		# Ствол ведёт цель, даже пока идёт перезарядка: неподвижная турель
+		# посреди боя выглядит сломанной.
 		var victim: Monster = _closest_monster(turret)
-		if victim == null:
+		if victim != null:
+			turret.aim_angle = (victim.position - turret.center()).angle()
+		if not turret.can_fire() or victim == null:
 			continue
 		if victim.take_damage(turret.fire()):
 			Events.monster_killed.emit(victim.id)

@@ -21,6 +21,10 @@ var drone_renderer: DroneRenderer = null
 var porter_renderer: DroneRenderer = null
 ## Жуки рисуются тем же способом, что и курьеры.
 var monster_renderer: MonsterRenderer = null
+## Танки — отдельный слой: другой спрайт и другой источник данных.
+var tank_renderer: TankRenderer = null
+## Поворотные стволы и вспышки выстрелов.
+var combat_effects: CombatEffects = null
 ## Шкалы выработки над энергетическими зданиями.
 var power_gauges: PowerGauges = null
 
@@ -57,6 +61,14 @@ func _ready() -> void:
 	monster_renderer.name = "MonsterRenderer"
 	add_child(monster_renderer)
 
+	tank_renderer = TankRenderer.new()
+	tank_renderer.name = "TankRenderer"
+	add_child(tank_renderer)
+
+	combat_effects = CombatEffects.new()
+	combat_effects.name = "CombatEffects"
+	add_child(combat_effects)
+
 	power_gauges = PowerGauges.new()
 	power_gauges.name = "PowerGauges"
 	add_child(power_gauges)
@@ -76,6 +88,8 @@ func new_game(seed_value: int) -> Vector2i:
 	drone_renderer.setup(buildings, simulation)
 	porter_renderer.setup(buildings, simulation)
 	monster_renderer.setup(simulation)
+	tank_renderer.setup(buildings, simulation)
+	combat_effects.setup(buildings)
 	power_gauges.setup(buildings, simulation)
 	Events.world_generated.emit(seed_value)
 	return start_cell
@@ -114,6 +128,8 @@ func prepare_for_load(seed_value: int) -> void:
 	drone_renderer.setup(buildings, simulation)
 	porter_renderer.setup(buildings, simulation)
 	monster_renderer.setup(simulation)
+	tank_renderer.setup(buildings, simulation)
+	combat_effects.setup(buildings)
 	power_gauges.setup(buildings, simulation)
 	_visible_cells = Rect2i(0, 0, 0, 0)
 
@@ -136,6 +152,7 @@ func update_view(visible_world_rect: Rect2) -> void:
 	_visible_cells = cells
 	terrain_renderer.update_visible(cells)
 	building_renderer.set_view(cells)
+	combat_effects.set_view(cells)
 	power_gauges.set_view(cells)
 
 
