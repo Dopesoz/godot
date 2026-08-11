@@ -6,8 +6,12 @@ extends Control
 ## the clock and the simulation scheduler so it is obvious at a glance that the
 ## services are running rather than merely instantiated.
 ##
-## From Phase 1 on this scene stays as the boot step, but hands over to
-## res://scenes/world/world.tscn once the checks pass.
+## Once every check passes it hands over to the world scene. A failed check
+## keeps the report on screen instead — booting into a broken world would hide
+## the real cause behind whatever breaks next.
+
+const WORLD_SCENE := "res://scenes/world/world.tscn"
+const HANDOVER_DELAY := 1.5
 
 @onready var _report: RichTextLabel = %Report
 @onready var _status: Label = %Status
@@ -35,6 +39,20 @@ func _ready() -> void:
 	# and exits non-zero if anything failed.
 	if OS.get_cmdline_user_args().has("--selftest"):
 		_print_report_and_quit()
+		return
+
+	if _all_passed():
+		_status.text += "  —  entering the world…"
+		await get_tree().create_timer(HANDOVER_DELAY).timeout
+		SimScheduler.unregister(_probe)
+		get_tree().change_scene_to_file(WORLD_SCENE)
+
+
+func _all_passed() -> bool:
+	for result in _results:
+		if not result.ok:
+			return false
+	return true
 
 
 func _print_report_and_quit() -> void:
