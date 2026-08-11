@@ -23,6 +23,7 @@ var _results: Array[ArchitectureCheck.Result] = []
 
 func _ready() -> void:
 	InputActions.ensure_default_actions()
+	Platform.apply_performance_defaults()
 	AudioManager.play_music(&"main")
 
 	_probe = ArchitectureCheck.ProbeAgent.new()

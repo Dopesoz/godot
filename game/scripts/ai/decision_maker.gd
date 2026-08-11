@@ -76,51 +76,99 @@ const URGENCY_EXPONENT := 2.5
 ## delivers and the walk to get there, not that resting takes a while.
 const DURATION_CAP := 60.0
 
+## Hard ceiling on routes computed for one decision. With the bound above this
+## is rarely reached, but it guarantees that a citizen surrounded by a hundred
+## identical options still thinks in constant time.
+const MAX_PATHS_PER_DECISION := 6
+
 
 ## Best option for this citizen, or an empty dictionary when nothing is worth
 ## doing. Shape: {furniture, interaction, path, score, reason}.
+##
+## Two passes, because pathfinding dominates the cost of thinking: every option
+## is first scored as though it were next door (an upper bound), and routes are
+## then computed best-first only while a candidate could still beat the winner.
 static func choose(citizen: Citizen, grid: WorldGrid, furniture: FurnitureRegistry) -> Dictionary:
 	if grid == null or furniture == null:
 		return {}
 	var here := citizen.cell()
 	var template := citizen.data()
 	var walk_speed: float = template.walk_speed if template != null else 1.6
-	var best := {}
-	var best_score := MIN_SCORE
 
-	# One candidate list per need the citizen actually wants raised. Needs that
-	# are nearly full are skipped entirely, which keeps the search small.
+	# Pass one: score every candidate as if it were free to walk to. That is an
+	# upper bound on its real score, because travel can only ever subtract.
+	var candidates: Array = []
 	for need_type: int in citizen.needs:
 		if citizen.need(need_type) >= GameConstants.NEED_MAX - 5.0:
 			continue
 		for option: Dictionary in furniture.find_for_need(need_type):
 			var item: Furniture = option["furniture"]
 			var interaction: InteractionData = option["interaction"]
-			var access := item.access_cells(interaction, grid)
-			if access.is_empty():
+			if not citizen.can_perform(interaction) or not citizen.may_use(item):
 				continue
+			var optimistic := score_option(citizen, interaction, 0.0, item)
+			if optimistic <= MIN_SCORE:
+				continue
+			candidates.append({
+				"item": item,
+				"interaction": interaction,
+				"optimistic": optimistic,
+				# Straight-line distance is a lower bound on the real path, so it
+				# is a safe way to try the nearest promising things first.
+				"guess": float(IsoUtils.cell_distance(here, item.origin)),
+			})
+	if candidates.is_empty():
+		return {}
 
-			var path: Array[Vector2i] = []
-			var travel_minutes := 0.0
-			if not access.has(here):
-				# Sitting on a chair or lying in a bed means walking onto a cell
-				# the object itself occupies.
-				path = Pathfinder.find_path_to_any(grid, here, access, citizen.floor_index,
-						interaction.stands_on_furniture)
-				if path.is_empty():
-					continue
-				travel_minutes = float(path.size()) / maxf(walk_speed, 0.1)
+	# Best first, so the bound tightens as quickly as possible.
+	candidates.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return float(a["optimistic"]) / (1.0 + float(a["guess"]) * 0.05) \
+				> float(b["optimistic"]) / (1.0 + float(b["guess"]) * 0.05))
 
-			var score := score_option(citizen, interaction, travel_minutes)
-			if score > best_score:
-				best_score = score
-				best = {
-					"furniture": item,
-					"interaction": interaction,
-					"path": path,
-					"score": score,
-					"reason": describe(citizen, interaction),
-				}
+	# Pass two: pathfind only while a candidate could still win. Pathfinding is
+	# by far the most expensive part of a decision, and in a furnished city most
+	# candidates are hopeless before a single route is computed — this is what
+	# keeps a hundred residents affordable on a phone.
+	var best := {}
+	var best_score := MIN_SCORE
+	var paths_tried := 0
+	for candidate: Dictionary in candidates:
+		if float(candidate["optimistic"]) <= best_score:
+			break
+		if paths_tried >= MAX_PATHS_PER_DECISION:
+			break
+		var item: Furniture = candidate["item"]
+		var interaction: InteractionData = candidate["interaction"]
+		var access := item.access_cells(interaction, grid)
+		if access.is_empty():
+			continue
+
+		var path: Array[Vector2i] = []
+		var travel_minutes := 0.0
+		if not access.has(here):
+			paths_tried += 1
+			# Sitting on a chair or lying in a bed means walking onto a cell the
+			# object itself occupies.
+			path = Pathfinder.find_path_to_any(grid, here, access, citizen.floor_index,
+					interaction.stands_on_furniture)
+			if path.is_empty():
+				continue
+			travel_minutes = float(path.size()) / maxf(walk_speed, 0.1)
+
+		# Jitter lives here rather than in score_option so that the scoring
+		# itself stays deterministic and testable, while two identical residents
+		# still make different choices.
+		var score := score_option(citizen, interaction, travel_minutes, item)
+		score *= randf_range(1.0 - GameConstants.DECISION_JITTER, 1.0 + GameConstants.DECISION_JITTER)
+		if score > best_score:
+			best_score = score
+			best = {
+				"furniture": item,
+				"interaction": interaction,
+				"path": path,
+				"score": score,
+				"reason": describe(citizen, interaction),
+			}
 	return best
 
 

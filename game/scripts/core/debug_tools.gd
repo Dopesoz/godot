@@ -89,6 +89,54 @@ static func _build_flat(grid: WorldGrid, furniture: FurnitureRegistry, origin: V
 	furniture.place(&"tv", origin + Vector2i(6, 4))
 
 
+## `godot --path game -- --bench 200` fills the demo neighbourhood with N
+## residents and measures what the simulation actually costs, in milliseconds
+## per frame, split by detail level. Performance claims should be measured, not
+## assumed — especially for a phone.
+static func maybe_benchmark(world: Node) -> void:
+	var args := OS.get_cmdline_user_args()
+	var index := args.find("--bench")
+	if index == -1:
+		return
+	var wanted := int(args[index + 1]) if index + 1 < args.size() else 100
+	await world.get_tree().process_frame
+
+	var grid: WorldGrid = world.get("grid")
+	var citizens: CitizenRegistry = world.get_node_or_null("Citizens")
+	if grid == null or citizens == null:
+		return
+	# Spread them across the map so every level of detail is exercised, which is
+	# the realistic case — a real city is not all on screen at once.
+	var spawned := 0
+	for y in range(1, grid.size.y - 1):
+		for x in range(1, grid.size.x - 1):
+			if spawned >= wanted:
+				break
+			if citizens.spawn(Vector2i(x, y)) != null:
+				spawned += 1
+	GameClock.set_speed_index(GameConstants.TIME_SPEEDS.size() - 1)
+	print("[bench] %d residents spawned, measuring…" % spawned)
+
+	# Warm up first: the first frames include spawning and path caches.
+	for i in 30:
+		await world.get_tree().process_frame
+	var frames := 240
+	var started := Time.get_ticks_usec()
+	for i in frames:
+		await world.get_tree().process_frame
+	var elapsed_ms := float(Time.get_ticks_usec() - started) / 1000.0
+
+	print("[bench] %d residents | %.2f ms/frame total loop | %d full / %d reduced / %d abstract | %d fps equivalent" % [
+		spawned,
+		elapsed_ms / float(frames),
+		SimScheduler.counts[GameEnums.SimLOD.FULL],
+		SimScheduler.counts[GameEnums.SimLOD.REDUCED],
+		SimScheduler.counts[GameEnums.SimLOD.ABSTRACT],
+		roundi(1000.0 / maxf(elapsed_ms / float(frames), 0.001)),
+	])
+	world.get_tree().quit()
+
+
 ## `godot --path game -- --screenshot out.png` renders the world for a moment,
 ## saves a PNG and quits. Used to eyeball the isometric projection from a
 ## terminal (and, later, to diff visual regressions in CI) without a human

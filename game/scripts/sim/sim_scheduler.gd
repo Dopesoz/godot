@@ -36,6 +36,9 @@ var _budget_reduced: float = 0.0
 ## Camera focus in cells, set by the camera rig each frame.
 var _focus_cell: Vector2i = Vector2i.ZERO
 var _lod_refresh_timer: float = 0.0
+## Cached once: the radii depend on the device, not on the frame.
+var _full_radius: float = GameConstants.LOD_FULL_RADIUS
+var _reduced_radius: float = GameConstants.LOD_REDUCED_RADIUS
 
 ## Diagnostics for the debug overlay.
 var counts: Dictionary = {
@@ -47,6 +50,8 @@ var counts: Dictionary = {
 
 func _ready() -> void:
 	EventBus.hour_passed.connect(_on_hour_passed)
+	_full_radius = Platform.full_detail_radius()
+	_reduced_radius = Platform.reduced_detail_radius()
 
 
 func register(agent: SimAgent) -> void:
@@ -152,9 +157,9 @@ func _refresh_lods() -> void:
 			continue
 		var distance := float(IsoUtils.cell_distance(entry.agent.get_sim_cell(), _focus_cell))
 		var new_lod := GameEnums.SimLOD.ABSTRACT
-		if distance <= GameConstants.LOD_FULL_RADIUS:
+		if distance <= _full_radius:
 			new_lod = GameEnums.SimLOD.FULL
-		elif distance <= GameConstants.LOD_REDUCED_RADIUS:
+		elif distance <= _reduced_radius:
 			new_lod = GameEnums.SimLOD.REDUCED
 		if new_lod != entry.lod:
 			var old_lod := entry.lod

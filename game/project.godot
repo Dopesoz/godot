@@ -12,6 +12,7 @@ config_version=5
 config/name="My City: Inside"
 config/description="City builder + life simulation. Build a city, then step inside any building and watch its residents live."
 run/main_scene="res://scenes/boot/boot.tscn"
+config/icon="res://assets/icons/app_icon.svg"
 config/features=PackedStringArray("4.4", "GL Compatibility")
 
 [display]

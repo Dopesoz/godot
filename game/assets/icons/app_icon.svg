@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Placeholder application icon: an isometric house with a lit window, which
+       is the game in one picture. Replaced when real art arrives. -->
+  <rect width="512" height="512" rx="96" fill="#2b3550"/>
+  <!-- ground diamond -->
+  <path d="M256 300 L432 388 L256 476 L80 388 Z" fill="#3d5a45"/>
+  <!-- left wall -->
+  <path d="M120 214 L256 282 L256 420 L120 352 Z" fill="#8c8579"/>
+  <!-- right wall -->
+  <path d="M392 214 L256 282 L256 420 L392 352 Z" fill="#6f6a60"/>
+  <!-- roof -->
+  <path d="M256 96 L424 180 L256 264 L88 180 Z" fill="#b4553f"/>
+  <!-- lit window on the left wall -->
+  <path d="M158 268 L206 292 L206 340 L158 316 Z" fill="#ffd98a"/>
+  <!-- door on the right wall -->
+  <path d="M300 316 L344 294 L344 366 L300 388 Z" fill="#4a3a2c"/>
+</svg>

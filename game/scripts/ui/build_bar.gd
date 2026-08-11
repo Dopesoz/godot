@@ -7,6 +7,10 @@ extends PanelContainer
 ## under a thumb on a phone, so nothing here is smaller than 44 px.
 
 const MIN_BUTTON_SIZE := Vector2(96, 48)
+## On a phone the bar has to fit ten tools across a five-inch screen. Buttons
+## get shorter, never thinner than a fingertip, and the labels lose their
+## keyboard hints — there is no keyboard.
+const MOBILE_BUTTON_SIZE := Vector2(64, 56)
 
 ## Tool buttons, in the order they appear. Keyboard shortcut, label, tool mode.
 const TOOLS := [
@@ -46,6 +50,7 @@ var _message_timer: float = 0.0
 
 
 func _ready() -> void:
+	_apply_safe_area()
 	var world := get_tree().get_first_node_in_group(&"world")
 	_builder = world.get_node("Builder") as BuildController if world != null else null
 
@@ -68,11 +73,25 @@ func _ready() -> void:
 	_on_tool_mode_changed(GameEnums.ToolMode.NONE)
 
 
+## Keeps the bar clear of a notch or a gesture bar. Zero on hardware without
+## them, so desktop is untouched.
+func _apply_safe_area() -> void:
+	var margins := Platform.safe_area_margins()
+	if margins == Vector4i.ZERO:
+		return
+	offset_bottom -= float(margins.w)
+	offset_left += float(margins.x)
+	offset_right -= float(margins.z)
+
+
 func _build_tool_buttons() -> void:
+	var touch := Platform.has_touch()
+	var size := (MOBILE_BUTTON_SIZE if touch else MIN_BUTTON_SIZE) * Platform.ui_scale()
 	for entry in TOOLS:
 		var button := Button.new()
-		button.text = "%s\n%s" % [entry[1], OS.get_keycode_string(entry[0])]
-		button.custom_minimum_size = MIN_BUTTON_SIZE
+		button.text = entry[1] if touch else "%s\n%s" % [entry[1], OS.get_keycode_string(entry[0])]
+		button.custom_minimum_size = size
+		button.clip_text = true
 		button.toggle_mode = true
 		button.focus_mode = Control.FOCUS_NONE
 		button.pressed.connect(_on_tool_button.bind(entry[2] as int))

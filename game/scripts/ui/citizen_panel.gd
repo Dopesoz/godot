@@ -26,10 +26,31 @@ var _timer: float = 0.0
 
 func _ready() -> void:
 	visible = false
+	_apply_mobile_layout()
 	EventBus.selection_changed.connect(_on_selection_changed)
 	EventBus.citizen_removed.connect(_on_citizen_removed)
 	_build_bars()
 	_build_skill_rows()
+
+
+## On a phone there is no Escape key and no second mouse button, so the panel
+## needs a visible way to close, and it narrows so it does not cover the house
+## the player is watching.
+func _apply_mobile_layout() -> void:
+	var close := Button.new()
+	close.text = "×"
+	close.custom_minimum_size = Vector2(44, 44) * Platform.ui_scale()
+	close.flat = true
+	close.focus_mode = Control.FOCUS_NONE
+	close.pressed.connect(func() -> void: EventBus.selection_changed.emit(null))
+	%Title.get_parent().add_child(close)
+	%Title.get_parent().move_child(close, 0)
+
+	if not Platform.has_touch():
+		return
+	var margins := Platform.safe_area_margins()
+	offset_right -= float(margins.z)
+	offset_left = minf(offset_left + float(margins.z), -220.0)
 
 
 func _build_bars() -> void:
