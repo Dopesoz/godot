@@ -18,10 +18,18 @@ const MAX_NODES := 4000
 
 ## Cells from `from` to `to`, excluding the starting cell. Empty when there is
 ## no route, so callers can simply check `is_empty()`.
-static func find_path(grid: WorldGrid, from: Vector2i, to: Vector2i, floor_index: int = 0) -> Array[Vector2i]:
+##
+## `occupied_goal` exists for furniture you sit or lie on: a bed marks its own
+## cells as occupied, so the destination is by definition not walkable. Setting
+## it lets the final step land on the object while every other rule — walls,
+## doors, other furniture — still applies.
+static func find_path(grid: WorldGrid, from: Vector2i, to: Vector2i, floor_index: int = 0,
+		occupied_goal: bool = false) -> Array[Vector2i]:
 	if from == to:
 		return []
-	if not grid.in_bounds(to) or not grid.is_walkable(to, floor_index):
+	if not grid.in_bounds(to):
+		return []
+	if not occupied_goal and not grid.is_walkable(to, floor_index):
 		return []
 
 	var open: Array[Vector2i] = [from]
@@ -39,7 +47,13 @@ static func find_path(grid: WorldGrid, from: Vector2i, to: Vector2i, floor_index
 			break
 		for direction in [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]:
 			var neighbor: Vector2i = current + direction
-			if not grid.can_walk_between(current, neighbor, floor_index):
+			if not grid.in_bounds(neighbor):
+				continue
+			if not grid.is_edge_passable(WorldGrid.edge_between(current, neighbor), floor_index):
+				continue
+			# The goal may be an object the citizen is about to sit on; anything
+			# else on the way has to be genuinely walkable.
+			if not (occupied_goal and neighbor == to) and not grid.is_walkable(neighbor, floor_index):
 				continue
 			var next_cost: int = int(cost[current]) + 1
 			if cost.has(neighbor) and int(cost[neighbor]) <= next_cost:
@@ -79,13 +93,17 @@ static func _rebuild(came_from: Dictionary, to: Vector2i) -> Array[Vector2i]:
 
 
 ## Shortest path to whichever of `targets` is cheapest to reach. Used to walk to
-## "any free cell beside the stove" rather than to one particular cell.
-static func find_path_to_any(grid: WorldGrid, from: Vector2i, targets: Array[Vector2i], floor_index: int = 0) -> Array[Vector2i]:
+## "any free cell beside the stove", or to any cell of the bed itself.
+##
+## An empty result means either "already standing on a target" or "no route" —
+## callers check whether they are on one first.
+static func find_path_to_any(grid: WorldGrid, from: Vector2i, targets: Array[Vector2i], floor_index: int = 0,
+		occupied_goal: bool = false) -> Array[Vector2i]:
 	var best: Array[Vector2i] = []
 	for target in targets:
 		if target == from:
 			return []
-		var path := find_path(grid, from, target, floor_index)
+		var path := find_path(grid, from, target, floor_index, occupied_goal)
 		if path.is_empty():
 			continue
 		if best.is_empty() or path.size() < best.size():

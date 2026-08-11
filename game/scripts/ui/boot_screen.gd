@@ -37,6 +37,8 @@ func _ready() -> void:
 	_results.append(ArchitectureCheck.check_room_type_persistence())
 	_results.append(ArchitectureCheck.check_furniture_placement())
 	_results.append(ArchitectureCheck.check_citizen_life())
+	_results.append(ArchitectureCheck.check_priorities())
+	_results.append(ArchitectureCheck.check_sitting_furniture())
 	_render()
 
 	# Headless mode for CI: `godot --headless -- --selftest` prints the report

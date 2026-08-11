@@ -49,6 +49,7 @@ static func run_all() -> Array[Result]:
 	results.append(_check_database())
 	results.append(_check_content_integrity())
 	results.append(_check_pathfinding())
+	results.append(_check_decision_scoring())
 	results.append(_check_clock())
 	results.append(_check_economy())
 	results.append(_check_event_bus())
@@ -363,6 +364,67 @@ static func _check_pathfinding() -> Result:
 	return Result.new("Pathfinding", true, "walls block, doors open, objects block, no corner cutting")
 
 
+## The scoring formula is the whole of Phase 5, so it is checked directly rather
+## than by watching behaviour: urgency has to be convex, a full need has to be
+## worthless, distance has to cost, and personality has to actually tip a choice.
+static func _check_decision_scoring() -> Result:
+	# Convex urgency: the gap between 10 and 30 must exceed the gap between
+	# 30 and 50, otherwise nothing ever feels desperate.
+	var low := DecisionMaker.urgency(10.0)
+	var mid := DecisionMaker.urgency(30.0)
+	var high := DecisionMaker.urgency(50.0)
+	if not (low > mid and mid > high):
+		return Result.new("Decision scoring", false, "urgency is not monotonic")
+	if (low - mid) <= (mid - high):
+		return Result.new("Decision scoring", false, "urgency curve is flat, not convex")
+
+	var citizen := Citizen.new()
+	citizen.data_id = &"adult"
+	for type: int in GameEnums.NeedType.values():
+		citizen.needs[type] = 80.0
+	var snack := Database.get_furniture(&"fridge").interactions[0]
+
+	# A need that is nearly full is not worth acting on.
+	citizen.needs[GameEnums.NeedType.HUNGER] = 98.0
+	var when_full := DecisionMaker.score_option(citizen, snack, 0.0)
+	citizen.needs[GameEnums.NeedType.HUNGER] = 15.0
+	var when_starving := DecisionMaker.score_option(citizen, snack, 0.0)
+	if when_starving <= when_full * 5.0:
+		return Result.new("Decision scoring", false,
+				"starving scored %.3f against %.3f when full" % [when_starving, when_full])
+
+	# Walking is dead time and has to lower the score.
+	var nearby := DecisionMaker.score_option(citizen, snack, 0.0)
+	var far_away := DecisionMaker.score_option(citizen, snack, 30.0)
+	if far_away >= nearby:
+		return Result.new("Decision scoring", false, "distance did not reduce the score")
+
+	# Interrupting needs a clearly better option, not a marginally better one.
+	if DecisionMaker.should_interrupt(1.0, 1.2):
+		return Result.new("Decision scoring", false, "a marginally better option interrupted the citizen")
+	if not DecisionMaker.should_interrupt(1.0, 5.0):
+		return Result.new("Decision scoring", false, "a far better option failed to interrupt")
+
+	# Personality: with identical needs, the NEAT resident must value a shower
+	# more than the balanced one does.
+	var shower := Database.get_furniture(&"shower").interactions[0]
+	var neat := Citizen.new()
+	neat.data_id = &"neat"
+	for type: int in GameEnums.NeedType.values():
+		neat.needs[type] = 40.0
+	citizen.needs[GameEnums.NeedType.HUNGER] = 40.0
+	for type: int in GameEnums.NeedType.values():
+		citizen.needs[type] = 40.0
+	var neat_score := DecisionMaker.score_option(neat, shower, 0.0)
+	var plain_score := DecisionMaker.score_option(citizen, shower, 0.0)
+	if neat_score <= plain_score:
+		return Result.new("Decision scoring", false,
+				"a neat resident valued washing at %.3f, no more than a balanced one at %.3f"
+				% [neat_score, plain_score])
+	return Result.new("Decision scoring", true,
+			"urgency is convex, full needs score nothing, distance costs, personality tips the choice")
+
+
 static func _check_clock() -> Result:
 	var saved := GameClock.total_minutes
 	var saved_speed := GameClock.speed_index
@@ -576,6 +638,126 @@ static func check_citizen_life() -> Result:
 	if failure != "":
 		return Result.new("Citizen life", false, failure)
 	return Result.new("Citizen life", true, "hungry -> finds food -> walks -> eats -> fed, and it all saves")
+
+
+## Behaviour, not formula: with a fridge next door and a TV across the flat, a
+## starving resident must go and eat — and then, once fed, must stop choosing
+## food. This is the case Phase 4 got wrong whenever two needs were both low.
+static func check_priorities() -> Result:
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null:
+		return Result.new("Citizen priorities", false, "no scene tree")
+
+	var host := Node.new()
+	host.name = "SelfTestPriorities"
+	tree.root.add_child(host)
+	var grid := WorldGrid.new(Vector2i(24, 24), 1)
+	var furniture := FurnitureRegistry.new()
+	furniture.name = "Furniture"
+	host.add_child(furniture)
+	furniture._on_world_ready(grid)
+	var registry := CitizenRegistry.new()
+	registry.name = "Citizens"
+	host.add_child(registry)
+	registry._on_world_ready(grid)
+
+	var failure := ""
+	# Food two cells away, entertainment right next door.
+	furniture.place(&"fridge", Vector2i(6, 4))
+	furniture.place(&"tv", Vector2i(4, 5))
+	var citizen := registry.spawn(Vector2i(4, 4), &"adult")
+	if citizen == null:
+		failure = "could not spawn a resident"
+	else:
+		citizen.needs[GameEnums.NeedType.HUNGER] = 8.0
+		citizen.needs[GameEnums.NeedType.ENTERTAINMENT] = 35.0
+		for i in 60:
+			citizen.sim_tick(1.0, GameEnums.SimLOD.FULL)
+			if citizen.state != GameEnums.CitizenState.IDLE and citizen.state != GameEnums.CitizenState.WALKING:
+				break
+		if citizen.state != GameEnums.CitizenState.EATING:
+			failure = "a starving resident chose %s over food" % citizen.state_name()
+		elif not citizen.current_reason.contains("hunger"):
+			failure = "the resident cannot explain why it is eating ('%s')" % citizen.current_reason
+		else:
+			# Now full and bored: the same world must produce a different choice.
+			citizen.needs[GameEnums.NeedType.HUNGER] = 95.0
+			citizen.needs[GameEnums.NeedType.ENTERTAINMENT] = 10.0
+			var switched := false
+			for i in 200:
+				citizen.sim_tick(1.0, GameEnums.SimLOD.FULL)
+				if citizen.state == GameEnums.CitizenState.RELAXING:
+					switched = true
+					break
+			if not switched:
+				failure = "a fed but bored resident never went to the TV (state %s)" % citizen.state_name()
+
+	for citizen_id: int in registry.citizens.keys():
+		registry.remove(citizen_id)
+	host.queue_free()
+	SaveManager.unregister("furniture")
+	SaveManager.unregister("citizens")
+	if failure != "":
+		return Result.new("Citizen priorities", false, failure)
+	return Result.new("Citizen priorities", true, "urgent need wins over the closer option, and the choice changes when it is met")
+
+
+## Furniture you stand *on* — a bed, a chair, a sofa — marks its own cells as
+## occupied, so the destination is by definition not walkable. This is the case
+## that silently made every bed in the game unusable, and a citizen who cannot
+## sleep is not obvious from a screenshot, so it gets its own check.
+static func check_sitting_furniture() -> Result:
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null:
+		return Result.new("Using furniture you sit on", false, "no scene tree")
+
+	var host := Node.new()
+	host.name = "SelfTestSitting"
+	tree.root.add_child(host)
+	var grid := WorldGrid.new(Vector2i(16, 16), 1)
+	var furniture := FurnitureRegistry.new()
+	furniture.name = "Furniture"
+	host.add_child(furniture)
+	furniture._on_world_ready(grid)
+	var registry := CitizenRegistry.new()
+	registry.name = "Citizens"
+	host.add_child(registry)
+	registry._on_world_ready(grid)
+
+	var failure := ""
+	var bed := furniture.place(&"bed_single", Vector2i(3, 3))
+	var citizen := registry.spawn(Vector2i(9, 9), &"adult")
+	if bed == null or citizen == null:
+		failure = "could not set up a bed and a resident"
+	elif Pathfinder.find_path(grid, Vector2i(9, 9), Vector2i(3, 3), 0, true).is_empty():
+		failure = "no route onto the bed even with the goal allowed to be occupied"
+	else:
+		# Exhausted, everything else fine: the only sensible choice is the bed.
+		for type: int in GameEnums.NeedType.values():
+			citizen.needs[type] = 85.0
+		citizen.needs[GameEnums.NeedType.ENERGY] = 6.0
+		var slept := false
+		for i in 300:
+			citizen.sim_tick(1.0, GameEnums.SimLOD.FULL)
+			if citizen.state == GameEnums.CitizenState.SLEEPING:
+				slept = true
+				break
+		if not slept:
+			failure = "an exhausted resident never got into bed (state %s, %s)" % [
+					citizen.state_name(), citizen.current_reason]
+		elif not bed.cells().has(citizen.cell()):
+			failure = "the resident is sleeping at %s, which is not on the bed" % citizen.cell()
+		elif not bed.users.has(citizen.id):
+			failure = "the bed is not marked as occupied while slept in"
+
+	for citizen_id: int in registry.citizens.keys():
+		registry.remove(citizen_id)
+	host.queue_free()
+	SaveManager.unregister("furniture")
+	SaveManager.unregister("citizens")
+	if failure != "":
+		return Result.new("Using furniture you sit on", false, failure)
+	return Result.new("Using furniture you sit on", true, "a tired resident walks onto the bed and sleeps in it")
 
 
 ## Ticks are delivered over several frames, so this one is checked after a short

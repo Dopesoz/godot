@@ -11,9 +11,9 @@ extends SimAgent
 ##   IDLE ──pick a goal──> WALKING ──arrive──> using state ──done──> IDLE
 ##                            └── no route ───────────────────────────┘
 ##
-## Phase 4 picks the goal by "lowest need first". Phase 5 replaces that one
-## method with proper utility scoring (distance, priority, schedule, mood) —
-## everything else here stays as it is.
+## Choosing *what* to do is not here: it lives in DecisionMaker, which scores
+## every reachable option. This file only carries it out — walk there, do it,
+## pay out the needs, and notice when something more urgent comes up.
 
 ## How far a need may fall before the citizen goes looking for a fix.
 const SEEK_THRESHOLD := GameConstants.NEED_URGENT_THRESHOLD
@@ -40,12 +40,21 @@ var interaction_elapsed: float = 0.0
 ## it simply stays where it was spawned.
 var home_room_id: int = -1
 
+## What the citizen is doing and why, in words. Shown in the inspector: an AI
+## that can explain itself is worth more than a slightly cleverer one that
+## cannot.
+var current_reason: String = ""
+## Score of the current activity, kept so a candidate can be compared against it.
+var current_score: float = 0.0
+
 var _data: CitizenData
 var _grid: WorldGrid
 var _furniture: FurnitureRegistry
 ## Re-picking a goal every single tick would thrash; wait this many game minutes
 ## after a failure before trying again.
 var _retry_in: float = 0.0
+## Countdown to the next "is there something better to do?" check.
+var _recheck_in: float = GameConstants.AI_RECHECK_MINUTES
 
 
 func setup(grid: WorldGrid, furniture: FurnitureRegistry, template: CitizenData) -> void:
@@ -112,8 +121,9 @@ func sim_tick(minutes: float, lod: GameEnums.SimLOD) -> void:
 ## hour ends up exactly as hungry as one simulated ten times a second.
 func _decay_needs(minutes: float) -> void:
 	var template := data()
+	var scale: float = GameConstants.STATE_DECAY_SCALE.get(state, 1.0)
 	for type: int in needs:
-		var per_hour: float = GameConstants.NEED_DECAY_PER_HOUR.get(type, 0.0)
+		var per_hour: float = GameConstants.NEED_DECAY_PER_HOUR.get(type, 0.0) * scale
 		if template != null:
 			per_hour *= template.decay_multiplier(type)
 		var before: float = needs[type]
@@ -128,41 +138,38 @@ func _tick_idle() -> void:
 		return
 	var goal := _choose_goal()
 	if goal.is_empty():
-		# Nothing worth doing right now; check again shortly instead of every
-		# tick, so an empty house costs almost nothing.
+		# Nothing worth getting up for. Take a short stroll instead of freezing
+		# in place, then reconsider — an idle house still looks alive.
 		_retry_in = 20.0
+		_begin_wander()
 		return
 	_begin_walk(goal)
 
 
-## Phase 4 goal selection: fix whatever is worst, using whatever object in the
-## world offers it. Note that no furniture is named here — the citizen asks the
-## world "what can raise my hunger?" and takes the closest answer.
 func _choose_goal() -> Dictionary:
-	if _furniture == null or _grid == null:
-		return {}
-	var worst := lowest_need()
-	if need(worst) > SEEK_THRESHOLD:
-		return {}
+	return DecisionMaker.choose(self, _grid, _furniture)
+
+
+## A few steps to a nearby free cell, so residents with nothing urgent to do
+## still move around instead of standing like furniture.
+func _begin_wander() -> void:
+	if _grid == null:
+		return
 	var here := cell()
-	var best := {}
-	var best_length := 1 << 30
-	for option: Dictionary in _furniture.find_for_need(worst):
-		var item: Furniture = option["furniture"]
-		var interaction: InteractionData = option["interaction"]
-		var access := item.access_cells(interaction, _grid)
-		if access.is_empty():
-			continue
-		if access.has(here):
-			var no_walk: Array[Vector2i] = []
-			return {"furniture": item, "interaction": interaction, "path": no_walk}
-		var route := Pathfinder.find_path_to_any(_grid, here, access, floor_index)
-		if route.is_empty():
-			continue
-		if route.size() < best_length:
-			best_length = route.size()
-			best = {"furniture": item, "interaction": interaction, "path": route}
-	return best
+	var candidates: Array[Vector2i] = []
+	for offset in IsoUtils.neighbors(here):
+		if _grid.can_walk_between(here, offset, floor_index):
+			candidates.append(offset)
+	if candidates.is_empty():
+		return
+	var destination: Vector2i = candidates[randi() % candidates.size()]
+	var route: Array[Vector2i] = [destination]
+	path = route
+	target_furniture_id = -1
+	target_interaction = null
+	current_reason = "Wandering"
+	current_score = 0.0
+	_set_state(GameEnums.CitizenState.WALKING)
 
 
 func _begin_walk(goal: Dictionary) -> void:
@@ -175,6 +182,8 @@ func _begin_walk(goal: Dictionary) -> void:
 	item.users.append(id)
 	target_furniture_id = item.id
 	target_interaction = interaction
+	current_reason = String(goal.get("reason", interaction.display_name))
+	current_score = float(goal.get("score", 0.0))
 	var route: Array[Vector2i] = goal["path"]
 	path = route
 	if path.is_empty():
@@ -216,6 +225,11 @@ func _tick_walking(minutes: float, lod: GameEnums.SimLOD) -> void:
 func _start_interaction() -> void:
 	var item := _target()
 	if item == null or target_interaction == null:
+		# Arriving from a wander: nothing to do here, and nothing went wrong.
+		if target_furniture_id == -1 and target_interaction == null:
+			current_reason = ""
+			_set_state(GameEnums.CitizenState.IDLE)
+			return
 		_abort_goal()
 		return
 	interaction_elapsed = 0.0
@@ -230,11 +244,38 @@ func _tick_interaction(minutes: float) -> void:
 		_abort_goal()
 		return
 	interaction_elapsed += minutes
+	_check_for_interruption(minutes)
+	if target_interaction == null:
+		return
 	for type: int in target_interaction.need_effects:
 		var gain := target_interaction.rate_per_minute(type) * minutes
 		needs[type] = clampf(need(type) + gain, GameConstants.NEED_MIN, GameConstants.NEED_MAX)
 	if interaction_elapsed >= target_interaction.duration_minutes:
 		_finish_interaction()
+
+
+## Something urgent can come up mid-activity — that is the difference between a
+## schedule and a simulation. Re-scoring is not free, so it happens on a timer
+## rather than every tick, and only a clearly better option wins (DecisionMaker
+## holds the hysteresis).
+func _check_for_interruption(minutes: float) -> void:
+	_recheck_in -= minutes
+	if _recheck_in > 0.0:
+		return
+	_recheck_in = GameConstants.AI_RECHECK_MINUTES
+	var candidate := _choose_goal()
+	if candidate.is_empty():
+		return
+	if not DecisionMaker.should_interrupt(current_score, float(candidate.get("score", 0.0))):
+		return
+	var item := _target()
+	if item != null:
+		item.users.erase(id)
+		EventBus.citizen_interaction_finished.emit(id, item.id, target_interaction.display_name)
+	target_furniture_id = -1
+	target_interaction = null
+	interaction_elapsed = 0.0
+	_begin_walk(candidate)
 
 
 func _finish_interaction() -> void:
@@ -250,6 +291,8 @@ func _finish_interaction() -> void:
 	target_furniture_id = -1
 	target_interaction = null
 	interaction_elapsed = 0.0
+	current_reason = ""
+	current_score = 0.0
 	_set_state(GameEnums.CitizenState.IDLE)
 
 

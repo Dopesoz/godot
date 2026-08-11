@@ -24,37 +24,45 @@ static func build_demo(world: Node) -> void:
 		push_warning("DebugTools: the world is not ready for a demo build")
 		return
 
+	# A 7x6 flat: bedroom top-left, bathroom top-right, kitchen and living room
+	# along the bottom. Keep doorways clear of furniture — a stove in the doorway
+	# makes the room behind it unreachable, and the residents are right to
+	# ignore it.
 	var origin := Vector2i(16, 16)
-	# Outer shell, then one wall splitting off the two small rooms.
 	for edge in WorldGrid.rect_perimeter_edges(origin, origin + Vector2i(6, 5)):
 		grid.set_edge(edge, GameEnums.EdgeType.WALL)
+	# Bedroom: south and east walls.
 	for x in range(0, 4):
 		grid.set_edge(WorldGrid.edge_key(origin + Vector2i(x, 2), Vector2i.DOWN), GameEnums.EdgeType.WALL)
 	for y in range(0, 3):
 		grid.set_edge(WorldGrid.edge_key(origin + Vector2i(3, y), Vector2i.RIGHT), GameEnums.EdgeType.WALL)
+	# Bathroom: south wall.
+	for x in range(4, 7):
+		grid.set_edge(WorldGrid.edge_key(origin + Vector2i(x, 1), Vector2i.DOWN), GameEnums.EdgeType.WALL)
 
-	# Doors: street -> living area, living -> bedroom, living -> bathroom.
-	grid.set_edge(WorldGrid.edge_key(origin + Vector2i(5, 5), Vector2i.DOWN), GameEnums.EdgeType.DOOR)
 	grid.set_edge(WorldGrid.edge_key(origin + Vector2i(1, 2), Vector2i.DOWN), GameEnums.EdgeType.DOOR)
-	grid.set_edge(WorldGrid.edge_key(origin + Vector2i(5, 1), Vector2i.LEFT), GameEnums.EdgeType.DOOR)
-	# A window, because a flat without one is depressing.
+	grid.set_edge(WorldGrid.edge_key(origin + Vector2i(5, 1), Vector2i.DOWN), GameEnums.EdgeType.DOOR)
+	grid.set_edge(WorldGrid.edge_key(origin + Vector2i(5, 5), Vector2i.DOWN), GameEnums.EdgeType.DOOR)
 	grid.set_edge(WorldGrid.edge_key(origin + Vector2i(1, 0), Vector2i.UP), GameEnums.EdgeType.WINDOW)
+	grid.set_edge(WorldGrid.edge_key(origin + Vector2i(3, 5), Vector2i.DOWN), GameEnums.EdgeType.WINDOW)
 
 	for cell in IsoUtils.cells_in_rect(origin, origin + Vector2i(6, 5)):
 		grid.set_floor_material(cell, &"floor_wood")
 	for cell in IsoUtils.cells_in_rect(origin + Vector2i(4, 0), origin + Vector2i(6, 1)):
 		grid.set_floor_material(cell, &"floor_tile")
+	for cell in IsoUtils.cells_in_rect(origin, origin + Vector2i(3, 2)):
+		grid.set_floor_material(cell, &"floor_carpet")
 
 	furniture.place(&"bed_single", origin + Vector2i(0, 0))
 	furniture.place(&"lamp", origin + Vector2i(2, 0))
 	furniture.place(&"shower", origin + Vector2i(5, 0))
-	furniture.place(&"fridge", origin + Vector2i(0, 3))
-	furniture.place(&"stove", origin + Vector2i(1, 3))
-	furniture.place(&"table_dining", origin + Vector2i(3, 3))
-	furniture.place(&"sofa", origin + Vector2i(3, 5))
-	furniture.place(&"tv", origin + Vector2i(6, 5))
+	furniture.place(&"fridge", origin + Vector2i(0, 4))
+	furniture.place(&"stove", origin + Vector2i(1, 4))
+	furniture.place(&"table_dining", origin + Vector2i(3, 4))
+	furniture.place(&"sofa", origin + Vector2i(2, 5))
+	furniture.place(&"tv", origin + Vector2i(6, 4))
 
-	var resident := citizens.spawn(origin + Vector2i(2, 4))
+	var resident := citizens.spawn(origin + Vector2i(2, 3))
 	if resident != null:
 		EventBus.notify("Demo flat built, %s moved in" % resident.citizen_name)
 

@@ -85,6 +85,18 @@ const NEED_DECAY_PER_HOUR: Dictionary = {
 	GameEnums.NeedType.SOCIAL: 2.0,
 }
 
+## Needs move at different rates depending on what the citizen is doing: you do
+## not get dirty at the usual rate while asleep. Keys are GameEnums.CitizenState.
+const STATE_DECAY_SCALE: Dictionary = {
+	GameEnums.CitizenState.SLEEPING: 0.35,
+	GameEnums.CitizenState.EATING: 0.7,
+	GameEnums.CitizenState.SHOWERING: 0.7,
+	GameEnums.CitizenState.WORKING: 1.2,
+}
+
+## How often a busy citizen asks whether something more urgent has come up.
+const AI_RECHECK_MINUTES: float = 15.0
+
 ## A need at or below this value makes the citizen actively look for a fix.
 const NEED_URGENT_THRESHOLD: float = 30.0
 const NEED_MAX: float = 100.0

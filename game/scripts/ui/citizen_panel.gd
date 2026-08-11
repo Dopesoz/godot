@@ -13,6 +13,7 @@ const BAR_SIZE := Vector2(150, 14)
 
 @onready var _title: Label = %Title
 @onready var _subtitle: Label = %Subtitle
+@onready var _activity: Label = %Activity
 @onready var _needs_box: VBoxContainer = %Needs
 
 var _citizen: Citizen
@@ -81,8 +82,13 @@ func _refresh() -> void:
 	var job := Database.get_job(template.job_id) if template != null and template.job_id != &"" else null
 	_title.text = _citizen.citizen_name
 	var occupation := job.display_name if job != null else "Unemployed"
+	var personality := String(CitizenData.Personality.keys()[template.personality]).capitalize() if template != null else "—"
 	_subtitle.text = "%s   •   %s   •   cell %d, %d" % [
-		occupation, _citizen.state_name(), _citizen.cell().x, _citizen.cell().y]
+		occupation, personality, _citizen.cell().x, _citizen.cell().y]
+	# What they are doing and, crucially, why they chose it.
+	_activity.text = _citizen.state_name()
+	if _citizen.current_reason != "":
+		_activity.text += "  —  " + _citizen.current_reason
 
 	var driving := _citizen.lowest_need()
 	for type: int in _bars:
