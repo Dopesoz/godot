@@ -15,6 +15,10 @@ const MUSIC := {
 
 ## Linear volume, 0..1. Music sits under everything else by design.
 const MUSIC_VOLUME := 0.55
+const SFX_VOLUME := 0.5
+## Voices for overlapping effects. Six is enough for a busy city and cheap
+## enough that they can all exist from startup rather than being spawned.
+const SFX_VOICES := 6
 const FADE_SECONDS := 2.0
 
 var muted: bool = false
@@ -22,6 +26,9 @@ var current_track: StringName = &""
 
 var _player: AudioStreamPlayer
 var _tween: Tween
+var _sfx_bank: Dictionary = {}
+var _sfx_players: Array[AudioStreamPlayer] = []
+var _sfx_next: int = 0
 
 
 func _ready() -> void:
@@ -31,6 +38,14 @@ func _ready() -> void:
 	_player.bus = &"Master"
 	_player.volume_db = linear_to_db(0.0)
 	add_child(_player)
+
+	_sfx_bank = Sfx.bank()
+	for i in SFX_VOICES:
+		var voice := AudioStreamPlayer.new()
+		voice.volume_db = linear_to_db(SFX_VOLUME)
+		add_child(voice)
+		_sfx_players.append(voice)
+	_connect_sounds()
 
 
 ## Music that is still playing when the tree shuts down leaves its stream and
@@ -42,6 +57,38 @@ func _exit_tree() -> void:
 	if _player != null:
 		_player.stop()
 		_player.stream = null
+
+
+## Plays one of the generated effects. Voices are used round-robin, so a burst
+## of events layers instead of cutting itself off.
+func play_sfx(key: StringName, pitch: float = 1.0) -> void:
+	if muted or _sfx_players.is_empty() or DisplayServer.get_name() == "headless":
+		return
+	var stream: AudioStream = _sfx_bank.get(key)
+	if stream == null:
+		return
+	var voice := _sfx_players[_sfx_next % _sfx_players.size()]
+	_sfx_next += 1
+	voice.stream = stream
+	voice.pitch_scale = clampf(pitch, 0.5, 2.0)
+	voice.play()
+
+
+## The game speaks for itself: rather than every system remembering to make a
+## noise, the sounds hang off the events those systems already emit.
+func _connect_sounds() -> void:
+	EventBus.furniture_placed.connect(func(_f: Variant) -> void: play_sfx(&"build"))
+	EventBus.building_placed.connect(func(_b: Variant) -> void: play_sfx(&"build", 0.8))
+	EventBus.furniture_removed.connect(func(_id: int) -> void: play_sfx(&"build", 1.3))
+	EventBus.build_rejected.connect(func(_reason: String) -> void: play_sfx(&"reject"))
+	EventBus.tool_mode_changed.connect(func(_mode: int) -> void: play_sfx(&"click"))
+	EventBus.city_event_started.connect(func(_id: StringName, _name: String) -> void: play_sfx(&"chime", 0.85))
+	EventBus.citizen_interaction_started.connect(
+			func(_c: int, _f: int, _a: String) -> void: play_sfx(&"use", randf_range(0.9, 1.15)))
+	# Only worthwhile amounts are worth a sound; wages arrive a coin at a time.
+	EventBus.money_changed.connect(func(_amount: int, delta: int) -> void:
+		if absi(delta) >= 100:
+			play_sfx(&"cash" if delta > 0 else &"reject", 1.0 if delta > 0 else 0.8))
 
 
 func play_music(key: StringName, fade: bool = true) -> void:
@@ -88,6 +135,8 @@ func set_muted(value: bool) -> void:
 	if muted == value:
 		return
 	muted = value
+	for voice in _sfx_players:
+		voice.volume_db = linear_to_db(0.0001 if muted else SFX_VOLUME)
 	_fade_to(_target_volume(), 0.4)
 	EventBus.notify("Music %s" % ("muted" if muted else "on"))
 

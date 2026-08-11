@@ -25,6 +25,7 @@ var _font: Font
 ## Cached {depth, kind, ref} entries for the things that rarely change.
 var _static_entries: Array = []
 var _static_dirty: bool = true
+var _selected_id: int = -1
 
 
 func _ready() -> void:
@@ -42,6 +43,13 @@ func _ready() -> void:
 	EventBus.citizen_state_changed.connect(_on_static_changed)
 	# Windows glow after dark, so the pass is repainted when the light moves.
 	EventBus.daylight_changed.connect(_on_static_changed)
+	EventBus.selection_changed.connect(_on_selection_changed)
+
+
+func _on_selection_changed(selected: Variant) -> void:
+	var citizen := selected as Citizen
+	_selected_id = citizen.id if citizen != null else -1
+	queue_redraw()
 
 
 func _on_world_ready(world: WorldGrid) -> void:
@@ -57,7 +65,9 @@ func _on_static_changed(_a: Variant = null, _b: Variant = null) -> void:
 
 func _process(_delta: float) -> void:
 	# Redraw only when something can actually have moved.
-	if _citizens != null and _citizens.count() > 0 and not GameClock.is_paused():
+	# Animation continues while paused — a pulsing "in use" outline and a
+	# selection ring should not freeze just because time did.
+	if (_citizens != null and _citizens.count() > 0) or _furniture_in_use():
 		queue_redraw()
 
 
@@ -87,7 +97,17 @@ func _draw() -> void:
 			"furniture":
 				Painters.draw_furniture(self, entry["ref"])
 			"citizen":
-				Painters.draw_citizen(self, entry["ref"], _font, show_names)
+				var citizen: Citizen = entry["ref"]
+				Painters.draw_citizen(self, citizen, _font, show_names, citizen.id == _selected_id)
+
+
+func _furniture_in_use() -> bool:
+	if _furniture == null:
+		return false
+	for item: Furniture in _furniture.items.values():
+		if not item.users.is_empty():
+			return true
+	return false
 
 
 ## Depth conventions, all in cell units along the x + y axis:

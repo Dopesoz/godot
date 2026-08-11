@@ -54,6 +54,7 @@ static func run_all() -> Array[Result]:
 	results.append(_check_skills())
 	results.append(_check_variety())
 	results.append(_check_city_events())
+	results.append(_check_sound_bank())
 	results.append(_check_clock())
 	results.append(_check_economy())
 	results.append(_check_household_costs())
@@ -641,6 +642,29 @@ static func _check_city_events() -> Result:
 	return Result.new("City events", true,
 			"%d events; they pay out once, bend the city's priorities while they run, and expire"
 			% Database.events.size())
+
+
+## The sound effects are generated rather than loaded, so what has to hold is
+## that every key produces a real, non-silent, correctly formatted stream.
+static func _check_sound_bank() -> Result:
+	var bank := Sfx.bank()
+	if bank.is_empty():
+		return Result.new("Sound effects", false, "the sound bank is empty")
+	for key: StringName in bank:
+		var stream: AudioStreamWAV = bank[key]
+		if stream == null:
+			return Result.new("Sound effects", false, "'%s' produced nothing" % key)
+		if stream.data.size() < 512:
+			return Result.new("Sound effects", false, "'%s' is too short to hear" % key)
+		if stream.mix_rate != Sfx.SAMPLE_RATE or stream.format != AudioStreamWAV.FORMAT_16_BITS:
+			return Result.new("Sound effects", false, "'%s' has the wrong format" % key)
+		# Silence would pass every other check, so look for actual signal.
+		var peak := 0
+		for i in range(0, mini(stream.data.size(), 8192), 2):
+			peak = maxi(peak, absi(stream.data.decode_s16(i)))
+		if peak < 1000:
+			return Result.new("Sound effects", false, "'%s' is silent" % key)
+	return Result.new("Sound effects", true, "%d effects generated, all audible" % bank.size())
 
 
 static func _check_clock() -> Result:

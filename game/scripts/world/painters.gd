@@ -92,8 +92,14 @@ static func draw_furniture(canvas: CanvasItem, item: Furniture) -> void:
 		canvas.draw_colored_polygon(PackedVector2Array([polygon[2], polygon[3], top[3], top[2]]),
 				base.darkened(SIDE_DARKEN * 0.5))
 		canvas.draw_colored_polygon(top, base.lightened(TOP_LIGHTEN))
-		var outline := IN_USE_GLOW if not item.users.is_empty() else FURNITURE_OUTLINE
-		canvas.draw_polyline(top + PackedVector2Array([top[0]]), outline, 2.0 if not item.users.is_empty() else 1.0)
+		var in_use := not item.users.is_empty()
+		var outline := FURNITURE_OUTLINE
+		if in_use:
+			# A slow pulse reads as "occupied" from across the map without
+			# needing an icon or a label.
+			outline = IN_USE_GLOW
+			outline.a *= 0.55 + 0.45 * sin(float(Time.get_ticks_msec()) * 0.004)
+		canvas.draw_polyline(top + PackedVector2Array([top[0]]), outline, 2.0 if in_use else 1.0)
 
 
 # --- Citizens ---------------------------------------------------------------
@@ -104,6 +110,7 @@ const HEAD_RADIUS := 6.0
 const CITIZEN_SHADOW := Color(0.0, 0.0, 0.0, 0.22)
 const NAME_COLOR := Color(1.0, 1.0, 1.0, 0.92)
 const NAME_SHADOW := Color(0.0, 0.0, 0.0, 0.75)
+const SELECTION_RING := Color(1.0, 0.93, 0.6, 0.9)
 
 ## Body tint per state, so what everyone is doing is readable at a glance
 ## without opening a panel — the point of the whole game (§34).
@@ -120,15 +127,42 @@ const STATE_COLORS := {
 }
 
 
-static func draw_citizen(canvas: CanvasItem, citizen: Citizen, font: Font, show_name: bool) -> void:
+## Symbols shown above a resident's head. Six pixels of shape says what a panel
+## would need a sentence for, and it is what lets the player read a whole street
+## at a glance instead of clicking through it.
+const STATE_SYMBOL := {
+	GameEnums.CitizenState.EATING: "•••",
+	GameEnums.CitizenState.SLEEPING: "z z",
+	GameEnums.CitizenState.WORKING: "$",
+	GameEnums.CitizenState.RELAXING: "~",
+	GameEnums.CitizenState.SHOWERING: "≈",
+	GameEnums.CitizenState.SOCIALIZING: "♥",
+}
+
+
+static func draw_citizen(canvas: CanvasItem, citizen: Citizen, font: Font, show_name: bool,
+		selected: bool = false) -> void:
 	var ground := IsoUtils.cell_to_world_f(citizen.position, citizen.floor_index)
+	# A walking figure bobs; a sleeping one sinks. Both come from the model's own
+	# state, so the animation can never disagree with what is happening.
+	var bob := 0.0
+	if citizen.state == GameEnums.CitizenState.WALKING:
+		bob = sin(float(Time.get_ticks_msec()) * 0.012 + float(citizen.id)) * 2.0
+	elif citizen.state == GameEnums.CitizenState.SLEEPING:
+		bob = 6.0
+	ground.y += bob
 	canvas.draw_colored_polygon(_ellipse(ground, 10.0, 5.0), CITIZEN_SHADOW)
 
 	var template := citizen.data()
 	var skin: Color = template.placeholder_color if template != null else Color(0.9, 0.75, 0.6)
 	var body: Color = STATE_COLORS.get(citizen.state, Color(0.8, 0.8, 0.8))
 
-	var top := ground + Vector2(0.0, -BODY_HEIGHT)
+	if selected:
+		# A ring rather than a tint: the body colour already means something.
+		canvas.draw_arc(ground, 16.0, 0.0, TAU, 24, SELECTION_RING, 2.5)
+
+	var height := BODY_HEIGHT * (0.55 if citizen.state == GameEnums.CitizenState.SLEEPING else 1.0)
+	var top := ground + Vector2(0.0, -height)
 	canvas.draw_colored_polygon(PackedVector2Array([
 		ground + Vector2(-BODY_WIDTH * 0.5, 0.0),
 		ground + Vector2(BODY_WIDTH * 0.5, 0.0),
@@ -136,6 +170,13 @@ static func draw_citizen(canvas: CanvasItem, citizen: Citizen, font: Font, show_
 		top + Vector2(-BODY_WIDTH * 0.4, 0.0),
 	]), body)
 	canvas.draw_circle(top + Vector2(0.0, -HEAD_RADIUS * 0.6), HEAD_RADIUS, skin)
+
+	var symbol: String = STATE_SYMBOL.get(citizen.state, "")
+	if symbol != "":
+		var symbol_width := font.get_string_size(symbol, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+		var at := top + Vector2(-symbol_width * 0.5, -HEAD_RADIUS * 2.6)
+		canvas.draw_string(font, at + Vector2(1, 1), symbol, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, NAME_SHADOW)
+		canvas.draw_string(font, at, symbol, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, body.lightened(0.4))
 
 	if show_name:
 		var label := citizen.citizen_name
