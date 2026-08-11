@@ -1120,6 +1120,96 @@ static func check_neighbourhood() -> Result:
 			"plots claim land, families move in and share a name, and nobody sleeps in the neighbours' bed")
 
 
+## Relationships: symmetric by construction, built by time spent together, and
+## strong enough to change what a resident chooses to do.
+static func check_relationships() -> Result:
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null:
+		return Result.new("Relationships", false, "no scene tree")
+
+	var host := Node.new()
+	host.name = "SelfTestRelationships"
+	tree.root.add_child(host)
+	var grid := WorldGrid.new(Vector2i(16, 16), 1)
+	var book := RelationshipRegistry.new()
+	book.name = "Relationships"
+	host.add_child(book)
+	var furniture := FurnitureRegistry.new()
+	furniture.name = "Furniture"
+	host.add_child(furniture)
+	furniture._on_world_ready(grid)
+	var citizens := CitizenRegistry.new()
+	citizens.name = "Citizens"
+	host.add_child(citizens)
+	citizens._on_world_ready(grid)
+
+	var failure := ""
+	# One fact per pair: writing it from either side reads back the same.
+	book.set_value(1, 2, 30.0)
+	if not is_equal_approx(book.get_value(2, 1), 30.0):
+		failure = "a relationship is not symmetric"
+	elif not is_equal_approx(book.adjust(1, 2, 1000.0), 100.0):
+		failure = "a relationship is not clamped to +100"
+	else:
+		book.values.clear()
+		var bench := furniture.place(&"dining_bench", Vector2i(5, 5))
+		var first := citizens.spawn(Vector2i(5, 6), &"social")
+		var second := citizens.spawn(Vector2i(6, 6), &"adult")
+		if bench == null or first == null or second == null:
+			failure = "could not set up two residents and something to sit on"
+		else:
+			for type: int in GameEnums.NeedType.values():
+				first.needs[type] = 70.0
+				second.needs[type] = 70.0
+			first.needs[GameEnums.NeedType.SOCIAL] = 10.0
+			second.needs[GameEnums.NeedType.SOCIAL] = 10.0
+
+			var chat: InteractionData = bench.data().interactions[0]
+			# Sitting down alone is worth less than joining somebody.
+			var alone := DecisionMaker.score_option(first, chat, 0.0, bench)
+			bench.users.append(second.id)
+			var joined := DecisionMaker.score_option(first, chat, 0.0, bench)
+			if joined <= alone:
+				failure = "joining somebody scored no better than sitting alone (%.2f vs %.2f)" % [joined, alone]
+			else:
+				# And joining a friend is worth more than joining a stranger.
+				book.set_value(first.id, second.id, 80.0)
+				var with_friend := DecisionMaker.score_option(first, chat, 0.0, bench)
+				bench.users.clear()
+				if with_friend <= joined:
+					failure = "company of a friend is worth no more than a stranger's"
+				else:
+					book.values.clear()
+					# Time together builds the relationship from nothing.
+					for i in 240:
+						first.sim_tick(1.0, GameEnums.SimLOD.FULL)
+						second.sim_tick(1.0, GameEnums.SimLOD.FULL)
+					var value := book.get_value(first.id, second.id)
+					if value <= 0.0:
+						failure = "two residents spent four hours in one room and never met"
+					elif book.describe(value) == "":
+						failure = "a relationship has no description to show the player"
+					else:
+						var payload: Variant = JSON.parse_string(JSON.stringify(book.save_data()))
+						book.values.clear()
+						book.load_data(payload)
+						if not is_equal_approx(book.get_value(first.id, second.id), value):
+							failure = "relationships did not survive a save"
+
+	var summary := ""
+	if failure == "":
+		summary = "symmetric, clamped, built by time together, and worth choosing company for"
+	for citizen_id: int in citizens.citizens.keys():
+		citizens.remove(citizen_id)
+	host.queue_free()
+	SaveManager.unregister("furniture")
+	SaveManager.unregister("citizens")
+	SaveManager.unregister("relationships")
+	if failure != "":
+		return Result.new("Relationships", false, failure)
+	return Result.new("Relationships", true, summary)
+
+
 ## Ticks are delivered over several frames, so this one is checked after a short
 ## wait rather than inline, together with the checks that need to add nodes to a
 ## tree that is no longer busy building the boot scene. Returns null while the probe has not been given a

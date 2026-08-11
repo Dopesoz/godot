@@ -17,6 +17,7 @@ need_effects = {
 capacity = 3
 priority = 1.0
 stands_on_furniture = true
+social_weight = 1.0
 skill_id = &"charisma"
 xp_rate = 1.2
 required_skill_level = 0

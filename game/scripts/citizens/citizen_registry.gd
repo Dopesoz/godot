@@ -66,6 +66,9 @@ func remove(citizen_id: int) -> bool:
 	if citizen == null:
 		return false
 	SimScheduler.unregister(citizen)
+	var book := get_parent().get_node_or_null("Relationships") as RelationshipRegistry
+	if book != null:
+		book.forget(citizen_id)
 	citizens.erase(citizen_id)
 	_refresh_living_costs()
 	EventBus.citizen_removed.emit(citizen_id)

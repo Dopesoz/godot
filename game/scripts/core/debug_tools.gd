@@ -85,6 +85,7 @@ static func _build_flat(grid: WorldGrid, furniture: FurnitureRegistry, origin: V
 	furniture.place(&"coffee_machine", origin + Vector2i(2, 4))
 	furniture.place(&"table_dining", origin + Vector2i(3, 4))
 	furniture.place(&"sofa", origin + Vector2i(2, 5))
+	furniture.place(&"dining_bench", origin + Vector2i(4, 5))
 	furniture.place(&"tv", origin + Vector2i(6, 4))
 
 

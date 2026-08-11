@@ -82,7 +82,7 @@ const NEED_DECAY_PER_HOUR: Dictionary = {
 	GameEnums.NeedType.HYGIENE: 3.0,
 	GameEnums.NeedType.COMFORT: 3.0,
 	GameEnums.NeedType.ENTERTAINMENT: 4.0,
-	GameEnums.NeedType.SOCIAL: 2.0,
+	GameEnums.NeedType.SOCIAL: 5.0,
 	## Work does not decay on its own: it is reset at the start of each working
 	## day and only refilled by actually working.
 	GameEnums.NeedType.WORK: 0.0,
@@ -115,6 +115,11 @@ const BOREDOM_PER_USE: float = 0.28
 const BOREDOM_RECOVERY_MINUTES: float = 600.0
 ##   and a completely stale action is worth this fraction of its normal value.
 const BOREDOM_FLOOR: float = 0.25
+
+## Relationship points gained per minute spent doing something together, before
+## charisma and existing rapport are applied. Tuned so an evening's conversation
+## makes acquaintances, and a few weeks of them make friends.
+const RELATIONSHIP_PER_MINUTE: float = 0.20
 
 ## Small random spread applied when comparing options, so two identical
 ## residents in identical flats do not live identical lives.

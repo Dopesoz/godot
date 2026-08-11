@@ -45,6 +45,13 @@ extends GameData
 ## not listed have no ceiling.
 @export var effect_ceilings: Dictionary = {}
 
+## How much this action is about other people. 0 is solitary (sleeping); 1.0 is
+## entirely social (a conversation). Above 0 it does two things: the action is
+## worth more when somebody else is already doing it, and doing it together
+## builds a relationship. This is what makes residents gather instead of each
+## sitting in a different corner of the house.
+@export_range(0.0, 1.0) var social_weight: float = 0.0
+
 ## How hard this action is to abandon. Sleep needs a very good reason: without
 ## this, a resident wakes at five in the morning because the coffee machine
 ## became attractive again. 1.0 is "interrupt me whenever something better

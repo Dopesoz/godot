@@ -40,6 +40,9 @@ extends RefCounted
 ##               morning, not at 3am — declared per interaction in the content.
 ##   ownership   residents use their own home. Commercial and public places are
 ##               open to all, but the neighbours' bed is not an option.
+##   company     for social actions: how many people are already there and how
+##               much this citizen likes them. Residents gather around whoever
+##               sat down first instead of scattering.
 ##   taste       per-person affinity for a specific action, from CitizenData.
 ##   variety     staleness. Doing the same thing repeatedly is worth less, and
 ##               the penalty fades. Without this every evening looks the same,
@@ -119,7 +122,10 @@ static func choose(citizen: Citizen, grid: WorldGrid, furniture: FurnitureRegist
 
 
 ## Value per minute of doing this, from where the citizen is standing.
-static func score_option(citizen: Citizen, interaction: InteractionData, travel_minutes: float) -> float:
+## `item` is optional and only matters for social actions: joining somebody is
+## worth more than sitting alone, and joining a friend is worth more still.
+static func score_option(citizen: Citizen, interaction: InteractionData, travel_minutes: float,
+		item: Furniture = null) -> float:
 	var template := citizen.data()
 	var routine := citizen.schedule()
 	var hour := GameClock.hour_of_day()
@@ -151,7 +157,8 @@ static func score_option(citizen: Citizen, interaction: InteractionData, travel_
 			* maxf(interaction.priority, 0.01)
 			* interaction.time_multiplier(hour)
 			* citizen.affinity(interaction)
-			* citizen.variety_multiplier(interaction))
+			* citizen.variety_multiplier(interaction)
+			* citizen.company_multiplier(interaction, item))
 
 
 ## How badly a need at `value` wants attention, 0..1 on a convex curve.

@@ -1,4 +1,4 @@
-[gd_scene load_steps=21 format=3]
+[gd_scene load_steps=22 format=3]
 
 [ext_resource type="Script" path="res://scripts/world/world_controller.gd" id="1_world"]
 [ext_resource type="Script" path="res://scripts/world/ground_renderer.gd" id="2_ground"]
@@ -20,6 +20,7 @@
 [ext_resource type="Script" path="res://scripts/world/day_night.gd" id="16_daynight"]
 [ext_resource type="Script" path="res://scripts/buildings/building_lots.gd" id="17_lots"]
 [ext_resource type="Script" path="res://scripts/citizens/household_registry.gd" id="18_households"]
+[ext_resource type="Script" path="res://scripts/citizens/relationship_registry.gd" id="19_relations"]
 
 [node name="World" type="Node2D" groups=["world"]]
 script = ExtResource("1_world")
@@ -62,6 +63,9 @@ script = ExtResource("12_furniture")
 
 [node name="Citizens" type="Node" parent="."]
 script = ExtResource("13_citizens")
+
+[node name="Relationships" type="Node" parent="."]
+script = ExtResource("19_relations")
 
 [node name="Households" type="Node" parent="."]
 script = ExtResource("18_households")

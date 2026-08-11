@@ -41,6 +41,7 @@ func _ready() -> void:
 	_results.append(ArchitectureCheck.check_sitting_furniture())
 	_results.append(ArchitectureCheck.check_working_day())
 	_results.append(ArchitectureCheck.check_neighbourhood())
+	_results.append(ArchitectureCheck.check_relationships())
 	_render()
 
 	# Headless mode for CI: `godot --headless -- --selftest` prints the report

@@ -16,6 +16,7 @@ const BAR_SIZE := Vector2(150, 14)
 @onready var _activity: Label = %Activity
 @onready var _needs_box: VBoxContainer = %Needs
 @onready var _skills_box: VBoxContainer = %Skills
+@onready var _relations_label: Label = %Relations
 
 var _citizen: Citizen
 var _bars: Dictionary = {}
@@ -144,6 +145,8 @@ func _refresh() -> void:
 		(entry["bar"] as ProgressBar).value = skill.progress_to_next(xp)
 		(entry["level"] as Label).text = "lv %d" % skill.level_for_xp(xp)
 
+	_relations_label.text = _describe_relations()
+
 	var driving := _citizen.lowest_need()
 	for type: int in _bars:
 		var entry: Dictionary = _bars[type]
@@ -156,6 +159,31 @@ func _refresh() -> void:
 		(entry["label"] as Label).modulate = (Color(1.0, 0.85, 0.45)
 				if type == driving and value <= GameConstants.NEED_URGENT_THRESHOLD
 				else Color(1, 1, 1))
+
+
+## The three people who matter most to this resident, good or bad. Seeing
+## "Anna — close friend (81)" is what makes a household read as a family rather
+## than as a group of pathfinding agents.
+func _describe_relations() -> String:
+	var world := get_tree().get_first_node_in_group(&"world")
+	if world == null:
+		return ""
+	var book := world.get_node_or_null("Relationships") as RelationshipRegistry
+	var people := world.get_node_or_null("Citizens") as CitizenRegistry
+	if book == null or people == null:
+		return ""
+	var relations := book.relations_of(_citizen.id)
+	if relations.is_empty():
+		return "Knows nobody yet"
+	var parts: Array[String] = []
+	for i in mini(relations.size(), 3):
+		var entry: Dictionary = relations[i]
+		var other: Citizen = people.citizens.get(int(entry["other"]))
+		if other == null:
+			continue
+		parts.append("%s — %s (%d)" % [
+			other.citizen_name.split(" ")[0], book.describe(float(entry["value"])), roundi(float(entry["value"]))])
+	return "  •  ".join(parts)
 
 
 static func _colour_for(value: float) -> Color:

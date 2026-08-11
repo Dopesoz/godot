@@ -167,6 +167,67 @@ func may_use(item: Furniture) -> bool:
 	return building == null or not building.is_residential()
 
 
+## Everyone else currently using the same object.
+func companions() -> Array[int]:
+	var result: Array[int] = []
+	var item := _target()
+	if item == null:
+		return result
+	for user_id: int in item.users:
+		if user_id != id:
+			result.append(user_id)
+	return result
+
+
+## Time spent together moves a relationship, faster for the charismatic and
+## faster still between people who already get on — which is why friendships
+## accelerate and strangers take a while.
+func _socialise(minutes: float) -> void:
+	if target_interaction == null or target_interaction.social_weight <= 0.0:
+		return
+	var book := _relationships()
+	if book == null:
+		return
+	var charm := 1.0 + 0.15 * float(skill_level(&"charisma"))
+	for other_id in companions():
+		var current := book.get_value(id, other_id)
+		# Warmth grows with the time spent and with how well it is already going;
+		# a bad relationship barely improves by sitting in the same room.
+		var rapport := 1.0 + clampf(current, -60.0, 60.0) / 120.0
+		book.adjust(id, other_id,
+				minutes * GameConstants.RELATIONSHIP_PER_MINUTE
+				* target_interaction.social_weight * charm * rapport)
+
+
+func _relationships() -> RelationshipRegistry:
+	if _furniture == null:
+		return null
+	return _furniture.get_parent().get_node_or_null("Relationships") as RelationshipRegistry
+
+
+## How much better company makes this action. Solitary actions ignore it; a
+## conversation with a friend is worth far more than one with a stranger.
+func company_multiplier(interaction: InteractionData, item: Furniture) -> float:
+	if interaction == null or item == null or interaction.social_weight <= 0.0:
+		return 1.0
+	var book := _relationships()
+	var present := 0
+	var warmth := 0.0
+	for user_id: int in item.users:
+		if user_id == id:
+			continue
+		present += 1
+		if book != null:
+			warmth += book.get_value(id, user_id) / 100.0
+	if present == 0:
+		# Nobody there yet. Worth much less than joining someone, but not
+		# worthless — somebody has to sit down first, or two lonely residents
+		# would wait for each other forever.
+		return 1.0 - 0.6 * interaction.social_weight
+	var bonus := 0.7 * float(present) + 0.6 * warmth
+	return 1.0 + interaction.social_weight * bonus
+
+
 func _lots() -> BuildingLots:
 	if _furniture == null:
 		return null
@@ -462,17 +523,21 @@ func _tick_interaction(minutes: float) -> void:
 	train(target_interaction.skill_id, minutes * target_interaction.xp_rate)
 	boredom[target_interaction.id] = minf(
 			float(boredom.get(target_interaction.id, 0.0)) + minutes / GameConstants.BOREDOM_MINUTES, 1.0)
+	_socialise(minutes)
 	if state == GameEnums.CitizenState.WORKING:
 		_earn_wages(minutes)
 	_check_for_interruption(minutes)
 	if target_interaction == null:
 		return
 	var effectiveness := skill_effect_multiplier(target_interaction)
+	var company := company_multiplier(target_interaction, _target())
 	for type: int in target_interaction.need_effects:
 		var gain := target_interaction.rate_per_minute(type) * minutes
 		# Skill improves what the action gives, never what it costs.
 		if gain > 0.0:
 			gain *= effectiveness
+			if type == GameEnums.NeedType.SOCIAL:
+				gain *= company
 			# A coffee stops helping once you are reasonably awake.
 			gain = minf(gain, target_interaction.headroom(type, need(type)))
 		needs[type] = clampf(need(type) + gain, GameConstants.NEED_MIN, GameConstants.NEED_MAX)

@@ -65,6 +65,11 @@ func move_in(building: Building, size: int = 2, archetypes: Array = []) -> House
 		citizen.household_id = household.id
 		household.add_member(citizen.id)
 
+	# People who move in together already know each other.
+	var book := get_parent().get_node_or_null("Relationships") as RelationshipRegistry
+	if book != null:
+		book.introduce_household(household.member_ids)
+
 	building.household_id = household.id
 	var plot_name := building.display_name
 	building.display_name = household.label()
