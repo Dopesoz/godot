@@ -101,6 +101,8 @@ enum ToolMode {
 	ASSIGN_ROOM,
 	DELETE,
 	SPAWN_CITIZEN,
+	PLACE_LOT,
+	MOVE_IN,
 }
 
 ## How the player is looking at the world.

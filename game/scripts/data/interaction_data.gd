@@ -45,6 +45,20 @@ extends GameData
 ## not listed have no ceiling.
 @export var effect_ceilings: Dictionary = {}
 
+## How hard this action is to abandon. Sleep needs a very good reason: without
+## this, a resident wakes at five in the morning because the coffee machine
+## became attractive again. 1.0 is "interrupt me whenever something better
+## comes along".
+@export_range(1.0, 10.0) var interrupt_resistance: float = 1.0
+
+## Hours of the day this action makes sense in, and how much it is worth
+## outside them. Coffee at three in the morning is not a good idea however
+## tired you are — and once shops exist, this is also their opening hours.
+## Leave the range at 0..24 for anything that is always sensible.
+@export_range(0.0, 24.0) var active_from_hour: float = 0.0
+@export_range(0.0, 24.0) var active_to_hour: float = 24.0
+@export_range(0.0, 1.0) var off_hours_multiplier: float = 1.0
+
 ## Money earned when the action completes, scaled by skill level. A painting
 ## sells for more when a better painter made it.
 @export var payout_per_skill_level: int = 0
@@ -59,6 +73,18 @@ extends GameData
 
 ## Points per game minute for one need, so a partially finished action still
 ## pays out proportionally when it gets interrupted.
+## 1.0 during the action's hours, `off_hours_multiplier` outside them.
+func time_multiplier(hour: float) -> float:
+	if is_equal_approx(active_from_hour, 0.0) and is_equal_approx(active_to_hour, 24.0):
+		return 1.0
+	var inside := false
+	if active_from_hour < active_to_hour:
+		inside = hour >= active_from_hour and hour < active_to_hour
+	else:
+		inside = hour >= active_from_hour or hour < active_to_hour
+	return 1.0 if inside else off_hours_multiplier
+
+
 ## The most this action can still give a citizen currently at `current`.
 func headroom(need: int, current: float) -> float:
 	var ceiling: float = float(effect_ceilings.get(need, GameConstants.NEED_MAX))

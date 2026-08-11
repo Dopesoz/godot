@@ -119,8 +119,15 @@ func _refresh() -> void:
 		occupation += "  %02d:00–%02d:00" % [int(job.start_hour), int(job.end_hour)]
 		if _citizen.is_on_shift():
 			occupation += "  (on shift)"
-	_subtitle.text = "%s   •   %s   •   %s   •   earned today $%d" % [
-		occupation, personality, block if block != "" else "no routine", _citizen.earned_today]
+	var home := "no fixed address"
+	var world := get_tree().get_first_node_in_group(&"world")
+	if world != null and _citizen.household_id != -1:
+		var registry := world.get_node_or_null("Households") as HouseholdRegistry
+		var household := registry.get_household(_citizen.household_id) if registry != null else null
+		if household != null:
+			home = "%s, savings $%d" % [household.label(), household.savings]
+	_subtitle.text = "%s   •   %s   •   %s   •   %s   •   today $%d" % [
+		occupation, personality, block if block != "" else "no routine", home, _citizen.earned_today]
 	# What they are doing and, crucially, why they chose it.
 	_activity.text = _citizen.state_name()
 	if _citizen.current_reason != "":

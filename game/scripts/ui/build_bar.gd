@@ -17,8 +17,9 @@ const TOOLS := [
 	[KEY_5, "Floor", GameEnums.ToolMode.FLOOR],
 	[KEY_6, "Room", GameEnums.ToolMode.ASSIGN_ROOM],
 	[KEY_7, "Furniture", GameEnums.ToolMode.FURNITURE],
-	[KEY_8, "Resident", GameEnums.ToolMode.SPAWN_CITIZEN],
-	[KEY_9, "Delete", GameEnums.ToolMode.DELETE],
+	[KEY_8, "Plot", GameEnums.ToolMode.PLACE_LOT],
+	[KEY_9, "Move in", GameEnums.ToolMode.MOVE_IN],
+	[KEY_0, "Delete", GameEnums.ToolMode.DELETE],
 ]
 
 ## Room types the player can assign in the MVP (design doc §9).
@@ -34,6 +35,8 @@ const ROOM_TYPES := [
 @onready var _floor_picker: OptionButton = %FloorPicker
 @onready var _room_picker: OptionButton = %RoomPicker
 @onready var _furniture_picker: OptionButton = %FurniturePicker
+@onready var _plot_picker: OptionButton = %PlotPicker
+@onready var _family_picker: OptionButton = %FamilyPicker
 @onready var _rotate_button: Button = %RotateButton
 @onready var _message: Label = %Message
 
@@ -50,11 +53,15 @@ func _ready() -> void:
 	_fill_floor_picker()
 	_fill_room_picker()
 	_fill_furniture_picker()
+	_fill_plot_picker()
+	_fill_family_picker()
 
 	_floor_picker.item_selected.connect(_on_floor_selected)
 	_room_picker.item_selected.connect(_on_room_selected)
 	_furniture_picker.item_selected.connect(_on_furniture_selected)
 	_rotate_button.pressed.connect(_on_rotate_pressed)
+	_plot_picker.item_selected.connect(_on_plot_selected)
+	_family_picker.item_selected.connect(_on_family_selected)
 	EventBus.tool_mode_changed.connect(_on_tool_mode_changed)
 	EventBus.build_rejected.connect(_on_build_rejected)
 	EventBus.rooms_rebuilt.connect(_on_rooms_rebuilt)
@@ -112,6 +119,27 @@ func _fill_furniture_picker() -> void:
 			break
 
 
+func _fill_plot_picker() -> void:
+	_plot_picker.clear()
+	for id: StringName in Database.buildings.keys():
+		var template: BuildingData = Database.buildings[id]
+		_plot_picker.add_item("%s  %dx%d  $%d" % [
+				template.display_name, template.size.x, template.size.y, template.price])
+		_plot_picker.set_item_metadata(_plot_picker.item_count - 1, template.id)
+	if _plot_picker.item_count > 0:
+		_plot_picker.select(0)
+		_on_plot_selected(0)
+
+
+func _fill_family_picker() -> void:
+	_family_picker.clear()
+	for count in [1, 2, 3, 4]:
+		_family_picker.add_item("%d resident%s" % [count, "" if count == 1 else "s"])
+		_family_picker.set_item_metadata(_family_picker.item_count - 1, count)
+	_family_picker.select(1)
+	_on_family_selected(1)
+
+
 ## Number keys select tools. Handled here rather than as InputMap actions
 ## because the tool list grows every phase and each entry would otherwise need
 ## its own action registered up front.
@@ -147,7 +175,10 @@ func _on_tool_mode_changed(mode: int) -> void:
 	_room_picker.visible = mode == GameEnums.ToolMode.ASSIGN_ROOM
 	_furniture_picker.visible = mode == GameEnums.ToolMode.FURNITURE
 	_rotate_button.visible = mode == GameEnums.ToolMode.FURNITURE
-	_option_row.visible = _floor_picker.visible or _room_picker.visible or _furniture_picker.visible
+	_plot_picker.visible = mode == GameEnums.ToolMode.PLACE_LOT
+	_family_picker.visible = mode == GameEnums.ToolMode.MOVE_IN
+	_option_row.visible = (_floor_picker.visible or _room_picker.visible
+			or _furniture_picker.visible or _plot_picker.visible or _family_picker.visible)
 
 
 func _on_floor_selected(index: int) -> void:
@@ -170,6 +201,17 @@ func _on_furniture_selected(index: int) -> void:
 func _on_rotate_pressed() -> void:
 	if _builder != null:
 		_builder.rotation_steps = (_builder.rotation_steps + 1) % 4
+
+
+func _on_plot_selected(index: int) -> void:
+	var id: Variant = _plot_picker.get_item_metadata(index)
+	if _builder != null and id != null:
+		_builder.selected_building_id = id
+
+
+func _on_family_selected(index: int) -> void:
+	if _builder != null:
+		_builder.household_size = int(_family_picker.get_item_metadata(index))
 
 
 func _on_build_rejected(reason: String) -> void:

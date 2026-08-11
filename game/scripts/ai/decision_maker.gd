@@ -36,6 +36,10 @@ extends RefCounted
 ##               cooking and does it faster, so they cook where a beginner would
 ##               grab a snack — and some actions are locked until a level is
 ##               reached, so a long game opens up instead of only speeding up.
+##   hours       some actions only make sense at certain times — coffee in the
+##               morning, not at 3am — declared per interaction in the content.
+##   ownership   residents use their own home. Commercial and public places are
+##               open to all, but the neighbours' bed is not an option.
 ##   taste       per-person affinity for a specific action, from CitizenData.
 ##   variety     staleness. Doing the same thing repeatedly is worth less, and
 ##               the penalty fades. Without this every evening looks the same,
@@ -145,6 +149,7 @@ static func score_option(citizen: Citizen, interaction: InteractionData, travel_
 	var minutes := clampf(duration, 1.0, DURATION_CAP) + travel_minutes
 	return (value / minutes
 			* maxf(interaction.priority, 0.01)
+			* interaction.time_multiplier(hour)
 			* citizen.affinity(interaction)
 			* citizen.variety_multiplier(interaction))
 

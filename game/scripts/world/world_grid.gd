@@ -105,6 +105,21 @@ func set_occupant(cell: Vector2i, furniture_id: int, floor_index: int = 0) -> vo
 	EventBus.cell_changed.emit(cell, floor_index)
 
 
+## Which plot owns this cell. Written when a lot is placed; everything standing
+## here inherits it, which is how "whose bed is this?" stays a single lookup.
+func set_building(cell: Vector2i, building_id: int, floor_index: int = 0) -> void:
+	var data := get_or_create_cell(cell, floor_index)
+	if data == null or data.building_id == building_id:
+		return
+	data.building_id = building_id
+	EventBus.cell_changed.emit(cell, floor_index)
+
+
+func building_of(cell: Vector2i, floor_index: int = 0) -> int:
+	var data := get_cell(cell, floor_index)
+	return -1 if data == null else data.building_id
+
+
 func set_room(cell: Vector2i, room_id: int, floor_index: int = 0) -> void:
 	var data := get_or_create_cell(cell, floor_index)
 	if data == null or data.room_id == room_id:

@@ -15,6 +15,7 @@ need_effects = {
 3: 15.0
 }
 capacity = 1
+interrupt_resistance = 5.0
 priority = 1.0
 stands_on_furniture = true
 

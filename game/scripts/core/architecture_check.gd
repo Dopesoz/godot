@@ -1018,6 +1018,108 @@ static func _check_household_costs() -> Result:
 	return Result.new("Household costs", true, "upkeep and income settle once a day, netted")
 
 
+## Plots, families and the rule that ties them together: everything inside a
+## house belongs to it by position, and residents use their own home rather than
+## whatever bed happens to be nearest.
+static func check_neighbourhood() -> Result:
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null:
+		return Result.new("Neighbourhood", false, "no scene tree")
+
+	var host := Node.new()
+	host.name = "SelfTestNeighbourhood"
+	tree.root.add_child(host)
+	var grid := WorldGrid.new(Vector2i(32, 24), 1)
+	var lots := BuildingLots.new()
+	lots.name = "Lots"
+	host.add_child(lots)
+	lots._on_world_ready(grid)
+	var furniture := FurnitureRegistry.new()
+	furniture.name = "Furniture"
+	host.add_child(furniture)
+	furniture._on_world_ready(grid)
+	var citizens := CitizenRegistry.new()
+	citizens.name = "Citizens"
+	host.add_child(citizens)
+	citizens._on_world_ready(grid)
+	var households := HouseholdRegistry.new()
+	households.name = "Households"
+	host.add_child(households)
+	households._on_world_ready(grid)
+
+	var failure := ""
+	var first := lots.place(&"house_small", Vector2i(2, 2))
+	var second := lots.place(&"house_small", Vector2i(12, 2))
+	if first == null or second == null:
+		failure = "could not place two plots"
+	elif lots.place(&"house_small", Vector2i(4, 3)) != null:
+		failure = "an overlapping plot was allowed"
+	else:
+		# Floors make the plots habitable; without one, move-in is refused.
+		if households.move_in(first, 2) != null:
+			failure = "a family moved into a bare plot with no floor"
+		for cell in first.cells():
+			grid.set_floor_material(cell, &"floor_wood")
+		for cell in second.cells():
+			grid.set_floor_material(cell, &"floor_wood")
+
+		var bed_a := furniture.place(&"bed_single", Vector2i(3, 3))
+		var bed_b := furniture.place(&"bed_single", Vector2i(13, 3))
+		if failure == "":
+			if bed_a == null or bed_b == null:
+				failure = "could not furnish the two houses"
+			elif bed_a.building_id != first.id or bed_b.building_id != second.id:
+				failure = "furniture did not inherit the plot it stands on"
+			else:
+				var household := households.move_in(first, 2)
+				if household == null or household.size() != 2:
+					failure = "moving a family in failed"
+				else:
+					var resident: Citizen = citizens.citizens[household.member_ids[0]]
+					var other: Citizen = citizens.citizens[household.member_ids[1]]
+					if resident.citizen_name.split(" ")[-1] != other.citizen_name.split(" ")[-1]:
+						failure = "housemates do not share a surname"
+					elif resident.home_building_id != first.id:
+						failure = "a resident does not know which house is theirs"
+					elif first.household_id != household.id:
+						failure = "the house does not know who lives in it"
+					elif not resident.may_use(bed_a):
+						failure = "a resident may not use their own bed"
+					elif resident.may_use(bed_b):
+						failure = "a resident may use the neighbours' bed"
+					else:
+						# A shop is open to everyone, unlike a home.
+						var shop := lots.place(&"shop", Vector2i(2, 14))
+						for cell in shop.cells():
+							grid.set_floor_material(cell, &"floor_tile")
+						var till := furniture.place(&"desk", Vector2i(3, 15))
+						if till == null or not resident.may_use(till):
+							failure = "a resident may not use a commercial building"
+						else:
+							# Full round-trip: plots and families both persist.
+							var lot_payload: Variant = JSON.parse_string(JSON.stringify(lots.save_data()))
+							var home_payload: Variant = JSON.parse_string(JSON.stringify(households.save_data()))
+							lots.load_data(lot_payload)
+							households.load_data(home_payload)
+							if lots.count() != 3 or households.count() != 1:
+								failure = "plots or families did not survive the save (%d plots, %d families)" % [
+										lots.count(), households.count()]
+							elif households.get_household(household.id).size() != 2:
+								failure = "the reloaded family lost its members"
+
+	for citizen_id: int in citizens.citizens.keys():
+		citizens.remove(citizen_id)
+	host.queue_free()
+	SaveManager.unregister("furniture")
+	SaveManager.unregister("citizens")
+	SaveManager.unregister("lots")
+	SaveManager.unregister("households")
+	if failure != "":
+		return Result.new("Neighbourhood", false, failure)
+	return Result.new("Neighbourhood", true,
+			"plots claim land, families move in and share a name, and nobody sleeps in the neighbours' bed")
+
+
 ## Ticks are delivered over several frames, so this one is checked after a short
 ## wait rather than inline, together with the checks that need to add nodes to a
 ## tree that is no longer busy building the boot scene. Returns null while the probe has not been given a

@@ -1,4 +1,4 @@
-[gd_scene load_steps=19 format=3]
+[gd_scene load_steps=21 format=3]
 
 [ext_resource type="Script" path="res://scripts/world/world_controller.gd" id="1_world"]
 [ext_resource type="Script" path="res://scripts/world/ground_renderer.gd" id="2_ground"]
@@ -18,6 +18,8 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/build_bar.tscn" id="13_bar"]
 [ext_resource type="PackedScene" path="res://scenes/ui/citizen_panel.tscn" id="15_citizenui"]
 [ext_resource type="Script" path="res://scripts/world/day_night.gd" id="16_daynight"]
+[ext_resource type="Script" path="res://scripts/buildings/building_lots.gd" id="17_lots"]
+[ext_resource type="Script" path="res://scripts/citizens/household_registry.gd" id="18_households"]
 
 [node name="World" type="Node2D" groups=["world"]]
 script = ExtResource("1_world")
@@ -49,6 +51,9 @@ script = ExtResource("8_camera")
 [node name="Input" type="Node" parent="."]
 script = ExtResource("9_input")
 
+[node name="Lots" type="Node" parent="."]
+script = ExtResource("17_lots")
+
 [node name="Buildings" type="Node" parent="."]
 script = ExtResource("10_registry")
 
@@ -57,6 +62,9 @@ script = ExtResource("12_furniture")
 
 [node name="Citizens" type="Node" parent="."]
 script = ExtResource("13_citizens")
+
+[node name="Households" type="Node" parent="."]
+script = ExtResource("18_households")
 
 [node name="Builder" type="Node" parent="."]
 script = ExtResource("11_builder")

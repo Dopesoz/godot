@@ -23,6 +23,9 @@ var tool_mode: int = GameEnums.ToolMode.NONE
 var selected_floor_id: StringName = &"floor_wood"
 var selected_room_type: int = GameEnums.RoomType.LIVING_ROOM
 var selected_furniture_id: StringName = &"bed_single"
+var selected_building_id: StringName = &"house_small"
+## How many people move in at once.
+var household_size: int = 2
 ## 0..3, rotated with R. Kept on the controller rather than per placement so a
 ## row of chairs can be put down facing the same way.
 var rotation_steps: int = 0
@@ -138,6 +141,10 @@ func _rebuild_preview() -> void:
 			_plan_furniture(to)
 		GameEnums.ToolMode.SPAWN_CITIZEN:
 			_plan_citizen(to)
+		GameEnums.ToolMode.PLACE_LOT:
+			_plan_lot(to)
+		GameEnums.ToolMode.MOVE_IN:
+			_plan_move_in(to)
 		_:
 			_clear_preview()
 
@@ -235,6 +242,47 @@ func _plan_furniture(origin: Vector2i) -> void:
 	preview_valid = preview_error == ""
 
 
+## A plot is placed by its top-left corner, so the preview is the whole
+## rectangle the building will claim.
+func _plan_lot(origin: Vector2i) -> void:
+	preview_edges = []
+	preview_furniture = []
+	var template := Database.get_building(selected_building_id)
+	if template == null:
+		_clear_preview()
+		preview_error = "No plot selected"
+		return
+	preview_cells = IsoUtils.cells_in_rect(origin, origin + template.size - Vector2i.ONE)
+	preview_cost = template.price
+	var lots := _lots()
+	preview_error = lots.placement_error(template, origin) if lots != null else "No world"
+	if preview_error == "" and not Economy.can_afford(preview_cost):
+		preview_error = "Not enough money: $%d needed" % preview_cost
+	preview_valid = preview_error == ""
+
+
+## Moving in highlights the whole house under the pointer.
+func _plan_move_in(cell: Vector2i) -> void:
+	preview_edges = []
+	preview_furniture = []
+	preview_cost = 0
+	var lots := _lots()
+	var building := lots.building_at(cell) if lots != null else null
+	if building == null:
+		preview_cells = [cell]
+		preview_error = "Point at a house"
+		preview_valid = false
+		return
+	preview_cells = building.cells()
+	if not building.is_residential():
+		preview_error = "Only homes can take a household"
+	elif building.household_id != -1:
+		preview_error = "Somebody already lives there"
+	else:
+		preview_error = ""
+	preview_valid = preview_error == ""
+
+
 ## Dropping a resident needs nothing but a cell they can stand on.
 func _plan_citizen(cell: Vector2i) -> void:
 	preview_edges = []
@@ -309,6 +357,14 @@ func _apply_click() -> void:
 			var citizen := _citizens().spawn(_world.hovered_cell)
 			if citizen != null:
 				EventBus.selection_changed.emit(citizen)
+		GameEnums.ToolMode.PLACE_LOT:
+			if not Economy.try_spend(preview_cost, "land"):
+				return
+			_lots().place(selected_building_id, _world.hovered_cell)
+		GameEnums.ToolMode.MOVE_IN:
+			var lots := _lots()
+			var building := lots.building_at(_world.hovered_cell) if lots != null else null
+			_households().move_in(building, household_size)
 
 
 ## Tells the player *why* nothing happened, instead of appearing to be broken.
@@ -403,3 +459,11 @@ func _furniture() -> FurnitureRegistry:
 
 func _citizens() -> CitizenRegistry:
 	return _world.get_node_or_null("Citizens") as CitizenRegistry
+
+
+func _lots() -> BuildingLots:
+	return _world.get_node_or_null("Lots") as BuildingLots
+
+
+func _households() -> HouseholdRegistry:
+	return _world.get_node_or_null("Households") as HouseholdRegistry

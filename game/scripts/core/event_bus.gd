@@ -29,6 +29,8 @@ signal edge_changed(edge: Vector3i, floor_index: int)
 
 signal building_placed(building)
 signal building_removed(building_id: int)
+## A household moved in, gained or lost a member.
+signal household_changed(household_id: int)
 ## Room detection ran and produced a different set of rooms for this building.
 signal rooms_rebuilt(building_id: int, rooms: Array)
 signal room_type_changed(room_id: int, room_type: int)

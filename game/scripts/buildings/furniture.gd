@@ -17,6 +17,9 @@ var floor_index: int = 0
 ## Room this object belongs to, -1 when standing outdoors. Maintained by the
 ## registry whenever rooms are rebuilt.
 var room_id: int = -1
+## Plot this object stands on, -1 when outside any. Read from the grid, so it
+## follows the land rather than being maintained by hand.
+var building_id: int = -1
 ## Citizen ids currently interacting with it, capped by InteractionData.capacity.
 var users: Array[int] = []
 

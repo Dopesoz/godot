@@ -36,9 +36,11 @@ var target_furniture_id: int = -1
 var target_interaction: InteractionData
 var interaction_elapsed: float = 0.0
 
-## Where this citizen lives. Set when a household moves in (Phase 8); until then
-## it simply stays where it was spawned.
+## Where this citizen lives, and with whom. Set when a household moves in; a
+## resident with no home treats the whole city as fair game.
 var home_room_id: int = -1
+var home_building_id: int = -1
+var household_id: int = -1
 
 ## What the citizen is doing and why, in words. Shown in the inspector: an AI
 ## that can explain itself is worth more than a slightly cleverer one that
@@ -147,6 +149,28 @@ func can_perform(interaction: InteractionData) -> bool:
 	if interaction.required_skill_level <= 0:
 		return true
 	return skill_level(interaction.skill_id) >= interaction.required_skill_level
+
+
+## Somebody else's home is not yours to sleep in. Public and commercial places
+## are open to everyone, and a resident with no home of their own is not fussy —
+## but once families live in separate houses, this one rule is what stops the
+## neighbours wandering in and using the nearest bed.
+func may_use(item: Furniture) -> bool:
+	if item == null:
+		return false
+	if item.building_id == -1 or home_building_id == -1:
+		return true
+	if item.building_id == home_building_id:
+		return true
+	var lots := _lots()
+	var building := lots.get_building(item.building_id) if lots != null else null
+	return building == null or not building.is_residential()
+
+
+func _lots() -> BuildingLots:
+	if _furniture == null:
+		return null
+	return _furniture.get_parent().get_node_or_null("Lots") as BuildingLots
 
 
 # --- Taste and variety ------------------------------------------------------
@@ -482,7 +506,8 @@ func _check_for_interruption(minutes: float) -> void:
 	var candidate := _choose_goal()
 	if candidate.is_empty():
 		return
-	if not DecisionMaker.should_interrupt(current_score, float(candidate.get("score", 0.0))):
+	var resistance := target_interaction.interrupt_resistance
+	if not DecisionMaker.should_interrupt(current_score * resistance, float(candidate.get("score", 0.0))):
 		return
 	var item := _target()
 	if item != null:
@@ -565,6 +590,8 @@ func save_data() -> Dictionary:
 		"y": position.y,
 		"floor": floor_index,
 		"home_room": home_room_id,
+		"home_building": home_building_id,
+		"household": household_id,
 		"earned_today": earned_today,
 		"skills": skills.duplicate(),
 		"needs": stored_needs,
@@ -579,6 +606,8 @@ static func from_save(entry: Dictionary) -> Citizen:
 	citizen.position = Vector2(float(entry.get("x", 0.0)), float(entry.get("y", 0.0)))
 	citizen.floor_index = int(entry.get("floor", 0))
 	citizen.home_room_id = int(entry.get("home_room", -1))
+	citizen.home_building_id = int(entry.get("home_building", -1))
+	citizen.household_id = int(entry.get("household", -1))
 	citizen.earned_today = int(entry.get("earned_today", 0))
 	var stored_skills: Dictionary = entry.get("skills", {})
 	for key: String in stored_skills.keys():

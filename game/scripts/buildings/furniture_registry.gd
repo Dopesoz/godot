@@ -181,6 +181,7 @@ func _register(item: Furniture) -> void:
 		for cell in item.cells():
 			_grid.set_occupant(cell, item.id, item.floor_index)
 	item.room_id = _grid.room_of(item.origin, item.floor_index)
+	item.building_id = _grid.building_of(item.origin, item.floor_index)
 	_refresh_upkeep()
 
 
@@ -189,6 +190,7 @@ func _register(item: Furniture) -> void:
 func _on_rooms_rebuilt(_building_id: int, _rooms: Array) -> void:
 	for item: Furniture in items.values():
 		item.room_id = _grid.room_of(item.origin, item.floor_index)
+		item.building_id = _grid.building_of(item.origin, item.floor_index)
 
 
 # --- Persistence ------------------------------------------------------------

@@ -14,11 +14,15 @@ need_effects = {
 0: 6.0
 }
 effect_ceilings = {
-1: 62.0
+1: 62.0,
+0: 45.0
 }
 capacity = 1
 priority = 1.4
 stands_on_furniture = false
+active_from_hour = 5.0
+active_to_hour = 17.0
+off_hours_multiplier = 0.05
 skill_id = &""
 xp_rate = 1.0
 required_skill_level = 0

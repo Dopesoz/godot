@@ -8,9 +8,9 @@ anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = -400.0
+offset_left = -460.0
 offset_top = -168.0
-offset_right = 400.0
+offset_right = 460.0
 offset_bottom = -16.0
 grow_horizontal = 2
 grow_vertical = 0
@@ -46,6 +46,16 @@ custom_minimum_size = Vector2(200, 44)
 unique_name_in_owner = true
 layout_mode = 2
 custom_minimum_size = Vector2(260, 44)
+
+[node name="PlotPicker" type="OptionButton" parent="Layout/OptionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(260, 44)
+
+[node name="FamilyPicker" type="OptionButton" parent="Layout/OptionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(180, 44)
 
 [node name="RotateButton" type="Button" parent="Layout/OptionRow"]
 unique_name_in_owner = true
