@@ -40,6 +40,8 @@ func _ready() -> void:
 	EventBus.citizen_spawned.connect(_on_static_changed)
 	EventBus.citizen_removed.connect(_on_static_changed)
 	EventBus.citizen_state_changed.connect(_on_static_changed)
+	# Windows glow after dark, so the pass is repainted when the light moves.
+	EventBus.daylight_changed.connect(_on_static_changed)
 
 
 func _on_world_ready(world: WorldGrid) -> void:

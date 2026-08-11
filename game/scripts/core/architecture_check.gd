@@ -50,6 +50,7 @@ static func run_all() -> Array[Result]:
 	results.append(_check_content_integrity())
 	results.append(_check_pathfinding())
 	results.append(_check_decision_scoring())
+	results.append(_check_schedule())
 	results.append(_check_clock())
 	results.append(_check_economy())
 	results.append(_check_event_bus())
@@ -290,9 +291,9 @@ static func _check_database() -> Result:
 	if not Database.is_loaded():
 		return Result.new("Content database", false, "database never finished loading")
 	var errors := Database.get_errors()
-	var summary := "%d furniture, %d floors, %d jobs, %d citizens, %d buildings, %d room types" % [
+	var summary := "%d furniture, %d floors, %d jobs, %d citizens, %d schedules, %d buildings, %d room types" % [
 			Database.furniture.size(), Database.floors.size(), Database.jobs.size(),
-			Database.citizens.size(), Database.buildings.size(), Database.room_types.size()]
+			Database.citizens.size(), Database.schedules.size(), Database.buildings.size(), Database.room_types.size()]
 	if errors.size() > 0:
 		return Result.new("Content database", false, summary + " | " + ", ".join(errors))
 	return Result.new("Content database", true, summary)
@@ -423,6 +424,53 @@ static func _check_decision_scoring() -> Result:
 				% [neat_score, plain_score])
 	return Result.new("Decision scoring", true,
 			"urgency is convex, full needs score nothing, distance costs, personality tips the choice")
+
+
+## A schedule is time-varying weights, so the things that can break are the
+## clock arithmetic (blocks that wrap past midnight) and whether the weight
+## actually reaches the decision.
+static func _check_schedule() -> Result:
+	var routine := Database.get_schedule(&"schedule_default")
+	if routine == null:
+		return Result.new("Daily routine", false, "the default schedule is missing")
+
+	# Night runs 22:30 to 07:00, so it has to cover both sides of midnight.
+	if routine.label_at(23.0) != "Night" or routine.label_at(3.0) != "Night":
+		return Result.new("Daily routine", false, "the night block does not wrap past midnight")
+	if routine.label_at(13.0) != "Lunch" or routine.label_at(21.0) != "Evening":
+		return Result.new("Daily routine", false, "daytime blocks are misaligned")
+	if routine.weight_for(GameEnums.NeedType.ENERGY, 23.0) <= 1.0:
+		return Result.new("Daily routine", false, "sleep is not made urgent at night")
+	if routine.weight_for(GameEnums.NeedType.ENERGY, 10.0) >= 1.0:
+		return Result.new("Daily routine", false, "sleep is not discouraged during the day")
+	if routine.weight_for(GameEnums.NeedType.HUNGER, 13.0) <= 1.0:
+		return Result.new("Daily routine", false, "lunchtime does not favour eating")
+
+	# The weight has to reach scoring: the same tired citizen, the same bed,
+	# two different hours.
+	var citizen := Citizen.new()
+	citizen.data_id = &"adult"
+	for type: int in GameEnums.NeedType.values():
+		citizen.needs[type] = 80.0
+	citizen.needs[GameEnums.NeedType.ENERGY] = 45.0
+	var sleep := Database.get_furniture(&"bed_single").interactions[0]
+
+	var saved := GameClock.total_minutes
+	GameClock.total_minutes = 23.0 * 60.0
+	GameClock._refresh_fields()
+	var at_night := DecisionMaker.score_option(citizen, sleep, 0.0)
+	GameClock.total_minutes = 10.0 * 60.0
+	GameClock._refresh_fields()
+	var at_ten := DecisionMaker.score_option(citizen, sleep, 0.0)
+	GameClock.total_minutes = saved
+	GameClock._refresh_fields()
+
+	if at_night <= at_ten * 2.0:
+		return Result.new("Daily routine", false,
+				"going to bed scored %.2f at 23:00 against %.2f at 10:00" % [at_night, at_ten])
+	return Result.new("Daily routine", true,
+			"blocks wrap past midnight and bedtime scores %.1fx higher at 23:00 than at 10:00"
+			% (at_night / maxf(at_ten, 0.001)))
 
 
 static func _check_clock() -> Result:

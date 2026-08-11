@@ -83,8 +83,9 @@ func _refresh() -> void:
 	_title.text = _citizen.citizen_name
 	var occupation := job.display_name if job != null else "Unemployed"
 	var personality := String(CitizenData.Personality.keys()[template.personality]).capitalize() if template != null else "—"
-	_subtitle.text = "%s   •   %s   •   cell %d, %d" % [
-		occupation, personality, _citizen.cell().x, _citizen.cell().y]
+	var block := _citizen.schedule_label()
+	_subtitle.text = "%s   •   %s   •   %s" % [
+		occupation, personality, block if block != "" else "no routine"]
 	# What they are doing and, crucially, why they chose it.
 	_activity.text = _citizen.state_name()
 	if _citizen.current_reason != "":

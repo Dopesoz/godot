@@ -21,6 +21,10 @@ const WALL_OUTLINE := Color(0.35, 0.33, 0.31, 0.8)
 const DOOR_COLOR := Color(0.55, 0.36, 0.22)
 const WINDOW_FRAME := Color(0.78, 0.76, 0.72)
 const WINDOW_GLASS := Color(0.58, 0.78, 0.88, 0.75)
+## After dark a window is the clearest sign that someone lives there. The colour
+## is deliberately over-bright: the whole world canvas is being multiplied down
+## by DayNight, and this has to survive that and still read as "lit".
+const WINDOW_LIT := Color(3.2, 2.8, 1.7, 0.95)
 ## Doors are drawn shorter than the wall they sit in, so an opening reads as an
 ## opening even without art.
 const DOOR_HEIGHT_RATIO := 0.62
@@ -54,7 +58,8 @@ static func _window(canvas: CanvasItem, edge: Vector3i, floor_index: int) -> voi
 	var b := segment[0].lerp(segment[1], 0.78)
 	var low := Vector2(0.0, -GameConstants.WALL_HEIGHT * 0.28)
 	var high := Vector2(0.0, -GameConstants.WALL_HEIGHT * 0.82)
-	canvas.draw_colored_polygon(PackedVector2Array([a + low, b + low, b + high, a + high]), WINDOW_GLASS)
+	var glass := WINDOW_GLASS.lerp(WINDOW_LIT, 1.0 - GameClock.get_daylight())
+	canvas.draw_colored_polygon(PackedVector2Array([a + low, b + low, b + high, a + high]), glass)
 
 
 # --- Furniture --------------------------------------------------------------

@@ -48,6 +48,7 @@ var current_reason: String = ""
 var current_score: float = 0.0
 
 var _data: CitizenData
+var _schedule: ScheduleData
 var _grid: WorldGrid
 var _furniture: FurnitureRegistry
 ## Re-picking a goal every single tick would thrash; wait this many game minutes
@@ -70,6 +71,21 @@ func data() -> CitizenData:
 	if _data == null and data_id != &"":
 		_data = Database.get_citizen(data_id)
 	return _data
+
+
+## The citizen's daily routine, or null when they live purely by their needs.
+func schedule() -> ScheduleData:
+	if _schedule == null:
+		var template := data()
+		if template != null and template.schedule_id != &"":
+			_schedule = Database.get_schedule(template.schedule_id)
+	return _schedule
+
+
+## What the routine says this hour is for ("Evening", "Night"), for the panel.
+func schedule_label() -> String:
+	var routine := schedule()
+	return routine.label_at(GameClock.hour_of_day()) if routine != null else ""
 
 
 func cell() -> Vector2i:

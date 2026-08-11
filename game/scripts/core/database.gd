@@ -19,6 +19,7 @@ var citizens: Dictionary = {}
 var jobs: Dictionary = {}
 var buildings: Dictionary = {}
 var room_types: Dictionary = {}
+var schedules: Dictionary = {}
 
 var _loaded: bool = false
 var _errors: PackedStringArray = PackedStringArray()
@@ -35,11 +36,12 @@ func reload() -> void:
 	jobs.clear()
 	buildings.clear()
 	room_types.clear()
+	schedules.clear()
 	_errors.clear()
 	_scan_dir(RESOURCE_ROOT)
 	_loaded = true
-	EventBus.notify("Database: %d furniture, %d floors, %d citizens, %d jobs, %d buildings, %d room types"
-			% [furniture.size(), floors.size(), citizens.size(), jobs.size(), buildings.size(), room_types.size()])
+	EventBus.notify("Database: %d furniture, %d floors, %d citizens, %d schedules, %d jobs, %d buildings, %d room types"
+			% [furniture.size(), floors.size(), citizens.size(), schedules.size(), jobs.size(), buildings.size(), room_types.size()])
 	for error in _errors:
 		push_warning("Database: " + error)
 
@@ -103,6 +105,8 @@ func _bucket_for(data: GameData) -> Dictionary:
 		return buildings
 	if data is RoomTypeData:
 		return room_types
+	if data is ScheduleData:
+		return schedules
 	return {}
 
 
@@ -142,6 +146,10 @@ func get_job(id: StringName) -> JobData:
 
 func get_building(id: StringName) -> BuildingData:
 	return _lookup(buildings, id, "building") as BuildingData
+
+
+func get_schedule(id: StringName) -> ScheduleData:
+	return _lookup(schedules, id, "schedule") as ScheduleData
 
 
 func get_room_type(room_type: GameEnums.RoomType) -> RoomTypeData:

@@ -24,6 +24,10 @@ enum Personality {
 ## Starting profession. Empty means unemployed.
 @export var job_id: StringName = &""
 
+## Daily routine (ScheduleData id). Empty means "driven purely by needs", which
+## is how citizens behaved before Phase 6.
+@export var schedule_id: StringName = &"schedule_default"
+
 ## Starting need values, 0..100. Missing keys default to 80.
 ## Keys are GameEnums.NeedType values.
 @export var initial_needs: Dictionary = {}

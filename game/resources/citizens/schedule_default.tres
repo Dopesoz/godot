@@ -1,0 +1,86 @@
+[gd_resource type="Resource" script_class="ScheduleData" load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/schedule_data.gd" id="1_sched"]
+[ext_resource type="Script" path="res://scripts/data/schedule_entry.gd" id="2_entry"]
+
+[sub_resource type="Resource" id="Resource_night"]
+script = ExtResource("2_entry")
+label = "Night"
+start_hour = 22.5
+end_hour = 7.0
+need_weights = {
+1: 4.0,
+4: 0.3,
+5: 0.3,
+0: 0.6
+}
+
+[sub_resource type="Resource" id="Resource_morning"]
+script = ExtResource("2_entry")
+label = "Morning"
+start_hour = 7.0
+end_hour = 9.0
+need_weights = {
+2: 2.5,
+0: 2.0,
+1: 0.4,
+4: 0.5
+}
+
+[sub_resource type="Resource" id="Resource_daytime"]
+script = ExtResource("2_entry")
+label = "Daytime"
+start_hour = 9.0
+end_hour = 12.0
+need_weights = {
+1: 0.5,
+4: 0.8
+}
+
+[sub_resource type="Resource" id="Resource_lunch"]
+script = ExtResource("2_entry")
+label = "Lunch"
+start_hour = 12.0
+end_hour = 14.0
+need_weights = {
+0: 2.5
+}
+
+[sub_resource type="Resource" id="Resource_afternoon"]
+script = ExtResource("2_entry")
+label = "Afternoon"
+start_hour = 14.0
+end_hour = 18.0
+need_weights = {
+1: 0.45
+}
+
+[sub_resource type="Resource" id="Resource_dinner"]
+script = ExtResource("2_entry")
+label = "Dinner"
+start_hour = 18.0
+end_hour = 20.0
+need_weights = {
+0: 2.5,
+1: 0.45,
+5: 1.5
+}
+
+[sub_resource type="Resource" id="Resource_evening"]
+script = ExtResource("2_entry")
+label = "Evening"
+start_hour = 20.0
+end_hour = 22.5
+need_weights = {
+4: 2.0,
+3: 1.5,
+1: 0.55,
+5: 1.5
+}
+
+[resource]
+script = ExtResource("1_sched")
+id = &"schedule_default"
+display_name = "Ordinary day"
+description = "Sleeps at night, eats at the usual hours, relaxes in the evening."
+entries = Array[Resource]([SubResource("Resource_night"), SubResource("Resource_morning"), SubResource("Resource_daytime"), SubResource("Resource_lunch"), SubResource("Resource_afternoon"), SubResource("Resource_dinner"), SubResource("Resource_evening")])

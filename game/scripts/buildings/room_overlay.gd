@@ -10,6 +10,10 @@ const UNDEFINED_TINT := Color(0.55, 0.75, 1.0, 0.16)
 const NO_DOOR_TINT := Color(1.0, 0.45, 0.4, 0.20)
 const LABEL_COLOR := Color(1.0, 1.0, 1.0, 0.9)
 const LABEL_SHADOW := Color(0.0, 0.0, 0.0, 0.6)
+## Warm light poured into rooms after dark so interiors stay readable while the
+## streets go blue. Same trick as the windows: bright enough to survive the
+## world-wide multiply from DayNight.
+const LAMP_LIGHT := Color(2.6, 2.2, 1.4, 0.30)
 
 var _rooms: Array = []
 var _font: Font
@@ -19,6 +23,7 @@ func _ready() -> void:
 	_font = ThemeDB.fallback_font
 	EventBus.rooms_rebuilt.connect(_on_rooms_rebuilt)
 	EventBus.room_type_changed.connect(_on_room_type_changed)
+	EventBus.daylight_changed.connect(_on_daylight_changed)
 
 
 func _on_rooms_rebuilt(_building_id: int, rooms: Array) -> void:
@@ -30,11 +35,21 @@ func _on_room_type_changed(_room_id: int, _room_type: int) -> void:
 	queue_redraw()
 
 
+func _on_daylight_changed(_amount: float) -> void:
+	queue_redraw()
+
+
 func _draw() -> void:
+	var darkness := 1.0 - GameClock.get_daylight()
 	for room: Room in _rooms:
 		var tint := _tint_for(room)
+		var light := LAMP_LIGHT
+		light.a *= darkness
 		for cell in room.cells:
-			draw_colored_polygon(IsoUtils.cell_polygon(cell, room.floor_index), tint)
+			var polygon := IsoUtils.cell_polygon(cell, room.floor_index)
+			draw_colored_polygon(polygon, tint)
+			if darkness > 0.05:
+				draw_colored_polygon(polygon, light)
 		_draw_label(room)
 
 

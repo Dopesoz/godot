@@ -63,7 +63,8 @@ func _on_money_changed(amount: int, _delta: int) -> void:
 func _on_minute_passed(_hour: int, _minute: int) -> void:
 	var speed := GameClock.get_speed()
 	var suffix := "  ‖ paused" if speed <= 0.0 else "  x%d" % int(speed)
-	_clock_label.text = GameClock.format_time() + suffix
+	var phase := "night" if GameClock.is_night() else "day"
+	_clock_label.text = "%s  %s%s" % [GameClock.format_time(), phase, suffix]
 
 
 static func _thousands(value: int) -> String:

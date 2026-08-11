@@ -25,6 +25,9 @@ extends RefCounted
 ##               forty minute cooked meal.
 ##   travel      walking is dead time, and it is counted in the same minutes as
 ##               the action itself.
+##   schedule    the time of day, via ScheduleData. Not a command — a weight.
+##               At 23:00 sleep is worth four times as much, so a citizen goes
+##               to bed in the evening instead of when energy finally runs out.
 ##   priority    the content author's thumb on the scale, from InteractionData.
 ##
 ## The whole thing is deliberately one readable formula rather than a behaviour
@@ -101,6 +104,8 @@ static func choose(citizen: Citizen, grid: WorldGrid, furniture: FurnitureRegist
 ## Value per minute of doing this, from where the citizen is standing.
 static func score_option(citizen: Citizen, interaction: InteractionData, travel_minutes: float) -> float:
 	var template := citizen.data()
+	var routine := citizen.schedule()
+	var hour := GameClock.hour_of_day()
 	var value := 0.0
 	for need_type: int in interaction.need_effects:
 		var effect := float(interaction.need_effects[need_type])
@@ -112,6 +117,8 @@ static func score_option(citizen: Citizen, interaction: InteractionData, travel_
 		# No credit for filling a need past full.
 		var gain := minf(effect, GameConstants.NEED_MAX - citizen.need(need_type))
 		var importance := template.decay_multiplier(need_type) if template != null else 1.0
+		if routine != null:
+			importance *= routine.weight_for(need_type, hour)
 		value += gain * urgency(citizen.need(need_type)) * importance
 	if value <= 0.0:
 		return 0.0
@@ -145,8 +152,14 @@ static func describe(citizen: Citizen, interaction: InteractionData) -> String:
 			driving = need_type
 	if driving == -1:
 		return interaction.display_name
-	return "%s (%s %d)" % [
+	var text := "%s (%s %d)" % [
 		interaction.display_name,
 		String(GameEnums.NeedType.keys()[driving]).to_lower(),
 		roundi(citizen.need(driving)),
 	]
+	# When the routine is what tipped the choice, say so — otherwise "sleeping
+	# at 23:00 with energy 60" looks like a bug rather than a bedtime.
+	var routine := citizen.schedule()
+	if routine != null and routine.weight_for(driving, GameClock.hour_of_day()) > 1.5:
+		text += " · " + routine.label_at(GameClock.hour_of_day()).to_lower()
+	return text
