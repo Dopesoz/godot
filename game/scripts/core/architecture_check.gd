@@ -53,6 +53,7 @@ static func run_all() -> Array[Result]:
 	results.append(_check_schedule())
 	results.append(_check_skills())
 	results.append(_check_variety())
+	results.append(_check_city_events())
 	results.append(_check_clock())
 	results.append(_check_economy())
 	results.append(_check_household_costs())
@@ -294,9 +295,9 @@ static func _check_database() -> Result:
 	if not Database.is_loaded():
 		return Result.new("Content database", false, "database never finished loading")
 	var errors := Database.get_errors()
-	var summary := "%d furniture, %d floors, %d jobs, %d citizens, %d schedules, %d buildings, %d room types" % [
-			Database.furniture.size(), Database.floors.size(), Database.jobs.size(),
-			Database.citizens.size(), Database.schedules.size(), Database.buildings.size(), Database.room_types.size()]
+	var summary := "%d furniture, %d floors, %d jobs, %d citizens, %d schedules, %d skills, %d buildings, %d events" % [
+			Database.furniture.size(), Database.floors.size(), Database.jobs.size(), Database.citizens.size(),
+			Database.schedules.size(), Database.skills.size(), Database.buildings.size(), Database.events.size()]
 	if errors.size() > 0:
 		return Result.new("Content database", false, summary + " | " + ", ".join(errors))
 	return Result.new("Content database", true, summary)
@@ -577,6 +578,69 @@ static func _check_variety() -> Result:
 	return Result.new("Variety", true,
 			"repetition loses %d%% of its value and recovers, and taste differs per resident"
 			% roundi((1.0 - stale / maxf(fresh, 0.001)) * 100.0))
+
+
+## Events are weights, not scripts, so what has to hold is that the weight
+## reaches the decision, the money moves once, and the whole thing expires.
+static func _check_city_events() -> Result:
+	if Database.events.is_empty():
+		return Result.new("City events", false, "no events are defined")
+
+	var festival := Database.get_event(&"street_festival")
+	if festival == null:
+		return Result.new("City events", false, "the street festival is missing")
+	if float(festival.need_weights.get(GameEnums.NeedType.SOCIAL, 1.0)) <= 1.0:
+		return Result.new("City events", false, "a festival does not make company matter more")
+
+	var saved_minutes := GameClock.total_minutes
+	var money_before := Economy.money
+	var running_before := CityEvents.active.duplicate()
+	CityEvents.active.clear()
+
+	var failure := ""
+	# The grant pays out exactly once, when it starts.
+	if not CityEvents.start(&"city_grant"):
+		failure = "an event refused to start"
+	elif Economy.money <= money_before:
+		failure = "a windfall event paid nothing"
+	elif CityEvents.start(&"city_grant"):
+		failure = "the same event started twice at once"
+	else:
+		CityEvents.stop(&"city_grant")
+		# While a festival runs, the social need weighs more in scoring.
+		var citizen := Citizen.new()
+		citizen.data_id = &"adult"
+		for type: int in GameEnums.NeedType.values():
+			citizen.needs[type] = 45.0
+		var bench := Database.get_furniture(&"dining_bench")
+		var chat: InteractionData = bench.interactions[0]
+		var normal := DecisionMaker.score_option(citizen, chat, 0.0)
+		CityEvents.start(&"street_festival")
+		var during := DecisionMaker.score_option(citizen, chat, 0.0)
+		if during <= normal:
+			failure = "a festival did not make socialising more attractive (%.2f vs %.2f)" % [during, normal]
+		elif not is_equal_approx(CityEvents.need_weight(GameEnums.NeedType.SOCIAL),
+				float(festival.need_weights[GameEnums.NeedType.SOCIAL])):
+			failure = "the active event's weight is not reported"
+		else:
+			# It ends by itself once its hours are up.
+			GameClock.total_minutes += festival.duration_hours * 60.0 + 1.0
+			GameClock._refresh_fields()
+			CityEvents._on_hour_passed(GameClock.hour)
+			if CityEvents.is_running(&"street_festival"):
+				failure = "the festival never ended"
+			elif not is_equal_approx(CityEvents.need_weight(GameEnums.NeedType.SOCIAL), 1.0):
+				failure = "an ended event still affects the city"
+
+	CityEvents.active = running_before
+	Economy.money = money_before
+	GameClock.total_minutes = saved_minutes
+	GameClock._refresh_fields()
+	if failure != "":
+		return Result.new("City events", false, failure)
+	return Result.new("City events", true,
+			"%d events; they pay out once, bend the city's priorities while they run, and expire"
+			% Database.events.size())
 
 
 static func _check_clock() -> Result:

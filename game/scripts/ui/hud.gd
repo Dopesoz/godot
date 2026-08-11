@@ -19,12 +19,14 @@ func _ready() -> void:
 	_world = get_tree().get_first_node_in_group(&"world") as WorldController
 	if _world != null:
 		_camera = _world.camera
+	EventBus.city_event_started.connect(_on_city_event)
+	EventBus.city_event_ended.connect(_on_city_event)
 	EventBus.money_changed.connect(_on_money_changed)
 	EventBus.minute_passed.connect(_on_minute_passed)
 	_on_money_changed(Economy.money, 0)
 	_on_minute_passed(GameClock.hour, GameClock.minute)
 	_debug_label.visible = OS.is_debug_build()
-	_hint_label.text = "WASD / arrows — move    wheel — zoom    middle drag — pan    one finger — pan    two fingers — zoom    G — grid    Space — pause    +/− — speed    F3 — debug    M — music"
+	_hint_label.text = _controls_hint()
 
 
 func _process(_delta: float) -> void:
@@ -54,6 +56,18 @@ func _unhandled_input(_event: InputEvent) -> void:
 		_debug_label.visible = not _debug_label.visible
 	elif Input.is_action_just_pressed(InputActions.TOGGLE_MUTE):
 		AudioManager.toggle_mute()
+
+
+## What the city is going through, kept in the corner rather than as a popup:
+## an event lasts hours, and a modal would interrupt the thing the player is
+## actually watching.
+func _on_city_event(_a: Variant = null, _b: Variant = null) -> void:
+	var names := CityEvents.active_names()
+	_hint_label.text = ("• " + "   •  ".join(names)) if not names.is_empty() else _controls_hint()
+
+
+func _controls_hint() -> String:
+	return "WASD / arrows — move    wheel — zoom    one finger — pan    two fingers — zoom    G — grid    Space — pause    +/− — speed    F3 — debug    M — music"
 
 
 func _on_money_changed(amount: int, _delta: int) -> void:

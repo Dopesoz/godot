@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="EventData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/event_data.gd" id="1_ev"]
+
+[resource]
+script = ExtResource("1_ev")
+id = &"repair_bill"
+display_name = "Repair Bill"
+description = "Pipes, wiring, the usual. It has to be paid."
+placeholder_color = Color(0.85, 0.55, 0.55, 1)
+banner_color = Color(0.85, 0.55, 0.55, 1)
+weight = 1.2
+duration_hours = 1.0
+money_on_start = -450
+money_per_resident = -60
+min_residents = 1
+earliest_hour = 8.0
+latest_hour = 18.0

@@ -90,6 +90,12 @@ signal load_started(slot: String)
 signal load_finished(slot: String, success: bool)
 
 
+# --- City events ------------------------------------------------------------
+
+signal city_event_started(event_id: StringName, display_name: String)
+signal city_event_ended(event_id: StringName)
+
+
 # --- Debug ------------------------------------------------------------------
 
 ## Human-readable notice for the on-screen log. Never used for game logic.

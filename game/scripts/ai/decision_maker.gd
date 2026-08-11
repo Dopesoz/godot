@@ -48,6 +48,9 @@ extends RefCounted
 ##               the penalty fades. Without this every evening looks the same,
 ##               which is the single biggest reason life simulations get boring
 ##               to watch.
+##   events      whatever the city is going through, from CityEvents. A festival
+##               is nothing but a weight on SOCIAL — the gathering it produces
+##               is the formula reacting, not a script.
 ##   priority    the content author's thumb on the scale, from InteractionData.
 ##
 ## The whole thing is deliberately one readable formula rather than a behaviour
@@ -147,6 +150,8 @@ static func score_option(citizen: Citizen, interaction: InteractionData, travel_
 			importance *= routine.weight_for(need_type, hour)
 		# Obligations (a job) weigh in through the same term as everything else.
 		importance *= citizen.duty_weight(need_type)
+		# So do city-wide events: a festival simply makes company matter more.
+		importance *= CityEvents.need_weight(need_type)
 		value += gain * urgency(citizen.need(need_type)) * importance
 	if value <= 0.0:
 		return 0.0

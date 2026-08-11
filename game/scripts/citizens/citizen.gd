@@ -390,6 +390,7 @@ func _decay_needs(minutes: float) -> void:
 		if template != null:
 			per_hour *= template.decay_multiplier(type)
 		per_hour *= _skill_decay_multiplier(type)
+		per_hour *= CityEvents.decay_multiplier(type)
 		var before: float = needs[type]
 		var after := clampf(before - per_hour * minutes / 60.0, GameConstants.NEED_MIN, GameConstants.NEED_MAX)
 		needs[type] = after

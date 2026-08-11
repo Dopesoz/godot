@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="EventData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/event_data.gd" id="1_ev"]
+
+[resource]
+script = ExtResource("1_ev")
+id = &"street_festival"
+display_name = "Street Festival"
+description = "Music in the street tonight — nobody wants to be indoors alone."
+placeholder_color = Color(0.98, 0.72, 0.35, 1)
+banner_color = Color(0.98, 0.72, 0.35, 1)
+weight = 2.0
+duration_hours = 8.0
+need_weights = {
+5: 2.5,
+4: 1.8
+}
+decay_multipliers = {
+1: 1.2
+}
+money_on_start = 0
+money_per_resident = -15
+min_residents = 2
+earliest_hour = 16.0
+latest_hour = 23.0
