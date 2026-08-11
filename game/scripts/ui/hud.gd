@@ -24,7 +24,7 @@ func _ready() -> void:
 	_on_money_changed(Economy.money, 0)
 	_on_minute_passed(GameClock.hour, GameClock.minute)
 	_debug_label.visible = OS.is_debug_build()
-	_hint_label.text = "WASD / arrows — move    wheel — zoom    middle drag — pan    G — grid    Space — pause    +/− — speed    F3 — debug"
+	_hint_label.text = "WASD / arrows — move    wheel — zoom    middle drag — pan    one finger — pan    two fingers — zoom    G — grid    Space — pause    +/− — speed    F3 — debug"
 
 
 func _process(_delta: float) -> void:

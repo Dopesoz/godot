@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="FurnitureData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/furniture_data.gd" id="1_furn"]
+[ext_resource type="Script" path="res://scripts/data/interaction_data.gd" id="2_int"]
+
+[sub_resource type="Resource" id="Resource_sleep"]
+script = ExtResource("2_int")
+id = &"sleep"
+display_name = "Sleep"
+state = 3
+duration_minutes = 480.0
+need_effects = {
+0: -15.0,
+1: 90.0,
+3: 15.0
+}
+capacity = 1
+priority = 1.0
+stands_on_furniture = true
+
+[resource]
+script = ExtResource("1_furn")
+id = &"bed_single"
+display_name = "Single Bed"
+description = "Sleep restores energy. One person at a time."
+placeholder_color = Color(0.36, 0.47, 0.68, 1)
+category = 1
+price = 400
+size = Vector2i(1, 2)
+comfort = 30.0
+entertainment = 0.0
+blocks_movement = true
+requires_wall = false
+interactions = Array[Resource]([SubResource("Resource_sleep")])
+allowed_room_types = Array[int]([2])

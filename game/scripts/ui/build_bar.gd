@@ -16,7 +16,8 @@ const TOOLS := [
 	[KEY_4, "Window", GameEnums.ToolMode.WINDOW],
 	[KEY_5, "Floor", GameEnums.ToolMode.FLOOR],
 	[KEY_6, "Room", GameEnums.ToolMode.ASSIGN_ROOM],
-	[KEY_7, "Delete", GameEnums.ToolMode.DELETE],
+	[KEY_7, "Furniture", GameEnums.ToolMode.FURNITURE],
+	[KEY_8, "Delete", GameEnums.ToolMode.DELETE],
 ]
 
 ## Room types the player can assign in the MVP (design doc §9).
@@ -31,6 +32,8 @@ const ROOM_TYPES := [
 @onready var _option_row: HBoxContainer = %OptionRow
 @onready var _floor_picker: OptionButton = %FloorPicker
 @onready var _room_picker: OptionButton = %RoomPicker
+@onready var _furniture_picker: OptionButton = %FurniturePicker
+@onready var _rotate_button: Button = %RotateButton
 @onready var _message: Label = %Message
 
 var _builder: BuildController
@@ -45,9 +48,12 @@ func _ready() -> void:
 	_build_tool_buttons()
 	_fill_floor_picker()
 	_fill_room_picker()
+	_fill_furniture_picker()
 
 	_floor_picker.item_selected.connect(_on_floor_selected)
 	_room_picker.item_selected.connect(_on_room_selected)
+	_furniture_picker.item_selected.connect(_on_furniture_selected)
+	_rotate_button.pressed.connect(_on_rotate_pressed)
 	EventBus.tool_mode_changed.connect(_on_tool_mode_changed)
 	EventBus.build_rejected.connect(_on_build_rejected)
 	EventBus.rooms_rebuilt.connect(_on_rooms_rebuilt)
@@ -85,6 +91,26 @@ func _fill_room_picker() -> void:
 	_on_room_selected(0)
 
 
+## Furniture is listed by category so a long catalogue stays navigable; the
+## picker is filled from the Database, so adding a .tres adds a menu entry.
+func _fill_furniture_picker() -> void:
+	_furniture_picker.clear()
+	for category: int in FurnitureData.Category.values():
+		var entries := Database.furniture_in_category(category)
+		if entries.is_empty():
+			continue
+		_furniture_picker.add_separator(String(FurnitureData.Category.keys()[category]).capitalize())
+		for template in entries:
+			_furniture_picker.add_item("%s  $%d" % [template.display_name, template.price])
+			_furniture_picker.set_item_metadata(_furniture_picker.item_count - 1, template.id)
+	# Skip the leading separator when selecting the default entry.
+	for index in _furniture_picker.item_count:
+		if _furniture_picker.get_item_metadata(index) != null:
+			_furniture_picker.select(index)
+			_on_furniture_selected(index)
+			break
+
+
 ## Number keys select tools. Handled here rather than as InputMap actions
 ## because the tool list grows every phase and each entry would otherwise need
 ## its own action registered up front.
@@ -118,7 +144,9 @@ func _on_tool_mode_changed(mode: int) -> void:
 		(_buttons[tool_mode] as Button).button_pressed = tool_mode == mode
 	_floor_picker.visible = mode == GameEnums.ToolMode.FLOOR
 	_room_picker.visible = mode == GameEnums.ToolMode.ASSIGN_ROOM
-	_option_row.visible = _floor_picker.visible or _room_picker.visible
+	_furniture_picker.visible = mode == GameEnums.ToolMode.FURNITURE
+	_rotate_button.visible = mode == GameEnums.ToolMode.FURNITURE
+	_option_row.visible = _floor_picker.visible or _room_picker.visible or _furniture_picker.visible
 
 
 func _on_floor_selected(index: int) -> void:
@@ -129,6 +157,18 @@ func _on_floor_selected(index: int) -> void:
 func _on_room_selected(index: int) -> void:
 	if _builder != null:
 		_builder.selected_room_type = int(_room_picker.get_item_metadata(index))
+
+
+func _on_furniture_selected(index: int) -> void:
+	var id: Variant = _furniture_picker.get_item_metadata(index)
+	if _builder != null and id != null:
+		_builder.selected_furniture_id = id
+
+
+## Rotation has a button as well as the R key: there is no keyboard on a phone.
+func _on_rotate_pressed() -> void:
+	if _builder != null:
+		_builder.rotation_steps = (_builder.rotation_steps + 1) % 4
 
 
 func _on_build_rejected(reason: String) -> void:

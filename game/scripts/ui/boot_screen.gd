@@ -34,6 +34,7 @@ func _ready() -> void:
 	await get_tree().create_timer(1.0).timeout
 	_results.append(ArchitectureCheck.check_scheduler(_probe, 3))
 	_results.append(ArchitectureCheck.check_room_type_persistence())
+	_results.append(ArchitectureCheck.check_furniture_placement())
 	_render()
 
 	# Headless mode for CI: `godot --headless -- --selftest` prints the report

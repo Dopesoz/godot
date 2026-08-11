@@ -47,6 +47,7 @@ static func run_all() -> Array[Result]:
 	results.append(_check_room_splitting())
 	results.append(_check_data_layer())
 	results.append(_check_database())
+	results.append(_check_content_integrity())
 	results.append(_check_clock())
 	results.append(_check_economy())
 	results.append(_check_event_bus())
@@ -295,6 +296,39 @@ static func _check_database() -> Result:
 	return Result.new("Content database", true, summary)
 
 
+## Content is written by hand in .tres files, so it is worth checking that it
+## actually parsed into what the code expects — especially the nested
+## interaction resources, which are the part most likely to load as an empty
+## array without anyone noticing until a citizen refuses to sleep.
+static func _check_content_integrity() -> Result:
+	var interaction_count := 0
+	for template: FurnitureData in Database.furniture.values():
+		if template.price <= 0:
+			return Result.new("Content integrity", false, "%s has a non-positive price" % template.id)
+		if template.size.x < 1 or template.size.y < 1:
+			return Result.new("Content integrity", false, "%s has an empty footprint" % template.id)
+		for interaction in template.interactions:
+			if interaction == null:
+				return Result.new("Content integrity", false, "%s has a null interaction" % template.id)
+			if interaction.duration_minutes <= 0.0:
+				return Result.new("Content integrity", false, "%s.%s takes no time" % [template.id, interaction.id])
+			if interaction.need_effects.is_empty():
+				return Result.new("Content integrity", false, "%s.%s changes nothing" % [template.id, interaction.id])
+			interaction_count += 1
+	for material: FloorData in Database.floors.values():
+		if material.price_per_tile <= 0:
+			return Result.new("Content integrity", false, "floor %s is free" % material.id)
+
+	var bed := Database.get_furniture(&"bed_single")
+	if bed == null or bed.find_interaction_for(GameEnums.NeedType.ENERGY) == null:
+		return Result.new("Content integrity", false, "the bed does not offer a way to restore energy")
+	var sleep := bed.find_interaction_for(GameEnums.NeedType.ENERGY)
+	if sleep.state != GameEnums.CitizenState.SLEEPING:
+		return Result.new("Content integrity", false, "sleeping in a bed does not put the citizen in the sleeping state")
+	return Result.new("Content integrity", true, "%d templates, %d interactions, all well formed"
+			% [Database.furniture.size() + Database.floors.size(), interaction_count])
+
+
 static func _check_clock() -> Result:
 	var saved := GameClock.total_minutes
 	var saved_speed := GameClock.speed_index
@@ -366,6 +400,64 @@ static func _check_save_cycle() -> Result:
 	if not time_ok:
 		return Result.new("Save / load", false, "clock was not restored")
 	return Result.new("Save / load", true, "state restored from JSON with no scene involved")
+
+
+## Placement is where the grid, the templates and the rooms meet, so this is the
+## check that catches a footprint, an occupancy or a rotation going wrong.
+static func check_furniture_placement() -> Result:
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null:
+		return Result.new("Furniture placement", false, "no scene tree")
+
+	var grid := WorldGrid.new(Vector2i(16, 16), 1)
+	var registry := FurnitureRegistry.new()
+	registry.name = "SelfTestFurniture"
+	tree.root.add_child(registry)
+	registry._on_world_ready(grid)
+
+	var failure := ""
+	var bed := registry.place(&"bed_single", Vector2i(2, 2))
+	if bed == null:
+		failure = "could not place a bed on empty ground"
+	elif bed.cells() != [Vector2i(2, 2), Vector2i(2, 3)]:
+		failure = "1x2 bed occupies %s" % str(bed.cells())
+	elif grid.is_free(Vector2i(2, 3)):
+		failure = "the bed did not mark its cells as occupied"
+	elif registry.place(&"bed_single", Vector2i(2, 3)) != null:
+		failure = "a second bed was placed on top of the first"
+	elif registry.furniture_at(Vector2i(2, 3)) != bed:
+		failure = "the world does not report the bed standing on its own cell"
+	else:
+		# Rotating swaps the footprint, which is the whole point of storing
+		# rotation instead of two separate templates.
+		var sofa := registry.place(&"sofa", Vector2i(6, 6), 1)
+		if sofa == null or sofa.cells() != [Vector2i(6, 6), Vector2i(6, 7)]:
+			failure = "a rotated 2x1 sofa did not become 1x2"
+		else:
+			# A wall through the middle of a footprint must block placement.
+			grid.set_edge(WorldGrid.edge_between(Vector2i(9, 9), Vector2i(9, 10)), GameEnums.EdgeType.WALL)
+			if registry.can_place(Database.get_furniture(&"bed_single"), Vector2i(9, 9), 0):
+				failure = "a bed was allowed to straddle a wall"
+			else:
+				var found := registry.find_for_need(GameEnums.NeedType.ENERGY)
+				if found.is_empty() or found[0]["furniture"] != bed:
+					failure = "asking the world for something that restores energy did not find the bed"
+				elif not registry.remove(bed.id) or not grid.is_free(Vector2i(2, 3)):
+					failure = "removing the bed did not free its cells"
+				else:
+					# Full round-trip through JSON, as the save file does it.
+					var payload: Variant = JSON.parse_string(JSON.stringify(registry.save_data()))
+					registry.load_data(payload)
+					if registry.count() != 1:
+						failure = "expected 1 item after loading, got %d" % registry.count()
+					elif registry.furniture_at(Vector2i(6, 7)) == null:
+						failure = "the reloaded sofa is not standing where it was saved"
+
+	registry.queue_free()
+	SaveManager.unregister("furniture")
+	if failure != "":
+		return Result.new("Furniture placement", false, failure)
+	return Result.new("Furniture placement", true, "footprints, rotation, occupancy, need lookup and saving all hold")
 
 
 ## Ticks are delivered over several frames, so this one is checked after a short

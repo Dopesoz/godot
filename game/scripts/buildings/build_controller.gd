@@ -22,12 +22,19 @@ const EDGE_PICK_THRESHOLD := 0.35
 var tool_mode: int = GameEnums.ToolMode.NONE
 var selected_floor_id: StringName = &"floor_wood"
 var selected_room_type: int = GameEnums.RoomType.LIVING_ROOM
+var selected_furniture_id: StringName = &"bed_single"
+## 0..3, rotated with R. Kept on the controller rather than per placement so a
+## row of chairs can be put down facing the same way.
+var rotation_steps: int = 0
 
 ## The plan the preview layer draws. Rebuilt whenever the pointer moves.
 var preview_cells: Array[Vector2i] = []
 var preview_edges: Array[Vector3i] = []
+var preview_furniture: Array[int] = []
 var preview_cost: int = 0
 var preview_valid: bool = false
+## Why the current plan is not valid, shown to the player on a failed click.
+var preview_error: String = ""
 
 var _dragging: bool = false
 var _drag_start: Vector2i = Vector2i.ZERO
@@ -63,6 +70,9 @@ func _process(_delta: float) -> void:
 # --- Input ------------------------------------------------------------------
 
 func _unhandled_input(event: InputEvent) -> void:
+	if Input.is_action_just_pressed(InputActions.BUILD_ROTATE) and tool_mode == GameEnums.ToolMode.FURNITURE:
+		rotation_steps = (rotation_steps + 1) % 4
+		return
 	if Input.is_action_just_pressed(InputActions.BUILD_CANCEL):
 		if _dragging:
 			_dragging = false
@@ -117,6 +127,8 @@ func _rebuild_preview() -> void:
 			_plan_opening(GameEnums.EdgeType.WINDOW)
 		GameEnums.ToolMode.ASSIGN_ROOM:
 			_plan_assign_room()
+		GameEnums.ToolMode.FURNITURE:
+			_plan_furniture(to)
 		_:
 			_clear_preview()
 
@@ -124,8 +136,10 @@ func _rebuild_preview() -> void:
 func _clear_preview() -> void:
 	preview_cells = []
 	preview_edges = []
+	preview_furniture = []
 	preview_cost = 0
 	preview_valid = false
+	preview_error = ""
 
 
 ## Walls are placed around the perimeter of the dragged rectangle, which is the
@@ -161,11 +175,19 @@ func _plan_floor_rect(from: Vector2i, to: Vector2i) -> void:
 func _plan_delete(from: Vector2i, to: Vector2i) -> void:
 	preview_cells = IsoUtils.cells_in_rect(from, to)
 	preview_edges = []
+	preview_furniture = []
 	for edge in _all_edges_in_rect(from, to):
 		if _world.grid.get_edge(edge) != GameEnums.EdgeType.NONE:
 			preview_edges.append(edge)
+	var furniture := _furniture()
+	if furniture != null:
+		for cell in preview_cells:
+			var item := furniture.furniture_at(cell)
+			if item != null and not preview_furniture.has(item.id):
+				preview_furniture.append(item.id)
 	preview_cost = 0
-	preview_valid = not preview_edges.is_empty() or _has_any_floor(preview_cells)
+	preview_valid = not preview_edges.is_empty() or not preview_furniture.is_empty() or _has_any_floor(preview_cells)
+	preview_error = "" if preview_valid else "Nothing here to remove"
 
 
 ## A door or a window can only be cut into a wall that already exists.
@@ -182,6 +204,26 @@ func _plan_opening(type: int) -> void:
 	var current := _world.grid.get_edge(edge)
 	preview_cost = GameConstants.PRICE_DOOR if type == GameEnums.EdgeType.DOOR else GameConstants.PRICE_WINDOW
 	preview_valid = current != GameEnums.EdgeType.NONE and current != type and Economy.can_afford(preview_cost)
+
+
+## Furniture is placed one click at a time, with the footprint of the currently
+## selected template rotated by `rotation_steps`.
+func _plan_furniture(origin: Vector2i) -> void:
+	preview_edges = []
+	preview_furniture = []
+	var template := Database.get_furniture(selected_furniture_id)
+	if template == null:
+		_clear_preview()
+		preview_error = "No furniture selected"
+		return
+	var extent := template.rotated_size(rotation_steps)
+	preview_cells = IsoUtils.cells_in_rect(origin, origin + extent - Vector2i.ONE)
+	preview_cost = template.price
+	var furniture := _furniture()
+	preview_error = furniture.placement_error(template, origin, rotation_steps) if furniture != null else "No world"
+	if preview_error == "" and not Economy.can_afford(preview_cost):
+		preview_error = "Not enough money: $%d needed" % preview_cost
+	preview_valid = preview_error == ""
 
 
 func _plan_assign_room() -> void:
@@ -216,6 +258,9 @@ func _apply_drag() -> void:
 			if not preview_edges.is_empty():
 				for edge in preview_edges:
 					_world.grid.set_edge(edge, GameEnums.EdgeType.NONE)
+			elif not preview_furniture.is_empty():
+				for furniture_id in preview_furniture:
+					_furniture().remove(furniture_id)
 			else:
 				for cell in preview_cells:
 					_world.grid.set_floor_material(cell, &"")
@@ -236,10 +281,17 @@ func _apply_click() -> void:
 			var room := _room_under_pointer()
 			if room != null:
 				_registry().set_room_type(room.id, selected_room_type)
+		GameEnums.ToolMode.FURNITURE:
+			if not Economy.try_spend(preview_cost, "furniture"):
+				return
+			_furniture().place(selected_furniture_id, _world.hovered_cell, rotation_steps)
 
 
 ## Tells the player *why* nothing happened, instead of appearing to be broken.
 func _reject_current() -> void:
+	if preview_error != "":
+		EventBus.build_rejected.emit(preview_error)
+		return
 	var reason := "Nothing to build here"
 	match tool_mode:
 		GameEnums.ToolMode.DOOR, GameEnums.ToolMode.WINDOW:
@@ -311,3 +363,7 @@ func _room_under_pointer() -> Room:
 
 func _registry() -> BuildingRegistry:
 	return _world.get_node("Buildings") as BuildingRegistry
+
+
+func _furniture() -> FurnitureRegistry:
+	return _world.get_node_or_null("Furniture") as FurnitureRegistry

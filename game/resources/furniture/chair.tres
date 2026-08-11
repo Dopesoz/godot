@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="FurnitureData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/furniture_data.gd" id="1_furn"]
+[ext_resource type="Script" path="res://scripts/data/interaction_data.gd" id="2_int"]
+
+[sub_resource type="Resource" id="Resource_sit"]
+script = ExtResource("2_int")
+id = &"sit"
+display_name = "Sit"
+state = 5
+duration_minutes = 30.0
+need_effects = {
+3: 12.0
+}
+capacity = 1
+priority = 1.0
+stands_on_furniture = true
+
+[resource]
+script = ExtResource("1_furn")
+id = &"chair"
+display_name = "Chair"
+description = "A place to sit down."
+placeholder_color = Color(0.58, 0.45, 0.32, 1)
+category = 0
+price = 60
+size = Vector2i(1, 1)
+comfort = 8.0
+entertainment = 0.0
+blocks_movement = true
+requires_wall = false
+interactions = Array[Resource]([SubResource("Resource_sit")])

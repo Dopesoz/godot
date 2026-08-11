@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="FurnitureData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/furniture_data.gd" id="1_furn"]
+[ext_resource type="Script" path="res://scripts/data/interaction_data.gd" id="2_int"]
+
+[sub_resource type="Resource" id="Resource_wash"]
+script = ExtResource("2_int")
+id = &"shower"
+display_name = "Shower"
+state = 6
+duration_minutes = 20.0
+need_effects = {
+2: 55.0,
+3: 5.0
+}
+capacity = 1
+priority = 1.0
+stands_on_furniture = true
+
+[resource]
+script = ExtResource("1_furn")
+id = &"shower"
+display_name = "Shower"
+description = "Twenty minutes, and hygiene is solved."
+placeholder_color = Color(0.60, 0.78, 0.85, 1)
+category = 4
+price = 350
+size = Vector2i(1, 1)
+comfort = 0.0
+entertainment = 0.0
+blocks_movement = true
+requires_wall = false
+interactions = Array[Resource]([SubResource("Resource_wash")])
+allowed_room_types = Array[int]([4])

@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=17 format=3]
 
 [ext_resource type="Script" path="res://scripts/world/world_controller.gd" id="1_world"]
 [ext_resource type="Script" path="res://scripts/world/ground_renderer.gd" id="2_ground"]
@@ -11,6 +11,9 @@
 [ext_resource type="Script" path="res://scripts/input/desktop_input_adapter.gd" id="9_input"]
 [ext_resource type="Script" path="res://scripts/buildings/building_registry.gd" id="10_registry"]
 [ext_resource type="Script" path="res://scripts/buildings/build_controller.gd" id="11_builder"]
+[ext_resource type="Script" path="res://scripts/buildings/furniture_registry.gd" id="12_furniture"]
+[ext_resource type="Script" path="res://scripts/buildings/furniture_renderer.gd" id="13_furnview"]
+[ext_resource type="Script" path="res://scripts/input/touch_input_adapter.gd" id="14_touch"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="12_hud"]
 [ext_resource type="PackedScene" path="res://scenes/ui/build_bar.tscn" id="13_bar"]
 
@@ -28,6 +31,9 @@ script = ExtResource("4_grid")
 
 [node name="Highlight" type="Node2D" parent="."]
 script = ExtResource("5_highlight")
+
+[node name="FurnitureLayer" type="Node2D" parent="."]
+script = ExtResource("13_furnview")
 
 [node name="Walls" type="Node2D" parent="."]
 script = ExtResource("6_walls")
@@ -47,8 +53,14 @@ script = ExtResource("9_input")
 [node name="Buildings" type="Node" parent="."]
 script = ExtResource("10_registry")
 
+[node name="Furniture" type="Node" parent="."]
+script = ExtResource("12_furniture")
+
 [node name="Builder" type="Node" parent="."]
 script = ExtResource("11_builder")
+
+[node name="Touch" type="Node" parent="."]
+script = ExtResource("14_touch")
 
 [node name="HUD" parent="." instance=ExtResource("12_hud")]
 

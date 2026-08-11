@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="FurnitureData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/furniture_data.gd" id="1_furn"]
+[ext_resource type="Script" path="res://scripts/data/interaction_data.gd" id="2_int"]
+
+[sub_resource type="Resource" id="Resource_snack"]
+script = ExtResource("2_int")
+id = &"get_food"
+display_name = "Get Food"
+state = 2
+duration_minutes = 10.0
+need_effects = {
+0: 35.0
+}
+capacity = 1
+priority = 0.8
+stands_on_furniture = false
+
+[resource]
+script = ExtResource("1_furn")
+id = &"fridge"
+display_name = "Fridge"
+description = "A quick snack, no cooking required."
+placeholder_color = Color(0.80, 0.82, 0.85, 1)
+category = 3
+price = 500
+size = Vector2i(1, 1)
+comfort = 0.0
+entertainment = 0.0
+blocks_movement = true
+requires_wall = false
+interactions = Array[Resource]([SubResource("Resource_snack")])
+allowed_room_types = Array[int]([3])
