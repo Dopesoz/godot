@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="JobData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/job_data.gd" id="1_job"]
+
+[resource]
+script = ExtResource("1_job")
+id = &"office_worker"
+display_name = "Office Worker"
+description = "Desk job in a commercial building. Fixed hours, steady salary."
+placeholder_color = Color(0.45, 0.6, 0.85, 1)
+salary_per_day = 180
+start_hour = 9.0
+end_hour = 18.0
+workplace_building_type = 1
+workplace_room_type = 6
+slots_per_workplace = 6

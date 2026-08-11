@@ -1,0 +1,9 @@
+# Godot editor cache and imported assets
+.godot/
+
+# Export output and per-machine export config
+export_presets.cfg
+build/
+android/build/
+*.apk
+*.aab
