@@ -43,6 +43,8 @@ static func run_all() -> Array[Result]:
 	results.append(_check_edge_model())
 	results.append(_check_walls_and_doors())
 	results.append(_check_grid_serialisation())
+	results.append(_check_room_detection())
+	results.append(_check_room_splitting())
 	results.append(_check_data_layer())
 	results.append(_check_database())
 	results.append(_check_clock())
@@ -127,6 +129,133 @@ static func _check_grid_serialisation() -> Result:
 	return Result.new("World serialisation", true, "cells and edges survive a JSON round-trip")
 
 
+## The heart of Phase 2: walls in, rooms out. Checks the three cases that
+## actually break in practice — an open shape, a sealed shape, and a door.
+static func _check_room_detection() -> Result:
+	var grid := WorldGrid.new(Vector2i(16, 16), 1)
+	var from := Vector2i(2, 2)
+	var to := Vector2i(5, 4)
+
+	if not RoomDetector.detect(grid).is_empty():
+		return Result.new("Room detection", false, "an empty map already reports rooms")
+
+	var perimeter := WorldGrid.rect_perimeter_edges(from, to)
+	for edge in perimeter:
+		grid.set_edge(edge, GameEnums.EdgeType.WALL)
+
+	var rooms := RoomDetector.detect(grid)
+	if rooms.size() != 1:
+		return Result.new("Room detection", false, "a closed rectangle produced %d rooms" % rooms.size())
+	var room: Room = rooms[0]
+	if room.area() != 12:
+		return Result.new("Room detection", false, "4x3 room reported an area of %d" % room.area())
+	if room.is_reachable():
+		return Result.new("Room detection", false, "a room with no door reported itself as reachable")
+	if room.anchor() != from:
+		return Result.new("Room detection", false, "room anchor was %s, expected %s" % [room.anchor(), from])
+
+	# A door keeps the room enclosed but makes it reachable — the distinction
+	# the whole edge model exists for.
+	grid.set_edge(WorldGrid.edge_key(Vector2i(3, 4), Vector2i.DOWN), GameEnums.EdgeType.DOOR)
+	rooms = RoomDetector.detect(grid)
+	if rooms.size() != 1 or not rooms[0].is_reachable():
+		return Result.new("Room detection", false, "adding a door broke the room")
+
+	# Knocking a hole in the wall opens it to the outdoors, so it stops being a
+	# room at all.
+	grid.set_edge(WorldGrid.edge_key(Vector2i(3, 2), Vector2i.UP), GameEnums.EdgeType.NONE)
+	if not RoomDetector.detect(grid).is_empty():
+		return Result.new("Room detection", false, "a wall was removed but the room survived")
+	return Result.new("Room detection", true, "sealed shapes become rooms, doors keep them, holes dissolve them")
+
+
+## Two rectangles sharing a border must be two rooms separated by ONE wall —
+## the payoff of storing walls on edges instead of in cells.
+static func _check_room_splitting() -> Result:
+	var grid := WorldGrid.new(Vector2i(16, 16), 1)
+	for edge in WorldGrid.rect_perimeter_edges(Vector2i(2, 2), Vector2i(5, 4)):
+		grid.set_edge(edge, GameEnums.EdgeType.WALL)
+	for edge in WorldGrid.rect_perimeter_edges(Vector2i(6, 2), Vector2i(8, 4)):
+		grid.set_edge(edge, GameEnums.EdgeType.WALL)
+
+	var shared := WorldGrid.edge_between(Vector2i(5, 3), Vector2i(6, 3))
+	if grid.get_edge(shared) != GameEnums.EdgeType.WALL:
+		return Result.new("Adjacent rooms", false, "the shared border is not a wall")
+
+	var rooms := RoomDetector.detect(grid)
+	if rooms.size() != 2:
+		return Result.new("Adjacent rooms", false, "expected 2 rooms, got %d" % rooms.size())
+	var areas := [rooms[0].area(), rooms[1].area()]
+	areas.sort()
+	if areas != [9, 12]:
+		return Result.new("Adjacent rooms", false, "room areas were %s, expected [9, 12]" % str(areas))
+
+	# One door in the shared wall connects both rooms at once.
+	grid.set_edge(shared, GameEnums.EdgeType.DOOR)
+	rooms = RoomDetector.detect(grid)
+	if rooms.size() != 2:
+		return Result.new("Adjacent rooms", false, "a door in the shared wall merged the rooms")
+	if not (rooms[0].is_reachable() and rooms[1].is_reachable()):
+		return Result.new("Adjacent rooms", false, "the shared door is not seen from both rooms")
+	if not grid.can_walk_between(Vector2i(5, 3), Vector2i(6, 3)):
+		return Result.new("Adjacent rooms", false, "citizens cannot walk through the shared door")
+	return Result.new("Adjacent rooms", true, "one wall, two rooms, one door serving both")
+
+
+## Room ids are regenerated on every rebuild, so the player's manual room type
+## has to survive by anchor cell instead — including across a save and load.
+## This is the one piece of Phase 2 state that is authored rather than derived.
+static func check_room_type_persistence() -> Result:
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null:
+		return Result.new("Room type persistence", false, "no scene tree")
+
+	var grid := WorldGrid.new(Vector2i(16, 16), 1)
+	var registry := BuildingRegistry.new()
+	registry.name = "SelfTestRegistry"
+	tree.root.add_child(registry)
+	# Handed the grid directly rather than through the bus, so the test cannot
+	# disturb a world that may already be listening.
+	registry._on_world_ready(grid)
+	for edge in WorldGrid.rect_perimeter_edges(Vector2i(3, 3), Vector2i(6, 6)):
+		grid.set_edge(edge, GameEnums.EdgeType.WALL)
+	registry.rebuild()
+
+	var failure := ""
+	if registry.room_count() != 1:
+		failure = "expected 1 room, got %d" % registry.room_count()
+	else:
+		var room: Room = registry.rooms.values()[0]
+		registry.set_room_type(room.id, GameEnums.RoomType.BEDROOM)
+		var saved: Dictionary = registry.save_data()
+
+		registry.rebuild()
+		var rebuilt: Room = registry.rooms.values()[0]
+		if rebuilt.room_type != GameEnums.RoomType.BEDROOM:
+			failure = "the room type was lost when rooms were rebuilt"
+		elif registry.room_at(Vector2i(4, 4)) == null:
+			failure = "cells inside the room do not point back at it"
+		else:
+			# A fresh registry loading the same payload must land on the same
+			# room, which is what makes the save file map-independent.
+			var reloaded := BuildingRegistry.new()
+			reloaded.name = "SelfTestRegistryReloaded"
+			tree.root.add_child(reloaded)
+			reloaded._on_world_ready(grid)
+			reloaded.load_data(saved)
+			reloaded.rebuild()
+			var loaded_room: Room = reloaded.rooms.values()[0]
+			if loaded_room.room_type != GameEnums.RoomType.BEDROOM:
+				failure = "the room type did not survive save and load"
+			reloaded.queue_free()
+
+	registry.queue_free()
+	SaveManager.unregister("buildings")
+	if failure != "":
+		return Result.new("Room type persistence", false, failure)
+	return Result.new("Room type persistence", true, "manual room types survive rebuilds and saves")
+
+
 static func _check_data_layer() -> Result:
 	# Built in code rather than loaded from disk: this proves the template API
 	# itself, independently of whether any content exists yet.
@@ -158,9 +287,9 @@ static func _check_database() -> Result:
 	if not Database.is_loaded():
 		return Result.new("Content database", false, "database never finished loading")
 	var errors := Database.get_errors()
-	var summary := "%d furniture, %d jobs, %d citizens, %d buildings, %d room types" % [
-		Database.furniture.size(), Database.jobs.size(), Database.citizens.size(),
-		Database.buildings.size(), Database.room_types.size()]
+	var summary := "%d furniture, %d floors, %d jobs, %d citizens, %d buildings, %d room types" % [
+			Database.furniture.size(), Database.floors.size(), Database.jobs.size(),
+			Database.citizens.size(), Database.buildings.size(), Database.room_types.size()]
 	if errors.size() > 0:
 		return Result.new("Content database", false, summary + " | " + ", ".join(errors))
 	return Result.new("Content database", true, summary)
@@ -240,7 +369,8 @@ static func _check_save_cycle() -> Result:
 
 
 ## Ticks are delivered over several frames, so this one is checked after a short
-## wait rather than inline. Returns null while the probe has not been given a
+## wait rather than inline, together with the checks that need to add nodes to a
+## tree that is no longer busy building the boot scene. Returns null while the probe has not been given a
 ## chance to run yet.
 static func check_scheduler(probe: ProbeAgent, expected_min_ticks: int) -> Result:
 	if probe.ticks >= expected_min_ticks:

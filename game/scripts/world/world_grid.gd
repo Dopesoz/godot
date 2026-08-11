@@ -166,6 +166,23 @@ static func edge_cells(edge: Vector3i) -> Array[Vector2i]:
 	return [cell, cell + Vector2i.LEFT]
 
 
+## Canonical edges forming the border of an inclusive cell rectangle. This is
+## what the wall tool draws and what a "closed room" means geometrically.
+static func rect_perimeter_edges(from: Vector2i, to: Vector2i) -> Array[Vector3i]:
+	var edges: Array[Vector3i] = []
+	var x0 := mini(from.x, to.x)
+	var x1 := maxi(from.x, to.x)
+	var y0 := mini(from.y, to.y)
+	var y1 := maxi(from.y, to.y)
+	for x in range(x0, x1 + 1):
+		edges.append(edge_key(Vector2i(x, y0), Vector2i.UP))
+		edges.append(edge_key(Vector2i(x, y1), Vector2i.DOWN))
+	for y in range(y0, y1 + 1):
+		edges.append(edge_key(Vector2i(x0, y), Vector2i.LEFT))
+		edges.append(edge_key(Vector2i(x1, y), Vector2i.RIGHT))
+	return edges
+
+
 ## Returns a GameEnums.EdgeType value. Typed as int because GDScript cannot
 ## implicitly narrow a Dictionary lookup back into an enum type.
 func get_edge(edge: Vector3i, floor_index: int = 0) -> int:

@@ -17,6 +17,9 @@ const FLOOR_FALLBACK := Color(0.62, 0.51, 0.38)
 const EDGE_COLOR := Color(0.0, 0.0, 0.0, 0.10)
 
 var _grid: WorldGrid
+## Cached template lookups: _draw touches every floored cell, and a missing id
+## would otherwise log a warning on every redraw.
+var _floor_cache: Dictionary = {}
 
 
 func _ready() -> void:
@@ -48,7 +51,10 @@ func _draw() -> void:
 func _color_for(cell: Vector2i) -> Color:
 	var data := _grid.get_cell(cell)
 	if data != null and data.floor_id != &"":
-		var furniture := Database.get_furniture(data.floor_id)
-		return furniture.placeholder_color if furniture != null else FLOOR_FALLBACK
+		var material: FloorData = _floor_cache.get(data.floor_id)
+		if material == null:
+			material = Database.get_floor(data.floor_id)
+			_floor_cache[data.floor_id] = material
+		return material.placeholder_color if material != null else FLOOR_FALLBACK
 	# Checkerboard so individual cells stay readable without a grid overlay.
 	return GRASS_A if (cell.x + cell.y) % 2 == 0 else GRASS_B

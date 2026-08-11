@@ -32,14 +32,12 @@ theme_override_constants/outline_size = 5
 text = "$ 0"
 
 [node name="Bottom" type="VBoxContainer" parent="."]
-anchors_preset = 12
-anchor_top = 1.0
+anchors_preset = 10
 anchor_right = 1.0
-anchor_bottom = 1.0
 offset_left = 16.0
-offset_top = -62.0
+offset_top = 52.0
 offset_right = -16.0
-offset_bottom = -12.0
+offset_bottom = 108.0
 theme_override_constants/separation = 4
 
 [node name="DebugLabel" type="Label" parent="Bottom"]

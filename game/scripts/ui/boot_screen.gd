@@ -33,6 +33,7 @@ func _ready() -> void:
 	# The scheduler needs a few frames to deliver ticks, so its check runs last.
 	await get_tree().create_timer(1.0).timeout
 	_results.append(ArchitectureCheck.check_scheduler(_probe, 3))
+	_results.append(ArchitectureCheck.check_room_type_persistence())
 	_render()
 
 	# Headless mode for CI: `godot --headless -- --selftest` prints the report

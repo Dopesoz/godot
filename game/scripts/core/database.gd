@@ -14,6 +14,7 @@ const RESOURCE_ROOT := "res://resources"
 
 ## StringName id -> GameData, one dictionary per content type.
 var furniture: Dictionary = {}
+var floors: Dictionary = {}
 var citizens: Dictionary = {}
 var jobs: Dictionary = {}
 var buildings: Dictionary = {}
@@ -29,6 +30,7 @@ func _ready() -> void:
 
 func reload() -> void:
 	furniture.clear()
+	floors.clear()
 	citizens.clear()
 	jobs.clear()
 	buildings.clear()
@@ -36,8 +38,8 @@ func reload() -> void:
 	_errors.clear()
 	_scan_dir(RESOURCE_ROOT)
 	_loaded = true
-	EventBus.notify("Database: %d furniture, %d citizens, %d jobs, %d buildings, %d room types"
-			% [furniture.size(), citizens.size(), jobs.size(), buildings.size(), room_types.size()])
+	EventBus.notify("Database: %d furniture, %d floors, %d citizens, %d jobs, %d buildings, %d room types"
+			% [furniture.size(), floors.size(), citizens.size(), jobs.size(), buildings.size(), room_types.size()])
 	for error in _errors:
 		push_warning("Database: " + error)
 
@@ -91,6 +93,8 @@ func _register(path: String) -> void:
 func _bucket_for(data: GameData) -> Dictionary:
 	if data is FurnitureData:
 		return furniture
+	if data is FloorData:
+		return floors
 	if data is CitizenData:
 		return citizens
 	if data is JobData:
@@ -108,6 +112,24 @@ func _bucket_for(data: GameData) -> Dictionary:
 
 func get_furniture(id: StringName) -> FurnitureData:
 	return _lookup(furniture, id, "furniture") as FurnitureData
+
+
+func get_floor(id: StringName) -> FloorData:
+	return _lookup(floors, id, "floor") as FloorData
+
+
+## Floor materials in a stable order, for the build menu.
+func all_floors() -> Array[FloorData]:
+	var result: Array[FloorData] = []
+	for id: StringName in _sorted_ids(floors):
+		result.append(floors[id])
+	return result
+
+
+func _sorted_ids(bucket: Dictionary) -> Array:
+	var ids := bucket.keys()
+	ids.sort()
+	return ids
 
 
 func get_citizen(id: StringName) -> CitizenData:

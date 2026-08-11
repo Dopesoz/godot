@@ -76,6 +76,18 @@ static func neighbors(cell: Vector2i) -> Array[Vector2i]:
 	]
 
 
+## The two endpoints, in world pixels, of a canonical cell edge (see WorldGrid).
+## A horizontal edge is the top-right side of its cell's diamond, a vertical
+## edge the top-left side. Walls, doors, windows and their previews all stand on
+## this segment, so the geometry lives here rather than in each renderer.
+static func edge_segment(edge: Vector3i, floor_index: int = 0) -> PackedVector2Array:
+	var center := cell_to_world(Vector2i(edge.x, edge.y), floor_index)
+	var top := center + Vector2(0.0, -GameConstants.TILE_HH)
+	if edge.z == GameEnums.EdgeAxis.HORIZONTAL:
+		return PackedVector2Array([top, center + Vector2(GameConstants.TILE_HW, 0.0)])
+	return PackedVector2Array([center + Vector2(-GameConstants.TILE_HW, 0.0), top])
+
+
 ## Manhattan distance, the correct metric for 4-way movement.
 static func cell_distance(a: Vector2i, b: Vector2i) -> int:
 	return absi(a.x - b.x) + absi(a.y - b.y)
