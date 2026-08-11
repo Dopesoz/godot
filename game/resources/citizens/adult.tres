@@ -20,6 +20,13 @@ initial_needs = {
 4: 60.0,
 5: 65.0
 }
+interaction_affinity = {
+&"watch_tv": 1.15,
+&"read": 0.9
+}
+starting_skills = {
+&"cooking": 60.0
+}
 walk_speed = 1.6
 first_names = PackedStringArray("Anna", "Boris", "Clara", "Daniel", "Elena", "Felix", "Greta", "Hugo", "Irina", "Jonas", "Kira", "Lena", "Mark", "Nina", "Oscar", "Pavel", "Rita", "Sofia", "Timur", "Vera")
 last_names = PackedStringArray("Adler", "Beck", "Cross", "Dorn", "Egan", "Fisher", "Gould", "Hart", "Ivers", "Kane", "Lund", "Meyer", "Novak", "Ortiz", "Pike", "Quill", "Rossi", "Stein", "Toth", "Vogel")

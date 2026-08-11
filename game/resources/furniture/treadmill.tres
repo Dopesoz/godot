@@ -1,0 +1,41 @@
+[gd_resource type="Resource" script_class="FurnitureData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/furniture_data.gd" id="1_furn"]
+[ext_resource type="Script" path="res://scripts/data/interaction_data.gd" id="2_int"]
+
+[sub_resource type="Resource" id="Resource_exercise"]
+script = ExtResource("2_int")
+id = &"exercise"
+display_name = "Exercise"
+state = 4
+duration_minutes = 45.0
+need_effects = {
+1: -14.0,
+2: -18.0,
+4: 14.0,
+3: -6.0
+}
+capacity = 1
+priority = 1.0
+stands_on_furniture = true
+skill_id = &"fitness"
+xp_rate = 1.5
+required_skill_level = 0
+payout_per_skill_level = 0
+
+[resource]
+script = ExtResource("1_furn")
+id = &"treadmill"
+display_name = "Treadmill"
+description = "Costs energy and hygiene now, makes energy last longer forever after."
+placeholder_color = Color(0.45, 0.48, 0.52, 1)
+category = 3
+price = 520
+upkeep_per_day = 7
+size = Vector2i(1, 2)
+comfort = 0.0
+entertainment = 4.0
+blocks_movement = true
+requires_wall = false
+interactions = Array[Resource]([SubResource("Resource_exercise")])
+allowed_room_types = Array[int]([1, 6])

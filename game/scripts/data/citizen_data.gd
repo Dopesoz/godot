@@ -36,6 +36,15 @@ enum Personality {
 ## Keys are GameEnums.NeedType values, values are floats around 1.0.
 @export var need_decay_multipliers: Dictionary = {}
 
+## Interaction id -> multiplier on how appealing that action is to this person.
+## Above 1.0 is a favourite, below 1.0 something they avoid. This is what makes
+## two residents with identical needs spend their evening differently.
+@export var interaction_affinity: Dictionary = {}
+
+## Skill id -> starting practice in minutes, for residents who arrive with a
+## history rather than as blank slates.
+@export var starting_skills: Dictionary = {}
+
 ## Cells per second when walking at FULL simulation LOD.
 @export var walk_speed: float = 1.6
 

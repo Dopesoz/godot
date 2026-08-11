@@ -20,6 +20,10 @@ extends GameData
 ## Optional: a specific room type inside the workplace (e.g. CLASSROOM).
 @export var workplace_room_type: GameEnums.RoomType = GameEnums.RoomType.UNDEFINED
 
+## Skill the employer pays for. Levels in it raise this job's wage through
+## SkillData.wage_bonus_per_level.
+@export var skill_id: StringName = &""
+
 ## How many citizens one workplace of this type can employ.
 @export var slots_per_workplace: int = 4
 

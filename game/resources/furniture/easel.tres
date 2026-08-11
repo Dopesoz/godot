@@ -1,0 +1,39 @@
+[gd_resource type="Resource" script_class="FurnitureData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/furniture_data.gd" id="1_furn"]
+[ext_resource type="Script" path="res://scripts/data/interaction_data.gd" id="2_int"]
+
+[sub_resource type="Resource" id="Resource_paint"]
+script = ExtResource("2_int")
+id = &"paint"
+display_name = "Paint"
+state = 5
+duration_minutes = 90.0
+need_effects = {
+4: 28.0,
+3: -5.0
+}
+capacity = 1
+priority = 1.0
+stands_on_furniture = false
+skill_id = &"painting"
+xp_rate = 1.3
+required_skill_level = 0
+payout_per_skill_level = 35
+
+[resource]
+script = ExtResource("1_furn")
+id = &"easel"
+display_name = "Easel"
+description = "Painting is slow, trains a skill, and finished work sells."
+placeholder_color = Color(0.72, 0.74, 0.66, 1)
+category = 7
+price = 260
+upkeep_per_day = 1
+size = Vector2i(1, 1)
+comfort = 0.0
+entertainment = 4.0
+blocks_movement = true
+requires_wall = false
+interactions = Array[Resource]([SubResource("Resource_paint")])
+allowed_room_types = Array[int]([1, 6])

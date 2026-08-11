@@ -103,6 +103,23 @@ const STATE_DECAY_SCALE: Dictionary = {
 	GameEnums.CitizenState.WORKING: 1.2,
 }
 
+## Variety. Doing the same thing over and over is what makes a life simulation
+## boring to watch, so repetition is penalised and the penalty fades:
+##   an action becomes fully "stale" after this many minutes of doing it,
+const BOREDOM_MINUTES: float = 90.0
+##   every completed use adds at least this much staleness — otherwise a short
+##   action (a five minute coffee) never becomes stale no matter how often it
+##   is repeated,
+const BOREDOM_PER_USE: float = 0.28
+##   staleness fades away over this many minutes of not doing it,
+const BOREDOM_RECOVERY_MINUTES: float = 600.0
+##   and a completely stale action is worth this fraction of its normal value.
+const BOREDOM_FLOOR: float = 0.25
+
+## Small random spread applied when comparing options, so two identical
+## residents in identical flats do not live identical lives.
+const DECISION_JITTER: float = 0.12
+
 ## How often a busy citizen asks whether something more urgent has come up.
 const AI_RECHECK_MINUTES: float = 15.0
 

@@ -25,6 +25,16 @@ need_decay_multipliers = {
 4: 1.3,
 1: 0.9
 }
+interaction_affinity = {
+&"chat": 1.5,
+&"perform": 1.4,
+&"play_music": 1.25,
+&"read": 0.7
+}
+starting_skills = {
+&"charisma": 300.0,
+&"music": 180.0
+}
 walk_speed = 1.75
 first_names = PackedStringArray("Anna", "Boris", "Clara", "Daniel", "Elena", "Felix", "Greta", "Hugo", "Irina", "Jonas", "Kira", "Lena", "Mark", "Nina", "Oscar", "Pavel", "Rita", "Sofia", "Timur", "Vera")
 last_names = PackedStringArray("Adler", "Beck", "Cross", "Dorn", "Egan", "Fisher", "Gould", "Hart", "Ivers", "Kane", "Lund", "Meyer", "Novak", "Ortiz", "Pike", "Quill", "Rossi", "Stein", "Toth", "Vogel")

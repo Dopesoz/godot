@@ -13,4 +13,5 @@ start_hour = 8.0
 end_hour = 17.0
 workplace_building_type = 2
 workplace_room_type = 0
+skill_id = &"fitness"
 slots_per_workplace = 8

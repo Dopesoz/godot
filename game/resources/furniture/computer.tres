@@ -16,6 +16,8 @@ need_effects = {
 capacity = 1
 priority = 1.1
 stands_on_furniture = false
+skill_id = &"logic"
+xp_rate = 1.0
 
 [sub_resource type="Resource" id="Resource_cplay"]
 script = ExtResource("2_int")

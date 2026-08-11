@@ -20,6 +20,7 @@ var jobs: Dictionary = {}
 var buildings: Dictionary = {}
 var room_types: Dictionary = {}
 var schedules: Dictionary = {}
+var skills: Dictionary = {}
 
 var _loaded: bool = false
 var _errors: PackedStringArray = PackedStringArray()
@@ -37,6 +38,7 @@ func reload() -> void:
 	buildings.clear()
 	room_types.clear()
 	schedules.clear()
+	skills.clear()
 	_errors.clear()
 	_scan_dir(RESOURCE_ROOT)
 	_loaded = true
@@ -107,6 +109,8 @@ func _bucket_for(data: GameData) -> Dictionary:
 		return room_types
 	if data is ScheduleData:
 		return schedules
+	if data is SkillData:
+		return skills
 	return {}
 
 
@@ -150,6 +154,18 @@ func get_building(id: StringName) -> BuildingData:
 
 func get_schedule(id: StringName) -> ScheduleData:
 	return _lookup(schedules, id, "schedule") as ScheduleData
+
+
+func get_skill(id: StringName) -> SkillData:
+	return _lookup(skills, id, "skill") as SkillData
+
+
+## Skills in a stable order, for the inspector.
+func all_skills() -> Array[SkillData]:
+	var result: Array[SkillData] = []
+	for id: StringName in _sorted_ids(skills):
+		result.append(skills[id])
+	return result
 
 
 func get_room_type(room_type: GameEnums.RoomType) -> RoomTypeData:

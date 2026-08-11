@@ -47,6 +47,15 @@ var current_reason: String = ""
 ## Score of the current activity, kept so a candidate can be compared against it.
 var current_score: float = 0.0
 
+## Skill id -> minutes of practice. Levels are derived from this, so a save
+## carries one number per skill and the curve stays a content decision.
+var skills: Dictionary = {}
+
+## Interaction id -> 0..1 staleness. Rises while doing something, fades while
+## not. This is the difference between a resident who watches television all
+## evening and one who watches some television, then picks up the guitar.
+var boredom: Dictionary = {}
+
 ## Money earned today, shown in the inspector so the player can see a job
 ## actually paying rather than just a number moving in the corner.
 var earned_today: int = 0
@@ -72,12 +81,103 @@ func setup(grid: WorldGrid, furniture: FurnitureRegistry, template: CitizenData)
 	if needs.is_empty() and template != null:
 		for need: int in GameEnums.NeedType.values():
 			needs[need] = template.starting_need(need)
+	if skills.is_empty() and template != null:
+		for skill_id: StringName in template.starting_skills:
+			skills[skill_id] = float(template.starting_skills[skill_id])
 
 
 func data() -> CitizenData:
 	if _data == null and data_id != &"":
 		_data = Database.get_citizen(data_id)
 	return _data
+
+
+# --- Skills -----------------------------------------------------------------
+
+func skill_xp(skill_id: StringName) -> float:
+	return float(skills.get(skill_id, 0.0))
+
+
+func skill_level(skill_id: StringName) -> int:
+	if skill_id == &"":
+		return 0
+	var skill := Database.get_skill(skill_id)
+	return skill.level_for_xp(skill_xp(skill_id)) if skill != null else 0
+
+
+## Practice. Levelling up is announced, because watching a resident get visibly
+## better at something is half the reason skills exist.
+func train(skill_id: StringName, minutes: float) -> void:
+	if skill_id == &"" or minutes <= 0.0:
+		return
+	var skill := Database.get_skill(skill_id)
+	if skill == null:
+		return
+	var before := skill.level_for_xp(skill_xp(skill_id))
+	skills[skill_id] = skill_xp(skill_id) + minutes
+	var after := skill.level_for_xp(skill_xp(skill_id))
+	if after > before:
+		EventBus.notify("%s reached %s level %d" % [citizen_name, skill.display_name, after])
+
+
+## How much better this citizen is at an action than a beginner: 1.0 for no
+## skill, 1.6 for a level 5 cook cooking.
+func skill_effect_multiplier(interaction: InteractionData) -> float:
+	if interaction == null or interaction.skill_id == &"":
+		return 1.0
+	var skill := Database.get_skill(interaction.skill_id)
+	if skill == null:
+		return 1.0
+	return 1.0 + skill.effect_bonus_per_level * float(skill_level(interaction.skill_id))
+
+
+## Practised actions also take less time.
+func skill_speed_multiplier(interaction: InteractionData) -> float:
+	if interaction == null or interaction.skill_id == &"":
+		return 1.0
+	var skill := Database.get_skill(interaction.skill_id)
+	if skill == null:
+		return 1.0
+	return maxf(1.0 - skill.speed_bonus_per_level * float(skill_level(interaction.skill_id)), 0.4)
+
+
+func can_perform(interaction: InteractionData) -> bool:
+	if interaction == null:
+		return false
+	if interaction.required_skill_level <= 0:
+		return true
+	return skill_level(interaction.skill_id) >= interaction.required_skill_level
+
+
+# --- Taste and variety ------------------------------------------------------
+
+## How much this particular person likes this particular action.
+func affinity(interaction: InteractionData) -> float:
+	var template := data()
+	if template == null or interaction == null:
+		return 1.0
+	return float(template.interaction_affinity.get(interaction.id, 1.0))
+
+
+## Falls towards BOREDOM_FLOOR the more recently and more often the citizen has
+## done this, and climbs back as they do other things.
+func variety_multiplier(interaction: InteractionData) -> float:
+	if interaction == null:
+		return 1.0
+	var stale := float(boredom.get(interaction.id, 0.0))
+	return lerpf(1.0, GameConstants.BOREDOM_FLOOR, clampf(stale, 0.0, 1.0))
+
+
+func _age_boredom(minutes: float) -> void:
+	if boredom.is_empty():
+		return
+	var recovery := minutes / GameConstants.BOREDOM_RECOVERY_MINUTES
+	for key: StringName in boredom.keys():
+		var value: float = float(boredom[key]) - recovery
+		if value <= 0.001:
+			boredom.erase(key)
+		else:
+			boredom[key] = value
 
 
 ## The citizen's profession, or null when unemployed.
@@ -125,7 +225,13 @@ func wage_per_minute() -> float:
 	var hours := profession.end_hour - profession.start_hour
 	if hours <= 0.0:
 		hours += 24.0
-	return float(profession.salary_per_day) / maxf(hours * 60.0, 1.0)
+	var base := float(profession.salary_per_day) / maxf(hours * 60.0, 1.0)
+	# An employer pays for the skill it named, so getting better is felt in the
+	# balance as well as in the action.
+	var skill := Database.get_skill(profession.skill_id) if profession.skill_id != &"" else null
+	if skill != null:
+		base *= 1.0 + skill.wage_bonus_per_level * float(skill_level(profession.skill_id))
+	return base
 
 
 ## The citizen's daily routine, or null when they live purely by their needs.
@@ -176,6 +282,7 @@ func state_name() -> String:
 
 func sim_tick(minutes: float, lod: GameEnums.SimLOD) -> void:
 	_decay_needs(minutes)
+	_age_boredom(minutes)
 	_retry_in = maxf(_retry_in - minutes, 0.0)
 
 	match state:
@@ -197,11 +304,24 @@ func _decay_needs(minutes: float) -> void:
 		var per_hour: float = GameConstants.NEED_DECAY_PER_HOUR.get(type, 0.0) * scale
 		if template != null:
 			per_hour *= template.decay_multiplier(type)
+		per_hour *= _skill_decay_multiplier(type)
 		var before: float = needs[type]
 		var after := clampf(before - per_hour * minutes / 60.0, GameConstants.NEED_MIN, GameConstants.NEED_MAX)
 		needs[type] = after
 		if before > SEEK_THRESHOLD and after <= SEEK_THRESHOLD:
 			EventBus.citizen_need_critical.emit(id, type, after)
+
+
+## Skills that slow a need down (fitness on energy) apply here, so training
+## shows up as a permanent, felt improvement rather than a number in a panel.
+func _skill_decay_multiplier(need_type: int) -> float:
+	var multiplier := 1.0
+	for skill_id: StringName in skills:
+		var skill := Database.get_skill(skill_id)
+		if skill == null or skill.slows_need != need_type:
+			continue
+		multiplier *= maxf(1.0 - skill.slows_need_per_level * float(skill_level(skill_id)), 0.3)
+	return multiplier
 
 
 func _tick_idle() -> void:
@@ -315,15 +435,24 @@ func _tick_interaction(minutes: float) -> void:
 		_abort_goal()
 		return
 	interaction_elapsed += minutes
+	train(target_interaction.skill_id, minutes * target_interaction.xp_rate)
+	boredom[target_interaction.id] = minf(
+			float(boredom.get(target_interaction.id, 0.0)) + minutes / GameConstants.BOREDOM_MINUTES, 1.0)
 	if state == GameEnums.CitizenState.WORKING:
 		_earn_wages(minutes)
 	_check_for_interruption(minutes)
 	if target_interaction == null:
 		return
+	var effectiveness := skill_effect_multiplier(target_interaction)
 	for type: int in target_interaction.need_effects:
 		var gain := target_interaction.rate_per_minute(type) * minutes
+		# Skill improves what the action gives, never what it costs.
+		if gain > 0.0:
+			gain *= effectiveness
+			# A coffee stops helping once you are reasonably awake.
+			gain = minf(gain, target_interaction.headroom(type, need(type)))
 		needs[type] = clampf(need(type) + gain, GameConstants.NEED_MIN, GameConstants.NEED_MAX)
-	if interaction_elapsed >= target_interaction.duration_minutes:
+	if interaction_elapsed >= target_interaction.duration_minutes * skill_speed_multiplier(target_interaction):
 		_finish_interaction()
 
 
@@ -366,9 +495,19 @@ func _check_for_interruption(minutes: float) -> void:
 
 
 func _finish_interaction() -> void:
+	# Short actions accumulate almost no staleness by duration alone, so each
+	# completed use counts as well. This is what stops the coffee loop.
+	if target_interaction != null:
+		boredom[target_interaction.id] = minf(
+				float(boredom.get(target_interaction.id, 0.0)) + GameConstants.BOREDOM_PER_USE, 1.0)
 	var item := _target()
 	if item != null:
 		item.users.erase(id)
+		if target_interaction.payout_per_skill_level != 0:
+			# Selling what you made: worth more the better you are at it.
+			var payout := target_interaction.payout_per_skill_level * maxi(skill_level(target_interaction.skill_id), 1)
+			earned_today += payout
+			Economy.earn(payout, "sales")
 		if target_interaction.money_delta != 0:
 			if target_interaction.money_delta > 0:
 				Economy.earn(target_interaction.money_delta, "wages")
@@ -427,6 +566,7 @@ func save_data() -> Dictionary:
 		"floor": floor_index,
 		"home_room": home_room_id,
 		"earned_today": earned_today,
+		"skills": skills.duplicate(),
 		"needs": stored_needs,
 	}
 
@@ -440,6 +580,9 @@ static func from_save(entry: Dictionary) -> Citizen:
 	citizen.floor_index = int(entry.get("floor", 0))
 	citizen.home_room_id = int(entry.get("home_room", -1))
 	citizen.earned_today = int(entry.get("earned_today", 0))
+	var stored_skills: Dictionary = entry.get("skills", {})
+	for key: String in stored_skills.keys():
+		citizen.skills[StringName(key)] = float(stored_skills[key])
 	var stored: Dictionary = entry.get("needs", {})
 	for key: String in stored.keys():
 		citizen.needs[int(key)] = float(stored[key])

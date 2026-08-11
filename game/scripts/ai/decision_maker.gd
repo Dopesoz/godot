@@ -32,6 +32,15 @@ extends RefCounted
 ##               defines, working outranks almost everything; outside them it is
 ##               ignored. That is the whole of "going to work" — no separate
 ##               system, one more multiplier.
+##   skill       what this citizen is good at. A level 5 cook gets more out of
+##               cooking and does it faster, so they cook where a beginner would
+##               grab a snack — and some actions are locked until a level is
+##               reached, so a long game opens up instead of only speeding up.
+##   taste       per-person affinity for a specific action, from CitizenData.
+##   variety     staleness. Doing the same thing repeatedly is worth less, and
+##               the penalty fades. Without this every evening looks the same,
+##               which is the single biggest reason life simulations get boring
+##               to watch.
 ##   priority    the content author's thumb on the scale, from InteractionData.
 ##
 ## The whole thing is deliberately one readable formula rather than a behaviour
@@ -119,7 +128,10 @@ static func score_option(citizen: Citizen, interaction: InteractionData, travel_
 			value += effect * 0.5 * urgency(citizen.need(need_type))
 			continue
 		# No credit for filling a need past full.
-		var gain := minf(effect, GameConstants.NEED_MAX - citizen.need(need_type))
+		# Capped both by what is missing and by how far this action can take it.
+		var gain := minf(effect * citizen.skill_effect_multiplier(interaction),
+				GameConstants.NEED_MAX - citizen.need(need_type))
+		gain = minf(gain, interaction.headroom(need_type, citizen.need(need_type)))
 		var importance := template.decay_multiplier(need_type) if template != null else 1.0
 		if routine != null:
 			importance *= routine.weight_for(need_type, hour)
@@ -128,8 +140,13 @@ static func score_option(citizen: Citizen, interaction: InteractionData, travel_
 		value += gain * urgency(citizen.need(need_type)) * importance
 	if value <= 0.0:
 		return 0.0
-	var minutes := clampf(interaction.duration_minutes, 1.0, DURATION_CAP) + travel_minutes
-	return value / minutes * maxf(interaction.priority, 0.01)
+	# Being good at something makes it quicker, which makes it more attractive.
+	var duration := interaction.duration_minutes * citizen.skill_speed_multiplier(interaction)
+	var minutes := clampf(duration, 1.0, DURATION_CAP) + travel_minutes
+	return (value / minutes
+			* maxf(interaction.priority, 0.01)
+			* citizen.affinity(interaction)
+			* citizen.variety_multiplier(interaction))
 
 
 ## How badly a need at `value` wants attention, 0..1 on a convex curve.
@@ -163,6 +180,10 @@ static func describe(citizen: Citizen, interaction: InteractionData) -> String:
 		String(GameEnums.NeedType.keys()[driving]).to_lower(),
 		roundi(citizen.need(driving)),
 	]
+	if citizen.variety_multiplier(interaction) < 0.6:
+		text += " · reluctantly"
+	elif citizen.affinity(interaction) > 1.2:
+		text += " · favourite"
 	# When the routine is what tipped the choice, say so — otherwise "sleeping
 	# at 23:00 with energy 60" looks like a bug rather than a bedtime.
 	var routine := citizen.schedule()

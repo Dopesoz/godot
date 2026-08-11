@@ -27,6 +27,28 @@ extends GameData
 ## Interactions with a higher priority win ties when several fix the same need.
 @export var priority: float = 1.0
 
+## Skill this action trains and is improved by (SkillData id). Empty means the
+## action is the same whoever does it.
+@export var skill_id: StringName = &""
+
+## Minutes of skill practice earned per minute spent. Above 1.0 for focused
+## practice (an instrument), below for incidental practice (cooking dinner).
+@export var xp_rate: float = 1.0
+
+## Locked until the citizen reaches this level in `skill_id`. This is what makes
+## a long game open up: new things become possible rather than merely faster.
+@export_range(0, 10) var required_skill_level: int = 0
+
+## Need -> the highest value this action can raise it to. Coffee cannot replace
+## sleep, and a snack cannot replace dinner: without a ceiling, cheap fast fixes
+## dominate the scoring forever and the citizen never does anything else. Needs
+## not listed have no ceiling.
+@export var effect_ceilings: Dictionary = {}
+
+## Money earned when the action completes, scaled by skill level. A painting
+## sells for more when a better painter made it.
+@export var payout_per_skill_level: int = 0
+
 ## Optional gate: only citizens whose job matches may use it (e.g. a shop till).
 @export var required_job_id: StringName = &""
 
@@ -37,6 +59,12 @@ extends GameData
 
 ## Points per game minute for one need, so a partially finished action still
 ## pays out proportionally when it gets interrupted.
+## The most this action can still give a citizen currently at `current`.
+func headroom(need: int, current: float) -> float:
+	var ceiling: float = float(effect_ceilings.get(need, GameConstants.NEED_MAX))
+	return maxf(ceiling - current, 0.0)
+
+
 func rate_per_minute(need: int) -> float:
 	if duration_minutes <= 0.0:
 		return 0.0

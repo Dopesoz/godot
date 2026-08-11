@@ -12,6 +12,9 @@ duration_minutes = 10.0
 need_effects = {
 0: 25.0
 }
+effect_ceilings = {
+0: 58.0
+}
 capacity = 1
 priority = 0.8
 stands_on_furniture = false

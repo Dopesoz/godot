@@ -1,0 +1,57 @@
+[gd_resource type="Resource" script_class="FurnitureData" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/furniture_data.gd" id="1_furn"]
+[ext_resource type="Script" path="res://scripts/data/interaction_data.gd" id="2_int"]
+
+[sub_resource type="Resource" id="Resource_play_music"]
+script = ExtResource("2_int")
+id = &"play_music"
+display_name = "Play music"
+state = 5
+duration_minutes = 45.0
+need_effects = {
+4: 30.0,
+3: 5.0
+}
+capacity = 1
+priority = 1.0
+stands_on_furniture = false
+skill_id = &"music"
+xp_rate = 1.4
+required_skill_level = 0
+payout_per_skill_level = 0
+
+[sub_resource type="Resource" id="Resource_perform"]
+script = ExtResource("2_int")
+id = &"perform"
+display_name = "Perform"
+state = 7
+duration_minutes = 60.0
+need_effects = {
+4: 35.0,
+5: 40.0
+}
+capacity = 4
+priority = 1.3
+stands_on_furniture = false
+skill_id = &"music"
+xp_rate = 1.2
+required_skill_level = 2
+payout_per_skill_level = 0
+
+[resource]
+script = ExtResource("1_furn")
+id = &"guitar"
+display_name = "Guitar"
+description = "Terrible at first, wonderful later. Skill changes how much it gives."
+placeholder_color = Color(0.78, 0.55, 0.35, 1)
+category = 7
+price = 180
+upkeep_per_day = 0
+size = Vector2i(1, 1)
+comfort = 0.0
+entertainment = 6.0
+blocks_movement = false
+requires_wall = false
+interactions = Array[Resource]([SubResource("Resource_play_music"), SubResource("Resource_perform")])
+allowed_room_types = Array[int]([1, 2])

@@ -51,6 +51,8 @@ static func run_all() -> Array[Result]:
 	results.append(_check_pathfinding())
 	results.append(_check_decision_scoring())
 	results.append(_check_schedule())
+	results.append(_check_skills())
+	results.append(_check_variety())
 	results.append(_check_clock())
 	results.append(_check_economy())
 	results.append(_check_household_costs())
@@ -323,6 +325,15 @@ static func _check_content_integrity() -> Result:
 		if material.price_per_tile <= 0:
 			return Result.new("Content integrity", false, "floor %s is free" % material.id)
 
+	for template: FurnitureData in Database.furniture.values():
+		for interaction in template.interactions:
+			if interaction.required_skill_level > 0 and interaction.skill_id == &"":
+				return Result.new("Content integrity", false,
+						"%s.%s requires a level but names no skill" % [template.id, interaction.id])
+			if interaction.skill_id != &"" and Database.skills.has(interaction.skill_id) == false:
+				return Result.new("Content integrity", false,
+						"%s.%s trains an unknown skill '%s'" % [template.id, interaction.id, interaction.skill_id])
+
 	var bed := Database.get_furniture(&"bed_single")
 	if bed == null or bed.find_interaction_for(GameEnums.NeedType.ENERGY) == null:
 		return Result.new("Content integrity", false, "the bed does not offer a way to restore energy")
@@ -472,6 +483,100 @@ static func _check_schedule() -> Result:
 	return Result.new("Daily routine", true,
 			"blocks wrap past midnight and bedtime scores %.1fx higher at 23:00 than at 10:00"
 			% (at_night / maxf(at_ten, 0.001)))
+
+
+## Progression: practice raises a level, a level makes the action better and
+## faster, and some actions stay locked until it does. Without the last part a
+## long game only gets faster, never wider.
+static func _check_skills() -> Result:
+	var cooking := Database.get_skill(&"cooking")
+	if cooking == null:
+		return Result.new("Skills", false, "the cooking skill is missing")
+
+	var citizen := Citizen.new()
+	citizen.data_id = &"adult"
+	for type: int in GameEnums.NeedType.values():
+		citizen.needs[type] = 50.0
+	citizen.skills.clear()
+
+	if citizen.skill_level(&"cooking") != 0:
+		return Result.new("Skills", false, "a new resident already has levels")
+	citizen.train(&"cooking", cooking.xp_for_level(3) + 1.0)
+	var level := citizen.skill_level(&"cooking")
+	if level != 3:
+		return Result.new("Skills", false, "practice for level 3 produced level %d" % level)
+
+	var feast: InteractionData = null
+	var counter := Database.get_furniture(&"kitchen_counter")
+	for interaction in counter.interactions:
+		if interaction.id == &"cook_feast":
+			feast = interaction
+	if feast == null:
+		return Result.new("Skills", false, "the skilled cooking option is missing")
+
+	# Locked below the required level, available at it.
+	var novice := Citizen.new()
+	novice.data_id = &"adult"
+	novice.skills.clear()
+	if novice.can_perform(feast):
+		return Result.new("Skills", false, "a beginner can cook the advanced meal")
+	if not citizen.can_perform(feast):
+		return Result.new("Skills", false, "a level 3 cook still cannot cook the advanced meal")
+
+	# Better and faster.
+	if citizen.skill_effect_multiplier(feast) <= 1.0:
+		return Result.new("Skills", false, "skill does not improve the result")
+	if citizen.skill_speed_multiplier(feast) >= 1.0:
+		return Result.new("Skills", false, "skill does not make the action quicker")
+
+	# And it pays: an employer that names the skill pays more for it.
+	var earner := Citizen.new()
+	earner.data_id = &"adult"
+	earner.skills.clear()
+	var base_wage := earner.wage_per_minute()
+	earner.train(&"fitness", Database.get_skill(&"fitness").xp_for_level(4) + 1.0)
+	if earner.wage_per_minute() <= base_wage:
+		return Result.new("Skills", false, "levels in the skill the job names did not raise wages")
+	return Result.new("Skills", true,
+			"practice levels up, unlocks options, improves and speeds them, and raises pay")
+
+
+## Variety: the same action repeated is worth less, and the penalty fades. This
+## is what stops a resident watching television all evening, every evening.
+static func _check_variety() -> Result:
+	var citizen := Citizen.new()
+	citizen.data_id = &"adult"
+	for type: int in GameEnums.NeedType.values():
+		citizen.needs[type] = 40.0
+	var tv := Database.get_furniture(&"tv").interactions[0]
+
+	var fresh := DecisionMaker.score_option(citizen, tv, 0.0)
+	citizen.boredom[tv.id] = 1.0
+	var stale := DecisionMaker.score_option(citizen, tv, 0.0)
+	if stale >= fresh * 0.5:
+		return Result.new("Variety", false,
+				"a stale action scored %.2f against %.2f fresh" % [stale, fresh])
+
+	# Doing something else lets the appetite come back.
+	citizen._age_boredom(GameConstants.BOREDOM_RECOVERY_MINUTES * 0.6)
+	var recovered := DecisionMaker.score_option(citizen, tv, 0.0)
+	if recovered <= stale:
+		return Result.new("Variety", false, "staleness never fades")
+
+	# Taste: the same option is worth more to someone who likes it.
+	var fan := Citizen.new()
+	fan.data_id = &"lazy"
+	for type: int in GameEnums.NeedType.values():
+		fan.needs[type] = 40.0
+	var plain := Citizen.new()
+	plain.data_id = &"social"
+	for type: int in GameEnums.NeedType.values():
+		plain.needs[type] = 40.0
+	if fan.affinity(tv) <= plain.affinity(tv):
+		return Result.new("Variety", false, "personal taste does not change how appealing an action is")
+	return Result.new("Variety", true,
+			"repetition loses %d%% of its value and recovers, and taste differs per resident"
+			% roundi((1.0 - stale / maxf(fresh, 0.001)) * 100.0))
 
 
 static func _check_clock() -> Result:

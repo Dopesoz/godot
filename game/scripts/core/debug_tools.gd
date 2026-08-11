@@ -63,6 +63,10 @@ static func build_demo(world: Node) -> void:
 	furniture.place(&"tv", origin + Vector2i(6, 4))
 	furniture.place(&"desk", origin + Vector2i(5, 2))
 	furniture.place(&"computer", origin + Vector2i(4, 2))
+	furniture.place(&"bookshelf", origin + Vector2i(6, 2))
+	furniture.place(&"guitar", origin + Vector2i(3, 0))
+	furniture.place(&"coffee_machine", origin + Vector2i(2, 4))
+	furniture.place(&"dining_bench", origin + Vector2i(3, 3))
 
 	var resident := citizens.spawn(origin + Vector2i(2, 3))
 	if resident != null:

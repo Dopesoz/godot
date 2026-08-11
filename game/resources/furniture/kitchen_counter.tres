@@ -1,0 +1,60 @@
+[gd_resource type="Resource" script_class="FurnitureData" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/furniture_data.gd" id="1_furn"]
+[ext_resource type="Script" path="res://scripts/data/interaction_data.gd" id="2_int"]
+
+[sub_resource type="Resource" id="Resource_prep"]
+script = ExtResource("2_int")
+id = &"prep_meal"
+display_name = "Make a sandwich"
+state = 2
+duration_minutes = 15.0
+need_effects = {
+0: 30.0
+}
+effect_ceilings = {
+0: 70.0
+}
+capacity = 1
+priority = 0.9
+stands_on_furniture = false
+skill_id = &"cooking"
+xp_rate = 0.8
+required_skill_level = 0
+payout_per_skill_level = 0
+
+[sub_resource type="Resource" id="Resource_feast"]
+script = ExtResource("2_int")
+id = &"cook_feast"
+display_name = "Cook a feast"
+state = 2
+duration_minutes = 70.0
+need_effects = {
+0: 85.0,
+5: 20.0,
+4: 10.0
+}
+capacity = 1
+priority = 1.6
+stands_on_furniture = false
+skill_id = &"cooking"
+xp_rate = 1.2
+required_skill_level = 3
+payout_per_skill_level = 0
+
+[resource]
+script = ExtResource("1_furn")
+id = &"kitchen_counter"
+display_name = "Kitchen Counter"
+description = "Prep space. A skilled cook can put together a proper dinner here."
+placeholder_color = Color(0.70, 0.68, 0.62, 1)
+category = 2
+price = 280
+upkeep_per_day = 2
+size = Vector2i(2, 1)
+comfort = 0.0
+entertainment = 0.0
+blocks_movement = true
+requires_wall = false
+interactions = Array[Resource]([SubResource("Resource_prep"), SubResource("Resource_feast")])
+allowed_room_types = Array[int]([3])

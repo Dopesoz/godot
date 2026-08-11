@@ -15,9 +15,11 @@ const BAR_SIZE := Vector2(150, 14)
 @onready var _subtitle: Label = %Subtitle
 @onready var _activity: Label = %Activity
 @onready var _needs_box: VBoxContainer = %Needs
+@onready var _skills_box: VBoxContainer = %Skills
 
 var _citizen: Citizen
 var _bars: Dictionary = {}
+var _skill_rows: Dictionary = {}
 var _timer: float = 0.0
 
 
@@ -26,6 +28,7 @@ func _ready() -> void:
 	EventBus.selection_changed.connect(_on_selection_changed)
 	EventBus.citizen_removed.connect(_on_citizen_removed)
 	_build_bars()
+	_build_skill_rows()
 
 
 func _build_bars() -> void:
@@ -50,6 +53,34 @@ func _build_bars() -> void:
 
 		_needs_box.add_child(row)
 		_bars[type] = {"bar": bar, "value": value, "label": label}
+
+
+## One row per skill, hidden until the citizen has actually practised it — a
+## wall of six empty bars says nothing, while "Cooking 3" says who this is.
+func _build_skill_rows() -> void:
+	for skill in Database.all_skills():
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+
+		var label := Label.new()
+		label.text = skill.display_name
+		label.custom_minimum_size = Vector2(110, 0)
+		label.modulate = skill.icon_color
+		row.add_child(label)
+
+		var bar := ProgressBar.new()
+		bar.custom_minimum_size = BAR_SIZE
+		bar.max_value = 1.0
+		bar.step = 0.01
+		bar.show_percentage = false
+		row.add_child(bar)
+
+		var level := Label.new()
+		level.custom_minimum_size = Vector2(40, 0)
+		row.add_child(level)
+
+		_skills_box.add_child(row)
+		_skill_rows[skill.id] = {"row": row, "bar": bar, "level": level}
 
 
 func _on_selection_changed(selected: Variant) -> void:
@@ -94,6 +125,17 @@ func _refresh() -> void:
 	_activity.text = _citizen.state_name()
 	if _citizen.current_reason != "":
 		_activity.text += "  —  " + _citizen.current_reason
+
+	for skill_id: StringName in _skill_rows:
+		var skill := Database.get_skill(skill_id)
+		var entry: Dictionary = _skill_rows[skill_id]
+		var xp := _citizen.skill_xp(skill_id)
+		var row: HBoxContainer = entry["row"]
+		row.visible = xp > 0.0
+		if not row.visible:
+			continue
+		(entry["bar"] as ProgressBar).value = skill.progress_to_next(xp)
+		(entry["level"] as Label).text = "lv %d" % skill.level_for_xp(xp)
 
 	var driving := _citizen.lowest_need()
 	for type: int in _bars:

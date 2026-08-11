@@ -1,0 +1,42 @@
+[gd_resource type="Resource" script_class="FurnitureData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/furniture_data.gd" id="1_furn"]
+[ext_resource type="Script" path="res://scripts/data/interaction_data.gd" id="2_int"]
+
+[sub_resource type="Resource" id="Resource_coffee"]
+script = ExtResource("2_int")
+id = &"coffee"
+display_name = "Coffee"
+state = 2
+duration_minutes = 8.0
+need_effects = {
+1: 22.0,
+0: 6.0
+}
+effect_ceilings = {
+1: 62.0
+}
+capacity = 1
+priority = 1.4
+stands_on_furniture = false
+skill_id = &""
+xp_rate = 1.0
+required_skill_level = 0
+payout_per_skill_level = 0
+
+[resource]
+script = ExtResource("1_furn")
+id = &"coffee_machine"
+display_name = "Coffee Machine"
+description = "Five minutes for a burst of energy. Not a substitute for sleep."
+placeholder_color = Color(0.42, 0.30, 0.26, 1)
+category = 3
+price = 300
+upkeep_per_day = 3
+size = Vector2i(1, 1)
+comfort = 0.0
+entertainment = 0.0
+blocks_movement = true
+requires_wall = false
+interactions = Array[Resource]([SubResource("Resource_coffee")])
+allowed_room_types = Array[int]([3, 6])
