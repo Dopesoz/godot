@@ -55,6 +55,7 @@ static func run_all() -> Array[Result]:
 	results.append(_check_variety())
 	results.append(_check_city_events())
 	results.append(_check_sound_bank())
+	results.append(_check_art())
 	results.append(_check_clock())
 	results.append(_check_economy())
 	results.append(_check_household_costs())
@@ -642,6 +643,57 @@ static func _check_city_events() -> Result:
 	return Result.new("City events", true,
 			"%d events; they pay out once, bend the city's priorities while they run, and expire"
 			% Database.events.size())
+
+
+## Whether a sprite *looks* right is a job for eyes (`--showroom`). What can be
+## checked here is the part that silently breaks: that art exists for every
+## content id, and that its size still matches the footprint it is drawn on.
+##
+## The width rule is the important one. A furniture sprite is placed by pinning
+## its bottom corner to the footprint's bottom corner and stretching it across
+## (width + depth) half-tiles, so a sprite authored one pixel too wide does not
+## fail to load — it drifts, and every copy of that object sits slightly off its
+## own floor. One multiplication catches that at build time.
+static func _check_art() -> Result:
+	var expected_wall := Vector2i(GameConstants.TILE_HW,
+			GameConstants.TILE_HH + GameConstants.WALL_HEIGHT) * int(Art.SPRITE_SCALE)
+	for type in [GameEnums.EdgeType.WALL, GameEnums.EdgeType.DOOR, GameEnums.EdgeType.WINDOW]:
+		for axis in [GameEnums.EdgeAxis.HORIZONTAL, GameEnums.EdgeAxis.VERTICAL]:
+			var texture := Art.wall_texture(type, axis)
+			if texture == null:
+				return Result.new("Art", false, "no sprite for edge type %d axis %d" % [type, axis])
+			if texture.get_size() != Vector2(expected_wall):
+				return Result.new("Art", false, "edge type %d axis %d is %s, expected %s"
+						% [type, axis, texture.get_size(), expected_wall])
+
+	for material: FloorData in Database.all_floors():
+		if Art.floor_texture(material.id) == null:
+			return Result.new("Art", false, "no ground tile for '%s'" % material.id)
+	for index in Art.GRASS_VARIANTS:
+		if Art.grass(Vector2i(index, 0)) == null:
+			return Result.new("Art", false, "grass variant %d is missing" % index)
+
+	var templates := Database.all_furniture()
+	for template: FurnitureData in templates:
+		for turned in [false, true]:
+			var texture := Art.furniture_texture(template.id, turned)
+			if texture == null:
+				return Result.new("Art", false, "no sprite for '%s'%s"
+						% [template.id, " (turned)" if turned else ""])
+			var size := template.rotated_size(1 if turned else 0)
+			var wanted := float(size.x + size.y) * GameConstants.TILE_HW * Art.SPRITE_SCALE
+			if not is_equal_approx(float(texture.get_width()), wanted):
+				return Result.new("Art", false, "'%s' is %d px wide, footprint %s needs %d"
+						% [template.id, texture.get_width(), size, int(wanted)])
+			# The placement rectangle must land on the footprint it belongs to.
+			var rect := Art.furniture_rect(Vector2i(5, 7), size, texture)
+			var polygon := Art.footprint_polygon(Vector2i(5, 7), size)
+			if not is_equal_approx(rect.end.y, polygon[2].y) or not is_equal_approx(rect.position.x, polygon[3].x):
+				return Result.new("Art", false, "'%s' does not sit on its own footprint" % template.id)
+
+	return Result.new("Art", true,
+			"%d objects, %d ground tiles and 6 wall pieces, each sized to the cells it covers"
+			% [templates.size(), Database.all_floors().size() + Art.GRASS_VARIANTS])
 
 
 ## The sound effects are generated rather than loaded, so what has to hold is

@@ -1,8 +1,8 @@
 class_name Painters
 extends RefCounted
 
-## Placeholder drawing routines for everything that stands *on* the map: walls,
-## furniture and citizens (design doc §28).
+## Drawing routines for everything that stands *on* the map: walls, furniture
+## and citizens.
 ##
 ## They are gathered in one file and take the canvas as an argument because
 ## DepthRenderer draws them all into a single canvas item, interleaved by depth.
@@ -10,7 +10,15 @@ extends RefCounted
 ## the wall they are standing behind — so the drawing code has to be callable
 ## from one place, and this is that place.
 ##
-## Replacing a placeholder with real art means changing one function here.
+## Every routine has two paths: the sprite from Art, and the coloured block it
+## drew before any art existed (design doc §28). The fallback is not dead code —
+## it is what a newly added object looks like until someone draws it, and it is
+## what the headless self-test exercises.
+##
+## Citizens are the exception: they stay drawn from code. A resident's shirt,
+## hair and skin vary per person and their pose comes from what the model says
+## they are doing, so a handful of shapes gives more variety than a sprite sheet
+## would, and can never disagree with the simulation.
 
 
 # --- Walls ------------------------------------------------------------------
@@ -24,20 +32,65 @@ const WINDOW_GLASS := Color(0.58, 0.78, 0.88, 0.75)
 ## After dark a window is the clearest sign that someone lives there. The colour
 ## is deliberately over-bright: the whole world canvas is being multiplied down
 ## by DayNight, and this has to survive that and still read as "lit".
-const WINDOW_LIT := Color(3.2, 2.8, 1.7, 0.95)
+const WINDOW_LIT := Color(2.6, 2.15, 1.20, 0.88)
 ## Doors are drawn shorter than the wall they sit in, so an opening reads as an
 ## opening even without art.
 const DOOR_HEIGHT_RATIO := 0.62
+## How much of a wall survives when it is cut away, in pixels measured up from
+## the bottom of its sprite. Enough to see there is a wall, low enough to see
+## over it.
+const CUTAWAY_BAND := 18.0
 
 
-static func draw_edge(canvas: CanvasItem, edge: Vector3i, type: int, floor_index: int = 0) -> void:
+## `cutaway` means this wall stands between the camera and a room, so it is
+## drawn as a low stub instead of a full wall — otherwise the player would be
+## looking at the outside of a box (design doc §11, §34).
+static func draw_edge(canvas: CanvasItem, edge: Vector3i, type: int, floor_index: int = 0,
+		cutaway: bool = false) -> void:
+	var texture := Art.wall_texture(type, edge.z)
+	if texture != null:
+		var rect := Art.wall_rect(edge, floor_index)
+		if cutaway:
+			var band := minf(CUTAWAY_BAND, rect.size.y)
+			var source := Rect2(0.0, float(texture.get_height()) - band * Art.SPRITE_SCALE,
+					float(texture.get_width()), band * Art.SPRITE_SCALE)
+			canvas.draw_texture_rect_region(texture,
+					Rect2(rect.position.x, rect.end.y - band, rect.size.x, band), source)
+		else:
+			canvas.draw_texture_rect(texture, rect, false)
+			if type == GameEnums.EdgeType.WINDOW:
+				_window_glow(canvas, edge, floor_index)
+		return
+
+	var height_scale := (CUTAWAY_BAND / (GameConstants.TILE_HH + GameConstants.WALL_HEIGHT)) if cutaway else 1.0
 	match type:
 		GameEnums.EdgeType.WALL:
-			_wall(canvas, edge, float(GameConstants.WALL_HEIGHT), WALL_SIDE, floor_index)
+			_wall(canvas, edge, GameConstants.WALL_HEIGHT * height_scale, WALL_SIDE, floor_index)
 		GameEnums.EdgeType.DOOR:
-			_wall(canvas, edge, GameConstants.WALL_HEIGHT * DOOR_HEIGHT_RATIO, DOOR_COLOR, floor_index)
+			_wall(canvas, edge, GameConstants.WALL_HEIGHT * DOOR_HEIGHT_RATIO * height_scale,
+					DOOR_COLOR, floor_index)
 		GameEnums.EdgeType.WINDOW:
-			_window(canvas, edge, floor_index)
+			if cutaway:
+				_wall(canvas, edge, GameConstants.WALL_HEIGHT * height_scale, WINDOW_FRAME, floor_index)
+			else:
+				_window(canvas, edge, floor_index)
+
+
+## The pane, painted over the sprite once the sun is down. Drawn from the same
+## fractions the sprite was generated with, so it lands on the glass and not on
+## the frame.
+static func _window_glow(canvas: CanvasItem, edge: Vector3i, floor_index: int) -> void:
+	var night := 1.0 - GameClock.get_daylight()
+	if night <= 0.05:
+		return
+	var glow := WINDOW_LIT
+	glow.a *= night
+	canvas.draw_colored_polygon(PackedVector2Array([
+		Art.wall_point(edge, Art.PANE_X.x, Art.PANE_Z.x, floor_index),
+		Art.wall_point(edge, Art.PANE_X.y, Art.PANE_Z.x, floor_index),
+		Art.wall_point(edge, Art.PANE_X.y, Art.PANE_Z.y, floor_index),
+		Art.wall_point(edge, Art.PANE_X.x, Art.PANE_Z.y, floor_index),
+	]), glow)
 
 
 static func _wall(canvas: CanvasItem, edge: Vector3i, height: float, color: Color, floor_index: int) -> void:
@@ -49,8 +102,7 @@ static func _wall(canvas: CanvasItem, edge: Vector3i, height: float, color: Colo
 	canvas.draw_polyline(quad + PackedVector2Array([quad[0]]), WALL_OUTLINE, 1.0)
 
 
-## A window is a full-height wall with a lighter pane punched into it — the part
-## that will glow at night in Phase 6.
+## A window is a full-height wall with a lighter pane punched into it.
 static func _window(canvas: CanvasItem, edge: Vector3i, floor_index: int) -> void:
 	_wall(canvas, edge, float(GameConstants.WALL_HEIGHT), WINDOW_FRAME, floor_index)
 	var segment := IsoUtils.edge_segment(edge, floor_index)
@@ -76,6 +128,27 @@ static func draw_furniture(canvas: CanvasItem, item: Furniture) -> void:
 	var template := item.data()
 	if template == null:
 		return
+	var in_use := not item.users.is_empty()
+	if in_use:
+		# A pool of light around the base, rather than an outline on top: it
+		# reads at any zoom and does not depend on how tall the object is.
+		var glow := IN_USE_GLOW
+		glow.a *= 0.26 + 0.22 * sin(float(Time.get_ticks_msec()) * 0.004)
+		canvas.draw_colored_polygon(
+				Art.footprint_polygon(item.origin, item.size(), item.floor_index, 0.30), glow)
+
+	var texture := Art.furniture_texture(template.id, item.rotation_steps % 2 == 1)
+	if texture != null:
+		canvas.draw_texture_rect(texture,
+				Art.furniture_rect(item.origin, item.size(), texture, item.floor_index), false)
+		return
+
+	_furniture_block(canvas, item, template, in_use)
+
+
+## The pre-art placeholder: a coloured box per cell (design doc §28).
+static func _furniture_block(canvas: CanvasItem, item: Furniture, template: FurnitureData,
+		in_use: bool) -> void:
 	var base := template.placeholder_color
 	var height := FURNITURE_HEIGHT if template.blocks_movement else FURNITURE_HEIGHT * 0.55
 	var lift := Vector2(0.0, -height)
@@ -92,27 +165,37 @@ static func draw_furniture(canvas: CanvasItem, item: Furniture) -> void:
 		canvas.draw_colored_polygon(PackedVector2Array([polygon[2], polygon[3], top[3], top[2]]),
 				base.darkened(SIDE_DARKEN * 0.5))
 		canvas.draw_colored_polygon(top, base.lightened(TOP_LIGHTEN))
-		var in_use := not item.users.is_empty()
-		var outline := FURNITURE_OUTLINE
-		if in_use:
-			# A slow pulse reads as "occupied" from across the map without
-			# needing an icon or a label.
-			outline = IN_USE_GLOW
-			outline.a *= 0.55 + 0.45 * sin(float(Time.get_ticks_msec()) * 0.004)
-		canvas.draw_polyline(top + PackedVector2Array([top[0]]), outline, 2.0 if in_use else 1.0)
+		canvas.draw_polyline(top + PackedVector2Array([top[0]]),
+				IN_USE_GLOW if in_use else FURNITURE_OUTLINE, 2.0 if in_use else 1.0)
 
 
 # --- Citizens ---------------------------------------------------------------
 
-const BODY_HEIGHT := 26.0
-const BODY_WIDTH := 13.0
-const HEAD_RADIUS := 6.0
+const BODY_HEIGHT := 20.0
+const BODY_WIDTH := 11.0
+const HEAD_RADIUS := 5.5
+const LEG_HEIGHT := 8.0
 const CITIZEN_SHADOW := Color(0.0, 0.0, 0.0, 0.22)
 const NAME_COLOR := Color(1.0, 1.0, 1.0, 0.92)
 const NAME_SHADOW := Color(0.0, 0.0, 0.0, 0.75)
 const SELECTION_RING := Color(1.0, 0.93, 0.6, 0.9)
+const TROUSERS := Color(0.28, 0.30, 0.38)
+const EYE := Color(0.15, 0.14, 0.18, 0.85)
 
-## Body tint per state, so what everyone is doing is readable at a glance
+## Wardrobe. A resident keeps the same shirt for their whole life because it is
+## picked from their id — two people in one room are told apart at a glance,
+## with nothing stored and nothing to save.
+const SHIRTS := [
+	Color(0.86, 0.42, 0.38), Color(0.36, 0.55, 0.80), Color(0.42, 0.66, 0.48),
+	Color(0.90, 0.72, 0.34), Color(0.62, 0.45, 0.75), Color(0.32, 0.66, 0.68),
+	Color(0.88, 0.56, 0.32), Color(0.55, 0.58, 0.64),
+]
+const HAIR := [
+	Color(0.18, 0.14, 0.12), Color(0.35, 0.22, 0.13), Color(0.55, 0.38, 0.20),
+	Color(0.75, 0.62, 0.35), Color(0.42, 0.24, 0.18), Color(0.30, 0.30, 0.32),
+]
+
+## Ring colour under the feet, so what everyone is doing is readable at a glance
 ## without opening a panel — the point of the whole game (§34).
 const STATE_COLORS := {
 	GameEnums.CitizenState.IDLE: Color(0.78, 0.78, 0.82),
@@ -125,7 +208,6 @@ const STATE_COLORS := {
 	GameEnums.CitizenState.SOCIALIZING: Color(0.92, 0.62, 0.80),
 	GameEnums.CitizenState.GOING_HOME: Color(0.80, 0.78, 0.60),
 }
-
 
 ## Symbols shown above a resident's head. Six pixels of shape says what a panel
 ## would need a sentence for, and it is what lets the player read a whole street
@@ -143,47 +225,136 @@ const STATE_SYMBOL := {
 static func draw_citizen(canvas: CanvasItem, citizen: Citizen, font: Font, show_name: bool,
 		selected: bool = false) -> void:
 	var ground := IsoUtils.cell_to_world_f(citizen.position, citizen.floor_index)
-	# A walking figure bobs; a sleeping one sinks. Both come from the model's own
-	# state, so the animation can never disagree with what is happening.
-	var bob := 0.0
-	if citizen.state == GameEnums.CitizenState.WALKING:
-		bob = sin(float(Time.get_ticks_msec()) * 0.012 + float(citizen.id)) * 2.0
-	elif citizen.state == GameEnums.CitizenState.SLEEPING:
-		bob = 6.0
-	ground.y += bob
-	canvas.draw_colored_polygon(_ellipse(ground, 10.0, 5.0), CITIZEN_SHADOW)
-
+	var accent: Color = STATE_COLORS.get(citizen.state, Color(0.8, 0.8, 0.8))
 	var template := citizen.data()
-	var skin: Color = template.placeholder_color if template != null else Color(0.9, 0.75, 0.6)
-	var body: Color = STATE_COLORS.get(citizen.state, Color(0.8, 0.8, 0.8))
+	var skin: Color = template.placeholder_color if template != null else Color(0.92, 0.76, 0.62)
+	var shirt: Color = SHIRTS[absi(citizen.id) % SHIRTS.size()]
+	var hair: Color = HAIR[absi(citizen.id * 7 + 3) % HAIR.size()]
 
+	canvas.draw_colored_polygon(_ellipse(ground, 9.0, 4.5), CITIZEN_SHADOW)
+	# The state ring is the one piece of pure UI on the figure: colour on the
+	# ground rather than on the shirt, so identity and activity never fight.
+	canvas.draw_polyline(_ellipse(ground, 10.0, 5.0, 16) + PackedVector2Array([
+			ground + Vector2(10.0, 0.0)]), accent, 1.5)
 	if selected:
-		# A ring rather than a tint: the body colour already means something.
-		canvas.draw_arc(ground, 16.0, 0.0, TAU, 24, SELECTION_RING, 2.5)
+		canvas.draw_arc(ground, 15.0, 0.0, TAU, 24, SELECTION_RING, 2.0)
 
-	var height := BODY_HEIGHT * (0.55 if citizen.state == GameEnums.CitizenState.SLEEPING else 1.0)
-	var top := ground + Vector2(0.0, -height)
-	canvas.draw_colored_polygon(PackedVector2Array([
-		ground + Vector2(-BODY_WIDTH * 0.5, 0.0),
-		ground + Vector2(BODY_WIDTH * 0.5, 0.0),
-		top + Vector2(BODY_WIDTH * 0.4, 0.0),
-		top + Vector2(-BODY_WIDTH * 0.4, 0.0),
-	]), body)
-	canvas.draw_circle(top + Vector2(0.0, -HEAD_RADIUS * 0.6), HEAD_RADIUS, skin)
+	if citizen.state == GameEnums.CitizenState.SLEEPING:
+		_lying_figure(canvas, ground, skin, hair, shirt)
+	else:
+		_standing_figure(canvas, citizen, ground, skin, hair, shirt)
 
+	var head_top := ground + Vector2(0.0, -_figure_height(citizen) - HEAD_RADIUS * 2.0)
 	var symbol: String = STATE_SYMBOL.get(citizen.state, "")
 	if symbol != "":
 		var symbol_width := font.get_string_size(symbol, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
-		var at := top + Vector2(-symbol_width * 0.5, -HEAD_RADIUS * 2.6)
+		var at := head_top + Vector2(-symbol_width * 0.5, -4.0)
 		canvas.draw_string(font, at + Vector2(1, 1), symbol, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, NAME_SHADOW)
-		canvas.draw_string(font, at, symbol, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, body.lightened(0.4))
+		canvas.draw_string(font, at, symbol, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, accent.lightened(0.35))
 
 	if show_name:
 		var label := citizen.citizen_name
 		var width := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
-		var origin := top + Vector2(-width * 0.5, -HEAD_RADIUS * 2.2)
+		var origin := head_top + Vector2(-width * 0.5, -6.0 if symbol == "" else -18.0)
 		canvas.draw_string(font, origin + Vector2(1.0, 1.0), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, NAME_SHADOW)
 		canvas.draw_string(font, origin, label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, NAME_COLOR)
+
+
+## How tall the figure is right now — the anchor for anything drawn above it.
+static func _figure_height(citizen: Citizen) -> float:
+	if citizen.state == GameEnums.CitizenState.SLEEPING:
+		return 8.0
+	return BODY_HEIGHT + (0.0 if _is_seated(citizen) else LEG_HEIGHT)
+
+
+## Seated when the model says they are standing *on* the thing they are using —
+## the same flag the pathfinder uses to walk them onto a chair.
+static func _is_seated(citizen: Citizen) -> bool:
+	return citizen.target_interaction != null and citizen.target_interaction.stands_on_furniture \
+			and citizen.state != GameEnums.CitizenState.WALKING
+
+
+static func _standing_figure(canvas: CanvasItem, citizen: Citizen, ground: Vector2,
+		skin: Color, hair: Color, shirt: Color) -> void:
+	var seated := _is_seated(citizen)
+	# A walking figure bobs and swings its legs; both come from the model's own
+	# state, so the animation can never disagree with what is happening.
+	var phase := 0.0
+	var bob := 0.0
+	if citizen.state == GameEnums.CitizenState.WALKING:
+		phase = float(Time.get_ticks_msec()) * 0.012 + float(citizen.id)
+		bob = absf(sin(phase)) * 1.6
+	var hip := ground + Vector2(0.0, -LEG_HEIGHT - bob)
+	if seated:
+		# Knees forward, body dropped onto the seat.
+		hip = ground + Vector2(0.0, -3.0)
+		canvas.draw_colored_polygon(_quad(hip + Vector2(-4.5, -1.0), Vector2(9.0, 5.0)), TROUSERS)
+	else:
+		var swing := sin(phase) * 2.2
+		canvas.draw_colored_polygon(_quad(ground + Vector2(-4.5 + swing, -LEG_HEIGHT - bob),
+				Vector2(3.6, LEG_HEIGHT)), TROUSERS)
+		canvas.draw_colored_polygon(_quad(ground + Vector2(0.9 - swing, -LEG_HEIGHT - bob),
+				Vector2(3.6, LEG_HEIGHT)), TROUSERS.lightened(0.08))
+
+	var shoulder := hip + Vector2(0.0, -BODY_HEIGHT)
+	# Arms first, so the torso overlaps them and the silhouette stays clean.
+	var arm_swing := -sin(phase) * 1.8
+	canvas.draw_colored_polygon(_quad(shoulder + Vector2(-BODY_WIDTH * 0.5 - 1.6, 2.0 + arm_swing),
+			Vector2(2.8, BODY_HEIGHT * 0.62)), shirt.darkened(0.18))
+	canvas.draw_colored_polygon(_quad(shoulder + Vector2(BODY_WIDTH * 0.5 - 1.2, 2.0 - arm_swing),
+			Vector2(2.8, BODY_HEIGHT * 0.62)), shirt.darkened(0.08))
+	canvas.draw_colored_polygon(PackedVector2Array([
+		hip + Vector2(-BODY_WIDTH * 0.42, 0.0),
+		hip + Vector2(BODY_WIDTH * 0.42, 0.0),
+		shoulder + Vector2(BODY_WIDTH * 0.5, 0.0),
+		shoulder + Vector2(-BODY_WIDTH * 0.5, 0.0),
+	]), shirt)
+
+	var head := shoulder + Vector2(0.0, -HEAD_RADIUS * 0.9)
+	canvas.draw_circle(head, HEAD_RADIUS, skin)
+	# Hair as a cap over the top half of the head.
+	canvas.draw_colored_polygon(_arc_cap(head, HEAD_RADIUS * 1.04, PI * 1.08, PI * 0.94), hair)
+	if _faces_camera(citizen):
+		canvas.draw_circle(head + Vector2(-2.0, 0.4), 0.8, EYE)
+		canvas.draw_circle(head + Vector2(2.0, 0.4), 0.8, EYE)
+
+
+## Which way they are heading, in screen terms. Walking towards the bottom of
+## the screen means we see their face; walking away means we do not.
+static func _faces_camera(citizen: Citizen) -> bool:
+	if citizen.state != GameEnums.CitizenState.WALKING or citizen.path.is_empty():
+		return true
+	var step := Vector2(citizen.path[0]) - citizen.position
+	return step.x + step.y >= -0.01
+
+
+static func _lying_figure(canvas: CanvasItem, ground: Vector2, skin: Color, hair: Color,
+		shirt: Color) -> void:
+	var body := ground + Vector2(0.0, -6.0)
+	canvas.draw_colored_polygon(_quad(body + Vector2(-11.0, -3.5), Vector2(18.0, 7.0)), shirt)
+	canvas.draw_circle(body + Vector2(9.0, -1.0), HEAD_RADIUS * 0.92, skin)
+	canvas.draw_colored_polygon(_arc_cap(body + Vector2(9.0, -1.0), HEAD_RADIUS,
+			PI * 1.35, PI * 0.7), hair)
+
+
+static func _quad(top_left: Vector2, size: Vector2) -> PackedVector2Array:
+	return PackedVector2Array([
+		top_left,
+		top_left + Vector2(size.x, 0.0),
+		top_left + size,
+		top_left + Vector2(0.0, size.y),
+	])
+
+
+## A filled arc from `from_angle` spanning `span`, closed through the centre —
+## a fringe of hair without needing a texture.
+static func _arc_cap(center: Vector2, radius: float, from_angle: float, span: float,
+		segments: int = 12) -> PackedVector2Array:
+	var polygon := PackedVector2Array([center])
+	for i in segments + 1:
+		var angle := from_angle + span * float(i) / float(segments)
+		polygon.append(center + Vector2(cos(angle), sin(angle)) * radius)
+	return polygon
 
 
 static func _ellipse(center: Vector2, radius_x: float, radius_y: float, points: int = 12) -> PackedVector2Array:

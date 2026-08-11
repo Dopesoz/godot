@@ -17,8 +17,10 @@ var _camera: CameraRig
 func _ready() -> void:
 	# The HUD lives under the world scene, so its owner is the world root.
 	_world = get_tree().get_first_node_in_group(&"world") as WorldController
-	if _world != null:
-		_camera = _world.camera
+	# Not _world.camera: the HUD is a child of the world scene, so its _ready
+	# runs before the world's own @onready assignments. Looked up by node
+	# instead, which is valid at this point.
+	_camera = _world.get_node_or_null("CameraRig") as CameraRig if _world != null else null
 	EventBus.city_event_started.connect(_on_city_event)
 	EventBus.city_event_ended.connect(_on_city_event)
 	EventBus.money_changed.connect(_on_money_changed)
@@ -67,7 +69,12 @@ func _on_city_event(_a: Variant = null, _b: Variant = null) -> void:
 
 
 func _controls_hint() -> String:
-	return "WASD / arrows — move    wheel — zoom    one finger — pan    two fingers — zoom    G — grid    Space — pause    +/− — speed    F3 — debug    M — music"
+	# One line, and it has to stay one line: wrapped onto two it pushes the
+	# clock around. So a phone is told about fingers and a desktop about keys,
+	# instead of both being told about both.
+	if Platform.has_touch():
+		return "one finger — pan    two fingers — zoom    tap a resident to follow them"
+	return "WASD — move    wheel — zoom    E — walls    G — grid    Space — pause    +/− — speed    F3 — debug    M — music"
 
 
 func _on_money_changed(amount: int, _delta: int) -> void:

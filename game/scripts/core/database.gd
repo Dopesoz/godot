@@ -130,6 +130,15 @@ func get_floor(id: StringName) -> FloorData:
 	return _lookup(floors, id, "floor") as FloorData
 
 
+## Every furniture template in a stable order — for the showroom and for the
+## self-test that checks each one has art.
+func all_furniture() -> Array[FurnitureData]:
+	var result: Array[FurnitureData] = []
+	for id: StringName in _sorted_ids(furniture):
+		result.append(furniture[id])
+	return result
+
+
 ## Floor materials in a stable order, for the build menu.
 func all_floors() -> Array[FloorData]:
 	var result: Array[FloorData] = []

@@ -84,6 +84,17 @@ func _apply_safe_area() -> void:
 	offset_right -= float(margins.z)
 
 
+## The bar is anchored to the bottom edge, so its height is a top offset, and a
+## fixed one left a slab of empty panel under the buttons whenever the option
+## row was hidden. Re-measuring after every layout change keeps the panel the
+## size of what is actually in it — which on a phone is most of the screen.
+func _fit_height() -> void:
+	var wanted := get_combined_minimum_size().y
+	var top := offset_bottom - wanted
+	if not is_equal_approx(top, offset_top):
+		offset_top = top
+
+
 func _build_tool_buttons() -> void:
 	var touch := Platform.has_touch()
 	var size := (MOBILE_BUTTON_SIZE if touch else MIN_BUTTON_SIZE) * Platform.ui_scale()
@@ -198,6 +209,8 @@ func _on_tool_mode_changed(mode: int) -> void:
 	_family_picker.visible = mode == GameEnums.ToolMode.MOVE_IN
 	_option_row.visible = (_floor_picker.visible or _room_picker.visible
 			or _furniture_picker.visible or _plot_picker.visible or _family_picker.visible)
+	# Deferred: the container has not re-measured itself yet this frame.
+	_fit_height.call_deferred()
 
 
 func _on_floor_selected(index: int) -> void:

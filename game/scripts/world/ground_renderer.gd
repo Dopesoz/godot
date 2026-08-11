@@ -15,6 +15,10 @@ const GRASS_A := Color(0.36, 0.52, 0.31)
 const GRASS_B := Color(0.33, 0.49, 0.29)
 const FLOOR_FALLBACK := Color(0.62, 0.51, 0.38)
 const EDGE_COLOR := Color(0.0, 0.0, 0.0, 0.10)
+## Base colour of the grass sprite. The flat diamond is painted underneath the
+## texture so the two blend at the tile's antialiased border — without it, every
+## cell edge shows as a hairline seam.
+const GRASS_BASE := Color(0.349, 0.498, 0.271)
 
 var _grid: WorldGrid
 ## Cached template lookups: _draw touches every floored cell, and a missing id
@@ -23,6 +27,7 @@ var _floor_cache: Dictionary = {}
 
 
 func _ready() -> void:
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	EventBus.world_ready.connect(_on_world_ready)
 	EventBus.cell_changed.connect(_on_cell_changed)
 
@@ -43,18 +48,32 @@ func _draw() -> void:
 		for x in _grid.size.x:
 			var cell := Vector2i(x, y)
 			var polygon := IsoUtils.cell_polygon(cell)
-			draw_colored_polygon(polygon, _color_for(cell))
-			# Closing the loop back to the first point outlines the diamond.
-			draw_polyline(polygon + PackedVector2Array([polygon[0]]), EDGE_COLOR, 1.0)
+			var material := _material_at(cell)
+			var texture: Texture2D = Art.floor_texture(material.id) if material != null else Art.grass(cell)
+			if texture != null:
+				# The polygon is the tile. Neighbouring cells share their edge
+				# vertices exactly, so there is nothing to seam — see the Tile
+				# class in tools/isolib.py for why this is not a sprite.
+				draw_colored_polygon(polygon, Color.WHITE, Art.TILE_UVS, texture)
+			else:
+				draw_colored_polygon(polygon, _color_for(cell, material))
+				# Only the untextured checkerboard needs the outline to keep
+				# individual cells readable.
+				if material == null:
+					draw_polyline(polygon + PackedVector2Array([polygon[0]]), EDGE_COLOR, 1.0)
 
 
-func _color_for(cell: Vector2i) -> Color:
+func _material_at(cell: Vector2i) -> FloorData:
 	var data := _grid.get_cell(cell)
-	if data != null and data.floor_id != &"":
-		var material: FloorData = _floor_cache.get(data.floor_id)
-		if material == null:
-			material = Database.get_floor(data.floor_id)
-			_floor_cache[data.floor_id] = material
-		return material.placeholder_color if material != null else FLOOR_FALLBACK
+	if data == null or data.floor_id == &"":
+		return null
+	if not _floor_cache.has(data.floor_id):
+		_floor_cache[data.floor_id] = Database.get_floor(data.floor_id)
+	return _floor_cache[data.floor_id]
+
+
+func _color_for(cell: Vector2i, material: FloorData) -> Color:
+	if material != null:
+		return material.placeholder_color
 	# Checkerboard so individual cells stay readable without a grid overlay.
 	return GRASS_A if (cell.x + cell.y) % 2 == 0 else GRASS_B

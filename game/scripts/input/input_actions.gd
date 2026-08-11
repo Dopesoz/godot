@@ -27,7 +27,7 @@ const TIME_PAUSE := &"time_pause"
 const TIME_FASTER := &"time_faster"
 const TIME_SLOWER := &"time_slower"
 
-const TOGGLE_INTERIOR := &"toggle_interior"
+const WALL_MODE := &"wall_mode"
 const TOGGLE_GRID := &"toggle_grid"
 const TOGGLE_DEBUG := &"toggle_debug"
 const TOGGLE_MUTE := &"toggle_mute"
@@ -43,7 +43,7 @@ static func ensure_default_actions() -> void:
 	_key_action(TIME_PAUSE, [KEY_SPACE])
 	_key_action(TIME_FASTER, [KEY_EQUAL, KEY_KP_ADD])
 	_key_action(TIME_SLOWER, [KEY_MINUS, KEY_KP_SUBTRACT])
-	_key_action(TOGGLE_INTERIOR, [KEY_E])
+	_key_action(WALL_MODE, [KEY_E])
 	_key_action(TOGGLE_GRID, [KEY_G])
 	_key_action(TOGGLE_DEBUG, [KEY_F3])
 	_key_action(TOGGLE_MUTE, [KEY_M])

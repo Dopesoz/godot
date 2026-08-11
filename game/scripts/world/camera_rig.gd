@@ -77,6 +77,15 @@ func zoom_by(factor: float) -> void:
 	zoom_at(factor, get_viewport_rect().size * 0.5)
 
 
+## Jump straight to a zoom level. Used by the screenshot tool; the player only
+## ever zooms by steps.
+func set_zoom_level(value: float, instant: bool = true) -> void:
+	_target_zoom = clampf(value, GameConstants.CAMERA_ZOOM_MIN, GameConstants.CAMERA_ZOOM_MAX)
+	if instant:
+		zoom = Vector2.ONE * _target_zoom
+	_target_position = _clamp_to_bounds(_target_position, _target_zoom)
+
+
 func focus_cell(cell: Vector2i, instant: bool = false) -> void:
 	_target_position = _clamp_to_bounds(IsoUtils.cell_to_world(cell), _target_zoom)
 	if instant:

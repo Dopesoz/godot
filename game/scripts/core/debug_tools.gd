@@ -33,6 +33,9 @@ static func build_demo(world: Node) -> void:
 	_build_flat(grid, furniture, Vector2i(14, 15))
 	_build_flat(grid, furniture, Vector2i(23, 15))
 
+	_name_rooms(world, Vector2i(14, 15))
+	_name_rooms(world, Vector2i(23, 15))
+
 	if lots != null and households != null:
 		var first := lots.place(&"house_small", Vector2i(14, 15))
 		var second := lots.place(&"house_small", Vector2i(23, 15))
@@ -87,6 +90,54 @@ static func _build_flat(grid: WorldGrid, furniture: FurnitureRegistry, origin: V
 	furniture.place(&"sofa", origin + Vector2i(2, 5))
 	furniture.place(&"dining_bench", origin + Vector2i(4, 5))
 	furniture.place(&"tv", origin + Vector2i(6, 4))
+
+
+## `godot --path game -- --showroom` lays one of every furniture template out on
+## a grid, each on its own patch of floor, in both orientations.
+##
+## It exists because art is the one part of this project that cannot be checked
+## by an assertion: a sprite can be the right size, load correctly, sit on the
+## right cells and still look wrong. This puts the whole catalogue on screen at
+## once so a person (or a screenshot in review) can see all of it in one look.
+static func maybe_build_showroom(world: Node) -> void:
+	if not OS.get_cmdline_user_args().has("--showroom"):
+		return
+	var grid: WorldGrid = world.get("grid")
+	var furniture: FurnitureRegistry = world.get_node_or_null("Furniture")
+	if grid == null or furniture == null:
+		return
+
+	const COLUMNS := 6
+	const PITCH := 4
+	var templates := Database.all_furniture()
+	var origin := Vector2i(6, 6)
+	var slot := 0
+	for template: FurnitureData in templates:
+		for rotation in [0, 1]:
+			var at := origin + Vector2i(slot % COLUMNS, slot / COLUMNS) * PITCH
+			for cell in IsoUtils.cells_in_rect(at - Vector2i.ONE,
+					at + template.rotated_size(rotation)):
+				grid.set_floor_material(cell, &"floor_tile" if rotation == 0 else &"floor_wood")
+			furniture.place(template.id, at, rotation)
+			slot += 1
+	EventBus.notify("Showroom: %d templates" % templates.size())
+
+
+## Rooms are detected automatically, but what they are *for* is the player's
+## decision — so the demo makes it, the way a player would with the room tool.
+static func _name_rooms(world: Node, origin: Vector2i) -> void:
+	var buildings := world.get_node_or_null("Buildings") as BuildingRegistry
+	if buildings == null:
+		return
+	buildings.rebuild()
+	for entry in [
+		[Vector2i(1, 1), GameEnums.RoomType.BEDROOM],
+		[Vector2i(5, 0), GameEnums.RoomType.BATHROOM],
+		[Vector2i(2, 4), GameEnums.RoomType.LIVING_ROOM],
+	]:
+		var room := buildings.room_at(origin + (entry[0] as Vector2i))
+		if room != null:
+			buildings.set_room_type(room.id, entry[1] as GameEnums.RoomType)
 
 
 ## `godot --path game -- --bench 200` fills the demo neighbourhood with N
@@ -147,6 +198,36 @@ static func maybe_screenshot(node: Node) -> void:
 	if index == -1:
 		return
 	var path := args[index + 1] if index + 1 < args.size() else "user://screenshot.png"
+	# `--focus x,y` and `--zoom n` are what make this useful for looking at art:
+	# the interesting question is usually "how does one room read close up", not
+	# "how does the whole map look".
+	# `--hour 22` jumps the clock, because half the art only exists after dark:
+	# lit windows, lamplight in the rooms, the blue outside.
+	var hour := args.find("--hour")
+	if hour != -1 and hour + 1 < args.size():
+		GameClock.advance((float(args[hour + 1]) - GameClock.hour_of_day()) * 60.0)
+	var camera := node.get_node_or_null("CameraRig") as CameraRig
+	if camera != null:
+		var focus := args.find("--focus")
+		if focus != -1 and focus + 1 < args.size():
+			var parts := args[focus + 1].split(",")
+			if parts.size() == 2:
+				camera.focus_cell(Vector2i(int(parts[0]), int(parts[1])), true)
+		var zoom := args.find("--zoom")
+		if zoom != -1 and zoom + 1 < args.size():
+			camera.set_zoom_level(float(args[zoom + 1]))
+	# `--walls 1` taps E once before the shot. Injected as a real key event
+	# rather than by reaching into the renderer, so what the screenshot shows is
+	# what the player's keyboard would do.
+	var walls := args.find("--walls")
+	if walls != -1 and walls + 1 < args.size():
+		for i in int(args[walls + 1]):
+			for pressed in [true, false]:
+				var key := InputEventKey.new()
+				key.physical_keycode = KEY_E
+				key.pressed = pressed
+				Input.parse_input_event(key)
+			await node.get_tree().process_frame
 	# Let the scene settle: the camera eases into place over several frames.
 	await node.get_tree().create_timer(1.0).timeout
 	await RenderingServer.frame_post_draw

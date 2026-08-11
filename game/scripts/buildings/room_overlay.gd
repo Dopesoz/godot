@@ -13,23 +13,35 @@ const LABEL_SHADOW := Color(0.0, 0.0, 0.0, 0.6)
 ## Warm light poured into rooms after dark so interiors stay readable while the
 ## streets go blue. Same trick as the windows: bright enough to survive the
 ## world-wide multiply from DayNight.
-const LAMP_LIGHT := Color(2.6, 2.2, 1.4, 0.30)
+const LAMP_LIGHT := Color(3.0, 2.1, 1.0, 0.40)
 
 const LOT_OUTLINE := Color(1.0, 0.95, 0.75, 0.35)
 const LOT_LABEL := Color(1.0, 0.96, 0.85, 0.85)
 
 var _rooms: Array = []
 var _font: Font
+## Room tints and labels are build-time information, not scenery. Once the
+## floors had real materials they started fighting them — a bedroom carpet does
+## not need a purple wash over it — so they now appear only while the room tool
+## is in the player's hand. A room with no door stays marked whatever the tool,
+## because that is a mistake and not a preference.
+var _tool: int = GameEnums.ToolMode.NONE
 
 
 func _ready() -> void:
 	_font = ThemeDB.fallback_font
+	EventBus.tool_mode_changed.connect(_on_tool_mode_changed)
 	EventBus.rooms_rebuilt.connect(_on_rooms_rebuilt)
 	EventBus.room_type_changed.connect(_on_room_type_changed)
 	EventBus.daylight_changed.connect(_on_daylight_changed)
 	EventBus.building_placed.connect(_on_building_changed)
 	EventBus.building_removed.connect(_on_building_changed)
 	EventBus.household_changed.connect(_on_building_changed)
+
+
+func _on_tool_mode_changed(mode: int) -> void:
+	_tool = mode
+	queue_redraw()
 
 
 func _on_rooms_rebuilt(_building_id: int, rooms: Array) -> void:
@@ -52,16 +64,20 @@ func _on_building_changed(_arg: Variant = null) -> void:
 func _draw() -> void:
 	_draw_lots()
 	var darkness := 1.0 - GameClock.get_daylight()
+	var planning := _tool == GameEnums.ToolMode.ASSIGN_ROOM
 	for room: Room in _rooms:
+		var show_room := planning or not room.is_reachable()
 		var tint := _tint_for(room)
 		var light := LAMP_LIGHT
 		light.a *= darkness
 		for cell in room.cells:
 			var polygon := IsoUtils.cell_polygon(cell, room.floor_index)
-			draw_colored_polygon(polygon, tint)
+			if show_room:
+				draw_colored_polygon(polygon, tint)
 			if darkness > 0.05:
 				draw_colored_polygon(polygon, light)
-		_draw_label(room)
+		if show_room:
+			_draw_label(room)
 
 
 ## Plot borders and the name of whoever lives there. With several houses on the

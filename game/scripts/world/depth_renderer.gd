@@ -14,12 +14,31 @@ extends Node2D
 ## collected fresh each frame — but only while at least one of them is moving,
 ## so a paused or empty city redraws nothing at all.
 
-const NAME_LABEL_MIN_ZOOM := 1.2
+## How much of a building the camera is allowed to hide.
+##
+## The whole premise is that the player looks *inside* a house (design doc §34),
+## and a fixed isometric camera puts two of every room's four walls between the
+## viewer and the people living there. So by default those two are cut down to
+## a stub — the room stays enclosed in the simulation, it is only drawn short.
+## The other two modes exist because "how does my house look from outside" and
+## "let me see the whole floor plan" are both fair questions.
+enum WallMode {
+	CUTAWAY, ## Walls in front of a room are cut down; walls behind stay full.
+	FULL,    ## Every wall at full height — the outside view.
+	LOW,     ## Every wall cut down — the floor-plan view.
+}
+
+const WALL_MODE_NAMES := {
+	WallMode.CUTAWAY: "Walls: cutaway",
+	WallMode.FULL: "Walls: full",
+	WallMode.LOW: "Walls: down",
+}
+
+var _wall_mode: WallMode = WallMode.CUTAWAY
 
 var _grid: WorldGrid
 var _furniture: FurnitureRegistry
 var _citizens: CitizenRegistry
-var _camera: CameraRig
 var _font: Font
 
 ## Cached {depth, kind, ref} entries for the things that rarely change.
@@ -30,9 +49,11 @@ var _selected_id: int = -1
 
 func _ready() -> void:
 	_font = ThemeDB.fallback_font
+	# Sprites are authored at twice their drawn size; mipmaps are what keeps
+	# that from shimmering as the camera moves.
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	_furniture = get_parent().get_node_or_null("Furniture") as FurnitureRegistry
 	_citizens = get_parent().get_node_or_null("Citizens") as CitizenRegistry
-	_camera = get_parent().get_node_or_null("CameraRig") as CameraRig
 
 	EventBus.world_ready.connect(_on_world_ready)
 	EventBus.edge_changed.connect(_on_static_changed)
@@ -43,7 +64,20 @@ func _ready() -> void:
 	EventBus.citizen_state_changed.connect(_on_static_changed)
 	# Windows glow after dark, so the pass is repainted when the light moves.
 	EventBus.daylight_changed.connect(_on_static_changed)
+	# Which walls hide an interior depends on where the rooms are.
+	EventBus.rooms_rebuilt.connect(_on_static_changed)
 	EventBus.selection_changed.connect(_on_selection_changed)
+
+
+## Asks the event rather than polling Input: a press and its release can arrive
+## in the same frame, and `is_action_just_pressed` would then fire for both.
+func _unhandled_input(event: InputEvent) -> void:
+	if not event.is_action_pressed(InputActions.WALL_MODE):
+		return
+	_wall_mode = ((_wall_mode + 1) % WallMode.size()) as WallMode
+	_static_dirty = true
+	queue_redraw()
+	EventBus.notify(WALL_MODE_NAMES[_wall_mode])
 
 
 func _on_selection_changed(selected: Variant) -> void:
@@ -89,16 +123,41 @@ func _draw() -> void:
 	entries.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		return float(a["depth"]) < float(b["depth"]))
 
-	var show_names := _camera == null or _camera.get_target_zoom() >= NAME_LABEL_MIN_ZOOM
 	for entry: Dictionary in entries:
 		match entry["kind"]:
 			"edge":
-				Painters.draw_edge(self, entry["ref"], int(entry["type"]))
+				Painters.draw_edge(self, entry["ref"], int(entry["type"]), 0, bool(entry["cut"]))
 			"furniture":
 				Painters.draw_furniture(self, entry["ref"])
 			"citizen":
 				var citizen: Citizen = entry["ref"]
-				Painters.draw_citizen(self, citizen, _font, show_names, citizen.id == _selected_id)
+				var selected := citizen.id == _selected_id
+				# Only the selected resident is named. Labels are drawn in world
+				# space, so at close zoom every name became a banner across the
+				# room it was in; the emote over the head says what matters
+				# anyway, and clicking says who.
+				Painters.draw_citizen(self, citizen, _font, selected, selected)
+
+
+## Is this wall standing between the camera and a room?
+##
+## The camera looks along +x +y, so of the two cells an edge separates, the one
+## with the *lower* coordinate is behind it. If that far cell belongs to a room,
+## this wall is what the player would be staring at instead of the room, and it
+## gets cut down. Walls with the room in front of them are left alone: those are
+## the back walls, and they are what makes the house look like a house.
+func _is_cut_away(edge: Vector3i) -> bool:
+	match _wall_mode:
+		WallMode.FULL:
+			return false
+		WallMode.LOW:
+			return true
+	var behind := Vector2i(edge.x, edge.y)
+	if edge.z == GameEnums.EdgeAxis.HORIZONTAL:
+		behind.y -= 1
+	else:
+		behind.x -= 1
+	return _grid.room_of(behind) != -1
 
 
 func _furniture_in_use() -> bool:
@@ -123,6 +182,7 @@ func _rebuild_static() -> void:
 			"kind": "edge",
 			"ref": edge,
 			"type": _grid.get_edge(edge),
+			"cut": _is_cut_away(edge),
 		})
 	if _furniture != null:
 		for item: Furniture in _furniture.items.values():

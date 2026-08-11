@@ -104,7 +104,19 @@ func _add(citizen: Citizen, template: CitizenData) -> void:
 func _random_name(template: CitizenData) -> String:
 	if template == null or template.first_names.is_empty():
 		return "Resident %d" % _next_id
-	var first: String = template.first_names[randi() % template.first_names.size()]
+	# Two people in one flat both called Boris is confusing in a way no other
+	# bug is: the player reads names, not ids. So a first name already in use
+	# is skipped while the pool still has an unused one.
+	var taken := {}
+	for other: Citizen in citizens.values():
+		taken[other.citizen_name.split(" ")[0]] = true
+	var pool: Array = Array(template.first_names)
+	pool.shuffle()
+	var first: String = pool[0]
+	for candidate: String in pool:
+		if not taken.has(candidate):
+			first = candidate
+			break
 	if template.last_names.is_empty():
 		return first
 	var last: String = template.last_names[randi() % template.last_names.size()]
