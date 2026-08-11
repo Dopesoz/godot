@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="FurnitureData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/furniture_data.gd" id="1_furn"]
+[ext_resource type="Script" path="res://scripts/data/interaction_data.gd" id="2_int"]
+
+[sub_resource type="Resource" id="Resource_work"]
+script = ExtResource("2_int")
+id = &"work"
+display_name = "Work"
+state = 4
+duration_minutes = 60.0
+need_effects = {
+6: 15.0,
+3: -5.0
+}
+capacity = 1
+priority = 1.0
+stands_on_furniture = false
+
+[resource]
+script = ExtResource("1_furn")
+id = &"desk"
+display_name = "Desk"
+description = "A place to work from home. Pays whatever the job pays."
+placeholder_color = Color(0.62, 0.47, 0.33, 1)
+category = 2
+price = 320
+upkeep_per_day = 4
+size = Vector2i(2, 1)
+comfort = 8.0
+entertainment = 0.0
+blocks_movement = true
+requires_wall = false
+interactions = Array[Resource]([SubResource("Resource_work")])
+allowed_room_types = Array[int]([6])

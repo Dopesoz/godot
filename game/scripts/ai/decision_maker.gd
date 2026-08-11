@@ -28,6 +28,10 @@ extends RefCounted
 ##   schedule    the time of day, via ScheduleData. Not a command — a weight.
 ##               At 23:00 sleep is worth four times as much, so a citizen goes
 ##               to bed in the evening instead of when energy finally runs out.
+##   duty        obligations, currently just the job: during the hours JobData
+##               defines, working outranks almost everything; outside them it is
+##               ignored. That is the whole of "going to work" — no separate
+##               system, one more multiplier.
 ##   priority    the content author's thumb on the scale, from InteractionData.
 ##
 ## The whole thing is deliberately one readable formula rather than a behaviour
@@ -119,6 +123,8 @@ static func score_option(citizen: Citizen, interaction: InteractionData, travel_
 		var importance := template.decay_multiplier(need_type) if template != null else 1.0
 		if routine != null:
 			importance *= routine.weight_for(need_type, hour)
+		# Obligations (a job) weigh in through the same term as everything else.
+		importance *= citizen.duty_weight(need_type)
 		value += gain * urgency(citizen.need(need_type)) * importance
 	if value <= 0.0:
 		return 0.0

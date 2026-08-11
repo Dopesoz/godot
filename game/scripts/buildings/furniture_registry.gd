@@ -115,6 +115,7 @@ func remove(furniture_id: int) -> bool:
 	for cell in item.cells():
 		_grid.set_occupant(cell, -1, item.floor_index)
 	items.erase(furniture_id)
+	_refresh_upkeep()
 	EventBus.furniture_removed.emit(furniture_id)
 	return true
 
@@ -161,6 +162,18 @@ func count() -> int:
 	return items.size()
 
 
+## Everything placed adds to the daily bill. Recomputed rather than adjusted
+## incrementally: it is a handful of items, and a total that is recalculated
+## cannot drift out of step with what is actually standing in the world.
+func _refresh_upkeep() -> void:
+	var total := 0
+	for item: Furniture in items.values():
+		var template := item.data()
+		if template != null:
+			total += template.upkeep_per_day
+	Economy.set_upkeep("furniture", total)
+
+
 func _register(item: Furniture) -> void:
 	items[item.id] = item
 	_next_id = maxi(_next_id, item.id + 1)
@@ -168,6 +181,7 @@ func _register(item: Furniture) -> void:
 		for cell in item.cells():
 			_grid.set_occupant(cell, item.id, item.floor_index)
 	item.room_id = _grid.room_of(item.origin, item.floor_index)
+	_refresh_upkeep()
 
 
 ## Rooms are rebuilt whenever a wall changes, which can move an object from

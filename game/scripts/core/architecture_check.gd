@@ -53,6 +53,7 @@ static func run_all() -> Array[Result]:
 	results.append(_check_schedule())
 	results.append(_check_clock())
 	results.append(_check_economy())
+	results.append(_check_household_costs())
 	results.append(_check_event_bus())
 	results.append(_check_save_cycle())
 	return results
@@ -806,6 +807,110 @@ static func check_sitting_furniture() -> Result:
 	if failure != "":
 		return Result.new("Using furniture you sit on", false, failure)
 	return Result.new("Using furniture you sit on", true, "a tired resident walks onto the bed and sleeps in it")
+
+
+## A job is modelled as a need that is only urgent during the hours JobData
+## defines. This checks the whole chain: the shift makes work pressing, working
+## pays by the minute, and off-shift hours make it irrelevant again.
+static func check_working_day() -> Result:
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null:
+		return Result.new("Working day", false, "no scene tree")
+
+	var host := Node.new()
+	host.name = "SelfTestWork"
+	tree.root.add_child(host)
+	var grid := WorldGrid.new(Vector2i(16, 16), 1)
+	var furniture := FurnitureRegistry.new()
+	furniture.name = "Furniture"
+	host.add_child(furniture)
+	furniture._on_world_ready(grid)
+	var registry := CitizenRegistry.new()
+	registry.name = "Citizens"
+	host.add_child(registry)
+	registry._on_world_ready(grid)
+
+	var saved_minutes := GameClock.total_minutes
+	var failure := ""
+	furniture.place(&"desk", Vector2i(6, 6))
+	var citizen := registry.spawn(Vector2i(3, 3), &"adult")
+	if citizen == null:
+		failure = "could not spawn a resident"
+	elif citizen.job() == null:
+		failure = "the adult archetype has no job"
+	else:
+		# Monday, ten in the morning: squarely inside the 08:00-17:00 shift.
+		GameClock.total_minutes = 10.0 * 60.0
+		GameClock._refresh_fields()
+		if not citizen.is_on_shift():
+			failure = "10:00 on a Monday is not recognised as working hours"
+		else:
+			citizen.start_new_day()
+			for type: int in GameEnums.NeedType.values():
+				if type != GameEnums.NeedType.WORK:
+					citizen.needs[type] = 85.0
+			var money_before := Economy.money
+			var worked := false
+			for i in 200:
+				citizen.sim_tick(1.0, GameEnums.SimLOD.FULL)
+				if citizen.state == GameEnums.CitizenState.WORKING:
+					worked = true
+					break
+			if not worked:
+				failure = "a resident on shift never went to work (state %s, %s)" % [
+						citizen.state_name(), citizen.current_reason]
+			else:
+				for i in 90:
+					citizen.sim_tick(1.0, GameEnums.SimLOD.FULL)
+				if citizen.earned_today <= 0:
+					failure = "an hour and a half of work paid nothing"
+				elif Economy.money <= money_before:
+					failure = "wages never reached the balance"
+				elif citizen.need(GameEnums.NeedType.WORK) <= 0.0:
+					failure = "working did not reduce the work owed"
+				else:
+					# Two in the morning: the same citizen must not care at all.
+					GameClock.total_minutes = 2.0 * 60.0
+					GameClock._refresh_fields()
+					if citizen.is_on_shift():
+						failure = "02:00 counts as working hours"
+					elif citizen.duty_weight(GameEnums.NeedType.WORK) >= 1.0:
+						failure = "work is still pressing in the middle of the night"
+
+	GameClock.total_minutes = saved_minutes
+	GameClock._refresh_fields()
+	for citizen_id: int in registry.citizens.keys():
+		registry.remove(citizen_id)
+	host.queue_free()
+	SaveManager.unregister("furniture")
+	SaveManager.unregister("citizens")
+	if failure != "":
+		return Result.new("Working day", false, failure)
+	return Result.new("Working day", true, "on shift they work and get paid by the minute, at night they do not")
+
+
+## Household costs are a recurring line rather than one-off charges, so the
+## daily settlement has a single place to happen and the HUD can explain it.
+static func _check_household_costs() -> Result:
+	var before_upkeep := Economy.daily_upkeep()
+	Economy.set_upkeep("selftest_house", 250)
+	if Economy.daily_upkeep() != before_upkeep + 250:
+		Economy.remove_owner("selftest_house")
+		return Result.new("Household costs", false, "adding an upkeep line did not change the daily total")
+	Economy.set_income("selftest_job", 400)
+	var net := Economy.daily_income() - Economy.daily_upkeep()
+
+	var money_before := Economy.money
+	Economy._on_day_passed(0)
+	var settled := Economy.money - money_before
+	Economy.remove_owner("selftest_house")
+	Economy.remove_owner("selftest_job")
+	Economy.money = money_before
+
+	if settled != net:
+		return Result.new("Household costs", false,
+				"the day settled %d, expected the net of %d" % [settled, net])
+	return Result.new("Household costs", true, "upkeep and income settle once a day, netted")
 
 
 ## Ticks are delivered over several frames, so this one is checked after a short

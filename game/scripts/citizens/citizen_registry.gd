@@ -17,6 +17,7 @@ var _next_id: int = 1
 
 func _ready() -> void:
 	EventBus.world_ready.connect(_on_world_ready)
+	EventBus.day_passed.connect(_on_day_passed)
 	SaveManager.register("citizens", self)
 
 
@@ -40,7 +41,24 @@ func spawn(cell: Vector2i, data_id: StringName = &"adult", floor_index: int = 0)
 	citizen.position = Vector2(cell)
 	citizen.floor_index = floor_index
 	_add(citizen, template)
+	# A new arrival owes today's shift like everyone else — without this they
+	# would start with a day's work already behind them and idle until midnight.
+	citizen.start_new_day()
 	return citizen
+
+
+## A new day: today's shift is owed again, and the city pays for its residents.
+func _on_day_passed(_day: int) -> void:
+	for citizen: Citizen in citizens.values():
+		citizen.start_new_day()
+	_refresh_living_costs()
+
+
+## Residents cost money simply by living here. Registered with the Economy as a
+## recurring line rather than charged directly, so the daily settlement stays in
+## one place and the HUD can show what it is made of.
+func _refresh_living_costs() -> void:
+	Economy.set_upkeep("residents", citizens.size() * GameConstants.LIVING_COST_PER_CITIZEN)
 
 
 func remove(citizen_id: int) -> bool:
@@ -49,6 +67,7 @@ func remove(citizen_id: int) -> bool:
 		return false
 	SimScheduler.unregister(citizen)
 	citizens.erase(citizen_id)
+	_refresh_living_costs()
 	EventBus.citizen_removed.emit(citizen_id)
 	return true
 
@@ -73,6 +92,7 @@ func _add(citizen: Citizen, template: CitizenData) -> void:
 	citizens[citizen.id] = citizen
 	_next_id = maxi(_next_id, citizen.id + 1)
 	SimScheduler.register(citizen)
+	_refresh_living_costs()
 	EventBus.citizen_spawned.emit(citizen)
 
 

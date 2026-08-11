@@ -83,7 +83,16 @@ const NEED_DECAY_PER_HOUR: Dictionary = {
 	GameEnums.NeedType.COMFORT: 3.0,
 	GameEnums.NeedType.ENTERTAINMENT: 4.0,
 	GameEnums.NeedType.SOCIAL: 2.0,
+	## Work does not decay on its own: it is reset at the start of each working
+	## day and only refilled by actually working.
+	GameEnums.NeedType.WORK: 0.0,
 }
+
+## How much more a citizen cares about work during their shift, and how little
+## outside it. This is what stops them going to the office at 3am and what gets
+## them out of bed at nine.
+const WORK_DUTY_WEIGHT_ON_SHIFT: float = 6.0
+const WORK_DUTY_WEIGHT_OFF_SHIFT: float = 0.1
 
 ## Needs move at different rates depending on what the citizen is doing: you do
 ## not get dirty at the usual rate while asleep. Keys are GameEnums.CitizenState.
@@ -106,6 +115,10 @@ const NEED_MIN: float = 0.0
 # --- Economy ----------------------------------------------------------------
 
 const STARTING_MONEY: int = 20000
+
+## Daily cost of having someone living in the city: food, water, everything the
+## simulation does not model object by object.
+const LIVING_COST_PER_CITIZEN: int = 40
 ## Price of one wall segment, one floor tile, etc. Buildings and furniture carry
 ## their own price in their Resource.
 const PRICE_WALL: int = 20

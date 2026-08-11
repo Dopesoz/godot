@@ -84,8 +84,12 @@ func _refresh() -> void:
 	var occupation := job.display_name if job != null else "Unemployed"
 	var personality := String(CitizenData.Personality.keys()[template.personality]).capitalize() if template != null else "—"
 	var block := _citizen.schedule_label()
-	_subtitle.text = "%s   •   %s   •   %s" % [
-		occupation, personality, block if block != "" else "no routine"]
+	if job != null:
+		occupation += "  %02d:00–%02d:00" % [int(job.start_hour), int(job.end_hour)]
+		if _citizen.is_on_shift():
+			occupation += "  (on shift)"
+	_subtitle.text = "%s   •   %s   •   %s   •   earned today $%d" % [
+		occupation, personality, block if block != "" else "no routine", _citizen.earned_today]
 	# What they are doing and, crucially, why they chose it.
 	_activity.text = _citizen.state_name()
 	if _citizen.current_reason != "":

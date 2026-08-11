@@ -1,0 +1,49 @@
+[gd_resource type="Resource" script_class="FurnitureData" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/furniture_data.gd" id="1_furn"]
+[ext_resource type="Script" path="res://scripts/data/interaction_data.gd" id="2_int"]
+
+[sub_resource type="Resource" id="Resource_cwork"]
+script = ExtResource("2_int")
+id = &"work_pc"
+display_name = "Work"
+state = 4
+duration_minutes = 60.0
+need_effects = {
+6: 20.0,
+3: -4.0
+}
+capacity = 1
+priority = 1.1
+stands_on_furniture = false
+
+[sub_resource type="Resource" id="Resource_cplay"]
+script = ExtResource("2_int")
+id = &"play"
+display_name = "Play"
+state = 5
+duration_minutes = 45.0
+need_effects = {
+4: 35.0,
+5: 5.0
+}
+capacity = 1
+priority = 0.9
+stands_on_furniture = false
+
+[resource]
+script = ExtResource("1_furn")
+id = &"computer"
+display_name = "Computer"
+description = "Work during the day, entertainment in the evening — the AI picks by itself."
+placeholder_color = Color(0.35, 0.40, 0.50, 1)
+category = 6
+price = 650
+upkeep_per_day = 6
+size = Vector2i(1, 1)
+comfort = 0.0
+entertainment = 12.0
+blocks_movement = true
+requires_wall = false
+interactions = Array[Resource]([SubResource("Resource_cwork"), SubResource("Resource_cplay")])
+allowed_room_types = Array[int]([6])

@@ -47,6 +47,11 @@ enum NeedType {
 	COMFORT,
 	ENTERTAINMENT,
 	SOCIAL,
+	## Not a life need but an obligation, modelled as one so it competes in the
+	## same scoring formula instead of needing a parallel system. 0 means a full
+	## day's work is still owed, 100 means today's shift is done. It is only
+	## made urgent during the hours JobData defines (see Citizen.duty_weight).
+	WORK,
 }
 
 ## Citizen state machine states (design doc §14).

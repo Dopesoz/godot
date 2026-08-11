@@ -57,7 +57,11 @@ func _unhandled_input(_event: InputEvent) -> void:
 
 
 func _on_money_changed(amount: int, _delta: int) -> void:
-	_money_label.text = "$ %s" % _thousands(amount)
+	# The balance alone hides whether the city is sustainable; the daily net is
+	# the number that actually matters.
+	var net := Economy.daily_income() - Economy.daily_upkeep()
+	var suffix := "  (%s%d/day)" % ["+" if net >= 0 else "", net]
+	_money_label.text = "$ %s%s" % [_thousands(amount), suffix]
 
 
 func _on_minute_passed(_hour: int, _minute: int) -> void:

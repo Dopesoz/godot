@@ -47,8 +47,13 @@ var current_reason: String = ""
 ## Score of the current activity, kept so a candidate can be compared against it.
 var current_score: float = 0.0
 
+## Money earned today, shown in the inspector so the player can see a job
+## actually paying rather than just a number moving in the corner.
+var earned_today: int = 0
+
 var _data: CitizenData
 var _schedule: ScheduleData
+var _job: JobData
 var _grid: WorldGrid
 var _furniture: FurnitureRegistry
 ## Re-picking a goal every single tick would thrash; wait this many game minutes
@@ -56,6 +61,8 @@ var _furniture: FurnitureRegistry
 var _retry_in: float = 0.0
 ## Countdown to the next "is there something better to do?" check.
 var _recheck_in: float = GameConstants.AI_RECHECK_MINUTES
+## Sub-unit wages carried between ticks so nothing is lost to rounding.
+var _wage_fraction: float = 0.0
 
 
 func setup(grid: WorldGrid, furniture: FurnitureRegistry, template: CitizenData) -> void:
@@ -71,6 +78,54 @@ func data() -> CitizenData:
 	if _data == null and data_id != &"":
 		_data = Database.get_citizen(data_id)
 	return _data
+
+
+## The citizen's profession, or null when unemployed.
+func job() -> JobData:
+	if _job == null:
+		var template := data()
+		if template != null and template.job_id != &"":
+			_job = Database.get_job(template.job_id)
+	return _job
+
+
+func is_on_shift() -> bool:
+	var profession := job()
+	if profession == null:
+		return false
+	return profession.is_working_day(GameClock.day_of_week()) and profession.is_working_hour(GameClock.hour_of_day())
+
+
+## Extra weight the citizen's obligations put on a need right now. Only work has
+## one: it is made pressing during the hours JobData defines and almost ignored
+## outside them, which is what turns "a need called WORK" into "a job".
+func duty_weight(need_type: int) -> float:
+	if need_type != GameEnums.NeedType.WORK:
+		return 1.0
+	if job() == null:
+		return 0.0
+	return GameConstants.WORK_DUTY_WEIGHT_ON_SHIFT if is_on_shift() else GameConstants.WORK_DUTY_WEIGHT_OFF_SHIFT
+
+
+## Called at the start of each day: today's shift is owed again, or not, if this
+## is a day off.
+func start_new_day() -> void:
+	earned_today = 0
+	var profession := job()
+	var owes_work := profession != null and profession.is_working_day(GameClock.day_of_week())
+	needs[GameEnums.NeedType.WORK] = 0.0 if owes_work else GameConstants.NEED_MAX
+
+
+## Wage for one minute on the job, derived from the daily salary and the length
+## of the shift, so pay and hours stay in one place (JobData).
+func wage_per_minute() -> float:
+	var profession := job()
+	if profession == null:
+		return 0.0
+	var hours := profession.end_hour - profession.start_hour
+	if hours <= 0.0:
+		hours += 24.0
+	return float(profession.salary_per_day) / maxf(hours * 60.0, 1.0)
 
 
 ## The citizen's daily routine, or null when they live purely by their needs.
@@ -260,6 +315,8 @@ func _tick_interaction(minutes: float) -> void:
 		_abort_goal()
 		return
 	interaction_elapsed += minutes
+	if state == GameEnums.CitizenState.WORKING:
+		_earn_wages(minutes)
 	_check_for_interruption(minutes)
 	if target_interaction == null:
 		return
@@ -268,6 +325,20 @@ func _tick_interaction(minutes: float) -> void:
 		needs[type] = clampf(need(type) + gain, GameConstants.NEED_MIN, GameConstants.NEED_MAX)
 	if interaction_elapsed >= target_interaction.duration_minutes:
 		_finish_interaction()
+
+
+## Paid by the minute worked rather than in a lump at the end of the shift, so
+## an interrupted day still pays for the hours actually put in.
+func _earn_wages(minutes: float) -> void:
+	if not is_on_shift():
+		return
+	_wage_fraction += wage_per_minute() * minutes
+	var whole := int(_wage_fraction)
+	if whole <= 0:
+		return
+	_wage_fraction -= float(whole)
+	earned_today += whole
+	Economy.earn(whole, "wages")
 
 
 ## Something urgent can come up mid-activity — that is the difference between a
@@ -355,6 +426,7 @@ func save_data() -> Dictionary:
 		"y": position.y,
 		"floor": floor_index,
 		"home_room": home_room_id,
+		"earned_today": earned_today,
 		"needs": stored_needs,
 	}
 
@@ -367,6 +439,7 @@ static func from_save(entry: Dictionary) -> Citizen:
 	citizen.position = Vector2(float(entry.get("x", 0.0)), float(entry.get("y", 0.0)))
 	citizen.floor_index = int(entry.get("floor", 0))
 	citizen.home_room_id = int(entry.get("home_room", -1))
+	citizen.earned_today = int(entry.get("earned_today", 0))
 	var stored: Dictionary = entry.get("needs", {})
 	for key: String in stored.keys():
 		citizen.needs[int(key)] = float(stored[key])
