@@ -48,6 +48,7 @@ static func run_all() -> Array[Result]:
 	results.append(_check_data_layer())
 	results.append(_check_database())
 	results.append(_check_content_integrity())
+	results.append(_check_pathfinding())
 	results.append(_check_clock())
 	results.append(_check_economy())
 	results.append(_check_event_bus())
@@ -329,6 +330,39 @@ static func _check_content_integrity() -> Result:
 			% [Database.furniture.size() + Database.floors.size(), interaction_count])
 
 
+## Pathfinding asks the grid one question and nothing else, so these three cases
+## cover it: a straight walk, a sealed room, and the same room with a door.
+static func _check_pathfinding() -> Result:
+	var grid := WorldGrid.new(Vector2i(12, 12), 1)
+	var path := Pathfinder.find_path(grid, Vector2i(0, 0), Vector2i(3, 0))
+	if path.size() != 3 or path[path.size() - 1] != Vector2i(3, 0):
+		return Result.new("Pathfinding", false, "a straight walk of 3 cells produced %d steps" % path.size())
+	for i in path.size():
+		var previous: Vector2i = Vector2i(0, 0) if i == 0 else path[i - 1]
+		if IsoUtils.cell_distance(previous, path[i]) != 1:
+			return Result.new("Pathfinding", false, "the path contains a diagonal or a jump")
+
+	# Seal a room around (5,5): unreachable, no matter how close it looks.
+	for edge in WorldGrid.rect_perimeter_edges(Vector2i(4, 4), Vector2i(6, 6)):
+		grid.set_edge(edge, GameEnums.EdgeType.WALL)
+	if not Pathfinder.find_path(grid, Vector2i(0, 0), Vector2i(5, 5)).is_empty():
+		return Result.new("Pathfinding", false, "a route was found into a sealed room")
+
+	# One door is enough to let a citizen in.
+	grid.set_edge(WorldGrid.edge_key(Vector2i(5, 4), Vector2i.UP), GameEnums.EdgeType.DOOR)
+	var through_door := Pathfinder.find_path(grid, Vector2i(0, 0), Vector2i(5, 5))
+	if through_door.is_empty():
+		return Result.new("Pathfinding", false, "a door did not open a route into the room")
+	if not through_door.has(Vector2i(5, 3)):
+		return Result.new("Pathfinding", false, "the route into the room does not pass through the door")
+
+	# Furniture blocks in exactly the same way a wall does.
+	grid.set_occupant(Vector2i(5, 3), 42)
+	if not Pathfinder.find_path(grid, Vector2i(0, 0), Vector2i(5, 5)).is_empty():
+		return Result.new("Pathfinding", false, "an object standing in the doorway did not block the route")
+	return Result.new("Pathfinding", true, "walls block, doors open, objects block, no corner cutting")
+
+
 static func _check_clock() -> Result:
 	var saved := GameClock.total_minutes
 	var saved_speed := GameClock.speed_index
@@ -458,6 +492,90 @@ static func check_furniture_placement() -> Result:
 	if failure != "":
 		return Result.new("Furniture placement", false, failure)
 	return Result.new("Furniture placement", true, "footprints, rotation, occupancy, need lookup and saving all hold")
+
+
+## The whole Phase 4 loop end to end: a hungry resident notices, finds something
+## that fixes it without being told what a fridge is, walks there, uses it, and
+## gets less hungry. Driven by direct ticks so it takes milliseconds instead of
+## waiting for real time to pass.
+static func check_citizen_life() -> Result:
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null:
+		return Result.new("Citizen life", false, "no scene tree")
+
+	var host := Node.new()
+	host.name = "SelfTestWorld"
+	tree.root.add_child(host)
+	var grid := WorldGrid.new(Vector2i(12, 12), 1)
+	var furniture := FurnitureRegistry.new()
+	furniture.name = "Furniture"
+	host.add_child(furniture)
+	furniture._on_world_ready(grid)
+	var registry := CitizenRegistry.new()
+	registry.name = "Citizens"
+	host.add_child(registry)
+	registry._on_world_ready(grid)
+
+	var failure := ""
+	var fridge := furniture.place(&"fridge", Vector2i(8, 4))
+	var citizen := registry.spawn(Vector2i(2, 2), &"adult")
+	if fridge == null:
+		failure = "could not place the fridge"
+	elif citizen == null:
+		failure = "could not spawn a resident"
+	else:
+		citizen.needs[GameEnums.NeedType.HUNGER] = 8.0
+		var hunger_before: float = citizen.need(GameEnums.NeedType.HUNGER)
+		var walked := false
+		var ate := false
+		var reserved := false
+		# 200 game minutes is far more than the walk plus a 10 minute snack.
+		for i in 200:
+			citizen.sim_tick(1.0, GameEnums.SimLOD.FULL)
+			if citizen.state == GameEnums.CitizenState.WALKING:
+				walked = true
+			if citizen.state == GameEnums.CitizenState.EATING:
+				ate = true
+				reserved = fridge.users.has(citizen.id)
+			if ate and citizen.state == GameEnums.CitizenState.IDLE:
+				break
+
+		if not walked:
+			failure = "the resident never walked anywhere"
+		elif not ate:
+			failure = "the resident never reached the fridge"
+		elif not reserved:
+			failure = "the fridge was not claimed while it was in use"
+		elif not fridge.users.is_empty():
+			failure = "the fridge stayed claimed after the snack finished"
+		elif citizen.need(GameEnums.NeedType.HUNGER) <= hunger_before:
+			failure = "eating did not reduce hunger (%.1f -> %.1f)" % [
+					hunger_before, citizen.need(GameEnums.NeedType.HUNGER)]
+		elif IsoUtils.cell_distance(citizen.cell(), Vector2i(8, 4)) > 2:
+			failure = "the resident ate from %s, too far from the fridge" % citizen.cell()
+		else:
+			# Needs and position survive a save; the current errand does not, by
+			# design — everyone re-decides what to do after loading.
+			var payload: Variant = JSON.parse_string(JSON.stringify(registry.save_data()))
+			var hunger := citizen.need(GameEnums.NeedType.HUNGER)
+			registry.load_data(payload)
+			if registry.count() != 1:
+				failure = "expected 1 resident after loading, got %d" % registry.count()
+			else:
+				var loaded: Citizen = registry.all()[0]
+				if absf(loaded.need(GameEnums.NeedType.HUNGER) - hunger) > 0.01:
+					failure = "hunger did not survive the save"
+				elif loaded.citizen_name != citizen.citizen_name:
+					failure = "the resident lost their name in the save"
+
+	for citizen_id: int in registry.citizens.keys():
+		registry.remove(citizen_id)
+	host.queue_free()
+	SaveManager.unregister("furniture")
+	SaveManager.unregister("citizens")
+	if failure != "":
+		return Result.new("Citizen life", false, failure)
+	return Result.new("Citizen life", true, "hungry -> finds food -> walks -> eats -> fed, and it all saves")
 
 
 ## Ticks are delivered over several frames, so this one is checked after a short

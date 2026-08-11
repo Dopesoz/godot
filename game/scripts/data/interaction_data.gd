@@ -37,7 +37,7 @@ extends GameData
 
 ## Points per game minute for one need, so a partially finished action still
 ## pays out proportionally when it gets interrupted.
-func rate_per_minute(need: GameEnums.NeedType) -> float:
+func rate_per_minute(need: int) -> float:
 	if duration_minutes <= 0.0:
 		return 0.0
 	return float(need_effects.get(need, 0.0)) / duration_minutes

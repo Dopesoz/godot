@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="CitizenData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/citizen_data.gd" id="1_citizen"]
+
+[resource]
+script = ExtResource("1_citizen")
+id = &"adult"
+display_name = "Adult"
+description = "A working-age resident with no particular quirks."
+placeholder_color = Color(0.913725, 0.741176, 0.560784, 1)
+gender = 2
+age = 32
+personality = 0
+job_id = &"worker"
+initial_needs = {
+0: 70.0,
+1: 80.0,
+2: 75.0,
+3: 70.0,
+4: 60.0,
+5: 65.0
+}
+walk_speed = 1.6
+first_names = PackedStringArray("Anna", "Boris", "Clara", "Daniel", "Elena", "Felix", "Greta", "Hugo", "Irina", "Jonas", "Kira", "Lena", "Mark", "Nina", "Oscar", "Pavel", "Rita", "Sofia", "Timur", "Vera")
+last_names = PackedStringArray("Adler", "Beck", "Cross", "Dorn", "Egan", "Fisher", "Gould", "Hart", "Ivers", "Kane", "Lund", "Meyer", "Novak", "Ortiz", "Pike", "Quill", "Rossi", "Stein", "Toth", "Vogel")

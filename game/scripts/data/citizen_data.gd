@@ -41,9 +41,9 @@ enum Personality {
 @export var last_names: PackedStringArray = PackedStringArray()
 
 
-func starting_need(need: GameEnums.NeedType) -> float:
+func starting_need(need: int) -> float:
 	return clampf(float(initial_needs.get(need, 80.0)), GameConstants.NEED_MIN, GameConstants.NEED_MAX)
 
 
-func decay_multiplier(need: GameEnums.NeedType) -> float:
+func decay_multiplier(need: int) -> float:
 	return float(need_decay_multipliers.get(need, 1.0))

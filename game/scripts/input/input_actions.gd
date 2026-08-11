@@ -30,6 +30,7 @@ const TIME_SLOWER := &"time_slower"
 const TOGGLE_INTERIOR := &"toggle_interior"
 const TOGGLE_GRID := &"toggle_grid"
 const TOGGLE_DEBUG := &"toggle_debug"
+const TOGGLE_MUTE := &"toggle_mute"
 
 
 static func ensure_default_actions() -> void:
@@ -45,6 +46,7 @@ static func ensure_default_actions() -> void:
 	_key_action(TOGGLE_INTERIOR, [KEY_E])
 	_key_action(TOGGLE_GRID, [KEY_G])
 	_key_action(TOGGLE_DEBUG, [KEY_F3])
+	_key_action(TOGGLE_MUTE, [KEY_M])
 
 	_mouse_action(BUILD_CONFIRM, MOUSE_BUTTON_LEFT)
 	_mouse_action(CAMERA_DRAG, MOUSE_BUTTON_MIDDLE)

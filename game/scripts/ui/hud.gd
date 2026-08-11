@@ -24,7 +24,7 @@ func _ready() -> void:
 	_on_money_changed(Economy.money, 0)
 	_on_minute_passed(GameClock.hour, GameClock.minute)
 	_debug_label.visible = OS.is_debug_build()
-	_hint_label.text = "WASD / arrows — move    wheel — zoom    middle drag — pan    one finger — pan    two fingers — zoom    G — grid    Space — pause    +/− — speed    F3 — debug"
+	_hint_label.text = "WASD / arrows — move    wheel — zoom    middle drag — pan    one finger — pan    two fingers — zoom    G — grid    Space — pause    +/− — speed    F3 — debug    M — music"
 
 
 func _process(_delta: float) -> void:
@@ -33,10 +33,15 @@ func _process(_delta: float) -> void:
 	var cell_text := "—"
 	if _world != null and _world.has_hover():
 		cell_text = "%d, %d" % [_world.hovered_cell.x, _world.hovered_cell.y]
-	_debug_label.text = "cell %s    zoom %.2fx    %d fps    sim agents %d (full %d / reduced %d / abstract %d)" % [
+	var residents := 0
+	if _world != null:
+		var registry := _world.get_node_or_null("Citizens") as CitizenRegistry
+		residents = registry.count() if registry != null else 0
+	_debug_label.text = "cell %s    zoom %.2fx    %d fps    residents %d    sim agents %d (full %d / reduced %d / abstract %d)" % [
 		cell_text,
 		_camera.get_target_zoom() if _camera != null else 0.0,
 		Engine.get_frames_per_second(),
+		residents,
 		SimScheduler.agent_count(),
 		SimScheduler.counts[GameEnums.SimLOD.FULL],
 		SimScheduler.counts[GameEnums.SimLOD.REDUCED],
@@ -47,6 +52,8 @@ func _process(_delta: float) -> void:
 func _unhandled_input(_event: InputEvent) -> void:
 	if Input.is_action_just_pressed(InputActions.TOGGLE_DEBUG):
 		_debug_label.visible = not _debug_label.visible
+	elif Input.is_action_just_pressed(InputActions.TOGGLE_MUTE):
+		AudioManager.toggle_mute()
 
 
 func _on_money_changed(amount: int, _delta: int) -> void:

@@ -17,7 +17,8 @@ const TOOLS := [
 	[KEY_5, "Floor", GameEnums.ToolMode.FLOOR],
 	[KEY_6, "Room", GameEnums.ToolMode.ASSIGN_ROOM],
 	[KEY_7, "Furniture", GameEnums.ToolMode.FURNITURE],
-	[KEY_8, "Delete", GameEnums.ToolMode.DELETE],
+	[KEY_8, "Resident", GameEnums.ToolMode.SPAWN_CITIZEN],
+	[KEY_9, "Delete", GameEnums.ToolMode.DELETE],
 ]
 
 ## Room types the player can assign in the MVP (design doc §9).

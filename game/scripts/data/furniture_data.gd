@@ -53,7 +53,7 @@ func rotated_size(rotation_steps: int) -> Vector2i:
 
 ## First interaction that raises `need`, or null. The AI uses this to answer
 ## "can this object make me less hungry?" without knowing what a fridge is.
-func find_interaction_for(need: GameEnums.NeedType) -> InteractionData:
+func find_interaction_for(need: int) -> InteractionData:
 	for interaction in interactions:
 		if interaction != null and float(interaction.need_effects.get(need, 0.0)) > 0.0:
 			return interaction

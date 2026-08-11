@@ -28,6 +28,7 @@ func _ready() -> void:
 	EventBus.world_ready.emit(grid)
 	EventBus.notify("World ready: %d x %d cells, %d floor(s)" % [grid.size.x, grid.size.y, grid.floors])
 
+	DebugTools.maybe_build_demo(self)
 	DebugTools.maybe_screenshot(self)
 
 

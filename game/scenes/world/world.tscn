@@ -1,21 +1,22 @@
-[gd_scene load_steps=17 format=3]
+[gd_scene load_steps=18 format=3]
 
 [ext_resource type="Script" path="res://scripts/world/world_controller.gd" id="1_world"]
 [ext_resource type="Script" path="res://scripts/world/ground_renderer.gd" id="2_ground"]
 [ext_resource type="Script" path="res://scripts/buildings/room_overlay.gd" id="3_rooms"]
 [ext_resource type="Script" path="res://scripts/world/grid_overlay.gd" id="4_grid"]
 [ext_resource type="Script" path="res://scripts/world/cell_highlight.gd" id="5_highlight"]
-[ext_resource type="Script" path="res://scripts/buildings/wall_renderer.gd" id="6_walls"]
+[ext_resource type="Script" path="res://scripts/world/depth_renderer.gd" id="6_depth"]
 [ext_resource type="Script" path="res://scripts/buildings/build_preview.gd" id="7_preview"]
 [ext_resource type="Script" path="res://scripts/world/camera_rig.gd" id="8_camera"]
 [ext_resource type="Script" path="res://scripts/input/desktop_input_adapter.gd" id="9_input"]
 [ext_resource type="Script" path="res://scripts/buildings/building_registry.gd" id="10_registry"]
 [ext_resource type="Script" path="res://scripts/buildings/build_controller.gd" id="11_builder"]
 [ext_resource type="Script" path="res://scripts/buildings/furniture_registry.gd" id="12_furniture"]
-[ext_resource type="Script" path="res://scripts/buildings/furniture_renderer.gd" id="13_furnview"]
+[ext_resource type="Script" path="res://scripts/citizens/citizen_registry.gd" id="13_citizens"]
 [ext_resource type="Script" path="res://scripts/input/touch_input_adapter.gd" id="14_touch"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="12_hud"]
 [ext_resource type="PackedScene" path="res://scenes/ui/build_bar.tscn" id="13_bar"]
+[ext_resource type="PackedScene" path="res://scenes/ui/citizen_panel.tscn" id="15_citizenui"]
 
 [node name="World" type="Node2D" groups=["world"]]
 script = ExtResource("1_world")
@@ -32,17 +33,11 @@ script = ExtResource("4_grid")
 [node name="Highlight" type="Node2D" parent="."]
 script = ExtResource("5_highlight")
 
-[node name="FurnitureLayer" type="Node2D" parent="."]
-script = ExtResource("13_furnview")
-
-[node name="Walls" type="Node2D" parent="."]
-script = ExtResource("6_walls")
-
 [node name="BuildPreview" type="Node2D" parent="."]
 script = ExtResource("7_preview")
 
 [node name="Entities" type="Node2D" parent="."]
-y_sort_enabled = true
+script = ExtResource("6_depth")
 
 [node name="CameraRig" type="Camera2D" parent="."]
 script = ExtResource("8_camera")
@@ -56,6 +51,9 @@ script = ExtResource("10_registry")
 [node name="Furniture" type="Node" parent="."]
 script = ExtResource("12_furniture")
 
+[node name="Citizens" type="Node" parent="."]
+script = ExtResource("13_citizens")
+
 [node name="Builder" type="Node" parent="."]
 script = ExtResource("11_builder")
 
@@ -67,3 +65,5 @@ script = ExtResource("14_touch")
 [node name="BuildUI" type="CanvasLayer" parent="."]
 
 [node name="BuildBar" parent="BuildUI" instance=ExtResource("13_bar")]
+
+[node name="CitizenPanel" parent="BuildUI" instance=ExtResource("15_citizenui")]

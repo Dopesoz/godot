@@ -80,10 +80,17 @@ func _unhandled_input(event: InputEvent) -> void:
 		else:
 			set_tool(GameEnums.ToolMode.NONE)
 		return
-	if not is_building() or not (event is InputEventMouseButton):
+	if not (event is InputEventMouseButton):
 		return
 	var button := event as InputEventMouseButton
 	if button.button_index != MOUSE_BUTTON_LEFT:
+		return
+	# With no tool active, a click inspects whoever is standing there. This is
+	# the "what is going on in that house?" hook from §34, and the only reason
+	# the select tool exists at all.
+	if not is_building():
+		if button.pressed:
+			_select_under_pointer()
 		return
 	get_viewport().set_input_as_handled()
 
@@ -129,6 +136,8 @@ func _rebuild_preview() -> void:
 			_plan_assign_room()
 		GameEnums.ToolMode.FURNITURE:
 			_plan_furniture(to)
+		GameEnums.ToolMode.SPAWN_CITIZEN:
+			_plan_citizen(to)
 		_:
 			_clear_preview()
 
@@ -226,6 +235,17 @@ func _plan_furniture(origin: Vector2i) -> void:
 	preview_valid = preview_error == ""
 
 
+## Dropping a resident needs nothing but a cell they can stand on.
+func _plan_citizen(cell: Vector2i) -> void:
+	preview_edges = []
+	preview_furniture = []
+	preview_cells = [cell]
+	preview_cost = 0
+	var walkable := _world.grid.is_walkable(cell)
+	preview_error = "" if walkable else "A resident cannot stand there"
+	preview_valid = walkable
+
+
 func _plan_assign_room() -> void:
 	preview_edges = []
 	preview_cost = 0
@@ -285,6 +305,10 @@ func _apply_click() -> void:
 			if not Economy.try_spend(preview_cost, "furniture"):
 				return
 			_furniture().place(selected_furniture_id, _world.hovered_cell, rotation_steps)
+		GameEnums.ToolMode.SPAWN_CITIZEN:
+			var citizen := _citizens().spawn(_world.hovered_cell)
+			if citizen != null:
+				EventBus.selection_changed.emit(citizen)
 
 
 ## Tells the player *why* nothing happened, instead of appearing to be broken.
@@ -361,9 +385,21 @@ func _room_under_pointer() -> Room:
 	return _registry().room_at(_world.hovered_cell)
 
 
+func _select_under_pointer() -> void:
+	if not _world.has_hover():
+		return
+	var registry := _citizens()
+	var citizen := registry.citizen_at(_world.hovered_cell) if registry != null else null
+	EventBus.selection_changed.emit(citizen)
+
+
 func _registry() -> BuildingRegistry:
 	return _world.get_node("Buildings") as BuildingRegistry
 
 
 func _furniture() -> FurnitureRegistry:
 	return _world.get_node_or_null("Furniture") as FurnitureRegistry
+
+
+func _citizens() -> CitizenRegistry:
+	return _world.get_node_or_null("Citizens") as CitizenRegistry

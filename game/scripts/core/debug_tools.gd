@@ -4,6 +4,61 @@ extends RefCounted
 ## Small development-only helpers. Nothing here is part of the game.
 
 
+## `godot --path game -- --demo` builds a small furnished flat with one
+## resident, so the whole stack — walls, rooms, furniture, pathfinding, needs —
+## can be seen (or smoke-tested in CI) without twenty clicks.
+##
+## Layout: a 7x6 flat split into a bedroom, a bathroom and a living/kitchen
+## area, with doors between them and one door to the street.
+static func maybe_build_demo(world: Node) -> void:
+	if not OS.get_cmdline_user_args().has("--demo"):
+		return
+	build_demo(world)
+
+
+static func build_demo(world: Node) -> void:
+	var grid: WorldGrid = world.get("grid")
+	var furniture: FurnitureRegistry = world.get_node_or_null("Furniture")
+	var citizens: CitizenRegistry = world.get_node_or_null("Citizens")
+	if grid == null or furniture == null or citizens == null:
+		push_warning("DebugTools: the world is not ready for a demo build")
+		return
+
+	var origin := Vector2i(16, 16)
+	# Outer shell, then one wall splitting off the two small rooms.
+	for edge in WorldGrid.rect_perimeter_edges(origin, origin + Vector2i(6, 5)):
+		grid.set_edge(edge, GameEnums.EdgeType.WALL)
+	for x in range(0, 4):
+		grid.set_edge(WorldGrid.edge_key(origin + Vector2i(x, 2), Vector2i.DOWN), GameEnums.EdgeType.WALL)
+	for y in range(0, 3):
+		grid.set_edge(WorldGrid.edge_key(origin + Vector2i(3, y), Vector2i.RIGHT), GameEnums.EdgeType.WALL)
+
+	# Doors: street -> living area, living -> bedroom, living -> bathroom.
+	grid.set_edge(WorldGrid.edge_key(origin + Vector2i(5, 5), Vector2i.DOWN), GameEnums.EdgeType.DOOR)
+	grid.set_edge(WorldGrid.edge_key(origin + Vector2i(1, 2), Vector2i.DOWN), GameEnums.EdgeType.DOOR)
+	grid.set_edge(WorldGrid.edge_key(origin + Vector2i(5, 1), Vector2i.LEFT), GameEnums.EdgeType.DOOR)
+	# A window, because a flat without one is depressing.
+	grid.set_edge(WorldGrid.edge_key(origin + Vector2i(1, 0), Vector2i.UP), GameEnums.EdgeType.WINDOW)
+
+	for cell in IsoUtils.cells_in_rect(origin, origin + Vector2i(6, 5)):
+		grid.set_floor_material(cell, &"floor_wood")
+	for cell in IsoUtils.cells_in_rect(origin + Vector2i(4, 0), origin + Vector2i(6, 1)):
+		grid.set_floor_material(cell, &"floor_tile")
+
+	furniture.place(&"bed_single", origin + Vector2i(0, 0))
+	furniture.place(&"lamp", origin + Vector2i(2, 0))
+	furniture.place(&"shower", origin + Vector2i(5, 0))
+	furniture.place(&"fridge", origin + Vector2i(0, 3))
+	furniture.place(&"stove", origin + Vector2i(1, 3))
+	furniture.place(&"table_dining", origin + Vector2i(3, 3))
+	furniture.place(&"sofa", origin + Vector2i(3, 5))
+	furniture.place(&"tv", origin + Vector2i(6, 5))
+
+	var resident := citizens.spawn(origin + Vector2i(2, 4))
+	if resident != null:
+		EventBus.notify("Demo flat built, %s moved in" % resident.citizen_name)
+
+
 ## `godot --path game -- --screenshot out.png` renders the world for a moment,
 ## saves a PNG and quits. Used to eyeball the isometric projection from a
 ## terminal (and, later, to diff visual regressions in CI) without a human

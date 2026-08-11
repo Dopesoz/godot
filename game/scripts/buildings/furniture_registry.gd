@@ -143,7 +143,7 @@ func in_room(room_id: int) -> Array[Furniture]:
 ## Every object in a room that can raise `need`, paired with the interaction
 ## that does it. This is the query the citizen AI will live on in Phase 5 — note
 ## that it never mentions a specific piece of furniture.
-func find_for_need(need: GameEnums.NeedType, room_id: int = -1) -> Array:
+func find_for_need(need: int, room_id: int = -1) -> Array:
 	var result: Array = []
 	for item: Furniture in items.values():
 		if room_id != -1 and item.room_id != room_id:
