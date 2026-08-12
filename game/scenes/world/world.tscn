@@ -1,4 +1,4 @@
-[gd_scene load_steps=23 format=3]
+[gd_scene load_steps=24 format=3]
 
 [ext_resource type="Script" path="res://scripts/world/world_controller.gd" id="1_world"]
 [ext_resource type="Script" path="res://scripts/world/ground_renderer.gd" id="2_ground"]
@@ -22,6 +22,7 @@
 [ext_resource type="Script" path="res://scripts/citizens/household_registry.gd" id="18_households"]
 [ext_resource type="Script" path="res://scripts/citizens/relationship_registry.gd" id="19_relations"]
 [ext_resource type="Script" path="res://scripts/world/floating_text.gd" id="20_floating"]
+[ext_resource type="Script" path="res://scripts/world/world_labels.gd" id="21_labels"]
 
 [node name="World" type="Node2D" groups=["world"]]
 script = ExtResource("1_world")
@@ -41,14 +42,17 @@ script = ExtResource("4_grid")
 [node name="Highlight" type="Node2D" parent="."]
 script = ExtResource("5_highlight")
 
-[node name="FloatingText" type="Node2D" parent="."]
-script = ExtResource("20_floating")
-
 [node name="BuildPreview" type="Node2D" parent="."]
 script = ExtResource("7_preview")
 
 [node name="Entities" type="Node2D" parent="."]
 script = ExtResource("6_depth")
+
+[node name="FloatingText" type="Node2D" parent="."]
+script = ExtResource("20_floating")
+
+[node name="WorldLabels" type="Node2D" parent="."]
+script = ExtResource("21_labels")
 
 [node name="CameraRig" type="Camera2D" parent="."]
 script = ExtResource("8_camera")

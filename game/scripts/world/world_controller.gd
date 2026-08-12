@@ -28,6 +28,12 @@ func _ready() -> void:
 	EventBus.world_ready.emit(grid)
 	EventBus.notify("World ready: %d x %d cells, %d floor(s)" % [grid.size.x, grid.size.y, grid.floors])
 
+	# A new game starts in a town rather than on an empty field: the point of
+	# this game is watching people live, and nobody lives on an empty field.
+	# `--empty` is for the build tools' own sake, and for tests.
+	var args := OS.get_cmdline_user_args()
+	if not args.has("--empty") and not args.has("--showroom"):
+		StarterCity.build(self)
 	DebugTools.maybe_build_demo(self)
 	DebugTools.maybe_build_showroom(self)
 	DebugTools.maybe_benchmark(self)

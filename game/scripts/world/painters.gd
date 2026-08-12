@@ -247,17 +247,11 @@ static func draw_citizen(canvas: CanvasItem, citizen: Citizen, font: Font, show_
 	var head_top := ground + Vector2(0.0, -_figure_height(citizen) - HEAD_RADIUS * 2.0)
 	var symbol: String = STATE_SYMBOL.get(citizen.state, "")
 	if symbol != "":
-		var symbol_width := font.get_string_size(symbol, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
-		var at := head_top + Vector2(-symbol_width * 0.5, -4.0)
-		canvas.draw_string(font, at + Vector2(1, 1), symbol, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, NAME_SHADOW)
-		canvas.draw_string(font, at, symbol, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, accent.lightened(0.35))
-
+		Labels.draw(canvas, font, symbol, head_top + Vector2(0.0, -4.0),
+				accent.lightened(0.35), 13, NAME_SHADOW)
 	if show_name:
-		var label := citizen.citizen_name
-		var width := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
-		var origin := head_top + Vector2(-width * 0.5, -6.0 if symbol == "" else -18.0)
-		canvas.draw_string(font, origin + Vector2(1.0, 1.0), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, NAME_SHADOW)
-		canvas.draw_string(font, origin, label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, NAME_COLOR)
+		Labels.draw(canvas, font, citizen.citizen_name, head_top + Vector2(0.0, -6.0),
+				NAME_COLOR, 12, NAME_SHADOW)
 
 
 ## How tall the figure is right now — the anchor for anything drawn above it.

@@ -1,6 +1,8 @@
 extends Node2D
 
-## Tints detected rooms and labels them with their type and area.
+## Tints detected rooms and lights them after dark. The names are drawn by
+## WorldLabels, which sits above the buildings — down here they ended up behind
+## the walls they were naming.
 ##
 ## This is the visible proof that room detection works: draw a closed rectangle
 ## of walls and the space inside changes colour immediately. A room without a
@@ -76,8 +78,7 @@ func _draw() -> void:
 				draw_colored_polygon(polygon, tint)
 			if darkness > 0.05:
 				draw_colored_polygon(polygon, light)
-		if show_room:
-			_draw_label(room)
+
 
 
 ## Plot borders and the name of whoever lives there. With several houses on the
@@ -97,13 +98,6 @@ func _draw_lots() -> void:
 				- Vector2(GameConstants.TILE_HW, 0.0))
 		draw_polyline(corners + PackedVector2Array([corners[0]]), LOT_OUTLINE, 2.0)
 
-		var label := building.display_name
-		var width := _font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
-		var anchor := IsoUtils.cell_to_world_f(building.centre(), building.floor_index)
-		var origin := anchor - Vector2(width * 0.5, float(building.size.y) * GameConstants.TILE_HH + 16.0)
-		draw_string(_font, origin + Vector2(1.0, 1.0), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, LABEL_SHADOW)
-		draw_string(_font, origin, label, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, LOT_LABEL)
-
 
 func _tint_for(room: Room) -> Color:
 	if not room.is_reachable():
@@ -113,14 +107,3 @@ func _tint_for(room: Room) -> Color:
 		var color := data.default_floor_color
 		return Color(color.r, color.g, color.b, 0.18)
 	return UNDEFINED_TINT
-
-
-func _draw_label(room: Room) -> void:
-	var text := "%s  %d m²" % [room.type_name(), room.area()]
-	if not room.is_reachable():
-		text += "  (no door)"
-	var position := IsoUtils.cell_to_world_f(room.center(), room.floor_index)
-	var width := _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
-	var origin := position - Vector2(width * 0.5, 0.0)
-	draw_string(_font, origin + Vector2(1.0, 1.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, LABEL_SHADOW)
-	draw_string(_font, origin, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, LABEL_COLOR)

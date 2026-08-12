@@ -65,11 +65,11 @@ func _draw() -> void:
 		var color := item.color
 		# Fades only in the last third, so it is readable for most of its life.
 		color.a = clampf((1.0 - t) * 3.0, 0.0, 1.0)
-		var shadow := Color(0, 0, 0, color.a * 0.7)
-		var width := _font.get_string_size(item.text, HORIZONTAL_ALIGNMENT_LEFT, -1, item.size).x
-		var origin := item.position + offset - Vector2(width * 0.5, 0.0)
-		draw_string(_font, origin + Vector2(1, 1), item.text, HORIZONTAL_ALIGNMENT_LEFT, -1, item.size, shadow)
-		draw_string(_font, origin, item.text, HORIZONTAL_ALIGNMENT_LEFT, -1, item.size, color)
+		# The rise is in screen pixels, so it looks the same at any zoom — and
+		# Labels keeps two messages about the same person off each other.
+		var scale := maxf(get_global_transform_with_canvas().get_scale().x, 0.001)
+		Labels.draw(self, _font, item.text, item.position + offset / scale, color, item.size,
+				Color(0, 0, 0, color.a * 0.7))
 
 
 func _on_interaction_finished(citizen_id: int, _furniture_id: int, action: String) -> void:
