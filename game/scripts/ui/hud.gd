@@ -29,6 +29,20 @@ func _ready() -> void:
 	_on_minute_passed(GameClock.hour, GameClock.minute)
 	_debug_label.visible = OS.is_debug_build()
 	_hint_label.text = _controls_hint()
+	_scale_text()
+
+
+## The clock and the money are the two numbers a player actually reads, and on a
+## phone they were being drawn at desktop size on a screen held at arm's length.
+## Each label is scaled from whatever the theme gives it, so the scene keeps
+## deciding the relative sizes and this only decides how big "big" is.
+func _scale_text() -> void:
+	var scale := Platform.ui_scale()
+	if is_equal_approx(scale, 1.0):
+		return
+	for label: Label in [_clock_label, _money_label, _hint_label, _debug_label]:
+		var base := label.get_theme_font_size(&"font_size")
+		label.add_theme_font_size_override(&"font_size", roundi(float(base) * scale))
 
 
 func _process(_delta: float) -> void:

@@ -12,18 +12,20 @@ const MIN_BUTTON_SIZE := Vector2(96, 48)
 ## keyboard hints — there is no keyboard.
 const MOBILE_BUTTON_SIZE := Vector2(64, 56)
 
-## Tool buttons, in the order they appear. Keyboard shortcut, label, tool mode.
+## Tool buttons, in the order they appear: keyboard shortcut, label, tool mode,
+## and the short label used on a phone — ten buttons have to fit across a
+## five-inch screen, and a clipped "Furnit" is worse than a shorter word.
 const TOOLS := [
-	[KEY_1, "Select", GameEnums.ToolMode.NONE],
-	[KEY_2, "Wall", GameEnums.ToolMode.WALL],
-	[KEY_3, "Door", GameEnums.ToolMode.DOOR],
-	[KEY_4, "Window", GameEnums.ToolMode.WINDOW],
-	[KEY_5, "Floor", GameEnums.ToolMode.FLOOR],
-	[KEY_6, "Room", GameEnums.ToolMode.ASSIGN_ROOM],
-	[KEY_7, "Furniture", GameEnums.ToolMode.FURNITURE],
-	[KEY_8, "Plot", GameEnums.ToolMode.PLACE_LOT],
-	[KEY_9, "Move in", GameEnums.ToolMode.MOVE_IN],
-	[KEY_0, "Delete", GameEnums.ToolMode.DELETE],
+	[KEY_1, "Select", GameEnums.ToolMode.NONE, "Pick"],
+	[KEY_2, "Wall", GameEnums.ToolMode.WALL, "Wall"],
+	[KEY_3, "Door", GameEnums.ToolMode.DOOR, "Door"],
+	[KEY_4, "Window", GameEnums.ToolMode.WINDOW, "Win"],
+	[KEY_5, "Floor", GameEnums.ToolMode.FLOOR, "Floor"],
+	[KEY_6, "Room", GameEnums.ToolMode.ASSIGN_ROOM, "Room"],
+	[KEY_7, "Furniture", GameEnums.ToolMode.FURNITURE, "Item"],
+	[KEY_8, "Plot", GameEnums.ToolMode.PLACE_LOT, "Plot"],
+	[KEY_9, "Move in", GameEnums.ToolMode.MOVE_IN, "Move"],
+	[KEY_0, "Delete", GameEnums.ToolMode.DELETE, "Del"],
 ]
 
 ## Room types the player can assign in the MVP (design doc §9).
@@ -51,6 +53,7 @@ var _message_timer: float = 0.0
 
 func _ready() -> void:
 	_apply_safe_area()
+	UiTheme.apply(self)
 	var world := get_tree().get_first_node_in_group(&"world")
 	_builder = world.get_node("Builder") as BuildController if world != null else null
 
@@ -84,23 +87,45 @@ func _apply_safe_area() -> void:
 	offset_right -= float(margins.z)
 
 
+## How wide a tool button may be before the row stops fitting on screen.
+##
+## The button size is written in density-independent pixels and multiplied by
+## the screen's scale, which on a phone is 2x — ten of those are wider than the
+## phone. The screen wins: buttons shrink to fit, but never below a fingertip,
+## because a row that fits and cannot be hit is not a fix.
+func _widest_button() -> float:
+	var margins := Platform.safe_area_margins()
+	var available := float(get_viewport_rect().size.x - margins.x - margins.z) - 24.0
+	var separation := float(_tool_row.get_theme_constant(&"separation")) * float(TOOLS.size() - 1)
+	var fair_share := (available - separation) / float(TOOLS.size())
+	return maxf(fair_share, Platform.MIN_TOUCH_TARGET_DP)
+
+
 ## The bar is anchored to the bottom edge, so its height is a top offset, and a
 ## fixed one left a slab of empty panel under the buttons whenever the option
 ## row was hidden. Re-measuring after every layout change keeps the panel the
 ## size of what is actually in it — which on a phone is most of the screen.
 func _fit_height() -> void:
-	var wanted := get_combined_minimum_size().y
-	var top := offset_bottom - wanted
+	var wanted := get_combined_minimum_size()
+	var top := offset_bottom - wanted.y
 	if not is_equal_approx(top, offset_top):
 		offset_top = top
+	# The same for the width: a bar wider than the phone is a bar with buttons
+	# off the edge of it.
+	var margins := Platform.safe_area_margins()
+	var limit := float(get_viewport_rect().size.x - margins.x - margins.z)
+	var half := minf(maxf(wanted.x, 320.0), limit) * 0.5
+	offset_left = -half
+	offset_right = half
 
 
 func _build_tool_buttons() -> void:
 	var touch := Platform.has_touch()
 	var size := (MOBILE_BUTTON_SIZE if touch else MIN_BUTTON_SIZE) * Platform.ui_scale()
+	size.x = minf(size.x, _widest_button())
 	for entry in TOOLS:
 		var button := Button.new()
-		button.text = entry[1] if touch else "%s\n%s" % [entry[1], OS.get_keycode_string(entry[0])]
+		button.text = entry[3] if touch else "%s\n%s" % [entry[1], OS.get_keycode_string(entry[0])]
 		button.custom_minimum_size = size
 		button.clip_text = true
 		button.toggle_mode = true

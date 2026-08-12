@@ -33,9 +33,16 @@ class Step:
 
 
 static func maybe_run(world: Node) -> void:
-	if not OS.get_cmdline_user_args().has("--uitest"):
+	var args := OS.get_cmdline_user_args()
+	var pointer := args.has("--uitest")
+	var touch := args.has("--touchtest")
+	if not pointer and not touch:
 		return
-	var steps := await _run(world)
+	var steps: Array = []
+	if pointer:
+		steps.append_array(await _run(world))
+	if touch:
+		steps.append_array(await _run_touch(world))
 	var failed := 0
 	for step: Step in steps:
 		if not step.ok:
@@ -45,7 +52,7 @@ static func maybe_run(world: Node) -> void:
 		# ("PASS … cell (18, 26) has no floor").
 		print("%s  %s%s" % ["PASS" if step.ok else "FAIL", step.name,
 				"" if step.ok or step.detail == "" else " — " + step.detail])
-	print("%d/%d pointer checks passed" % [steps.size() - failed, steps.size()])
+	print("%d/%d input checks passed" % [steps.size() - failed, steps.size()])
 	world.get_tree().quit(1 if failed > 0 else 0)
 
 
@@ -79,10 +86,15 @@ static func _run(world: Node) -> Array:
 	#    first — a cell the player cannot see is a cell they cannot click.
 	var origin := Vector2i(16, 24)
 	var corner := origin + Vector2i(4, 3)
-	await _look_at(world, origin + Vector2i(2, 1))
-	if not _on_screen(world, origin) or not _on_screen(world, corner):
-		return [Step.new("Pointer test", false,
-				"the test area is off screen: %s..%s" % [origin, corner])]
+	# Looking at a cell *past* the test area puts the area itself in the upper
+	# half of the screen, clear of the build bar. On a phone the bar is twice as
+	# tall and covers the bottom third, which is where the first version of this
+	# test was cheerfully clicking.
+	await _look_at(world, corner + Vector2i(3, 3))
+	for cell in [origin, corner]:
+		if not _reachable(world, cell):
+			return [Step.new("Pointer test", false,
+					"cell %s is off screen or under the interface" % cell)]
 	await _drag(world, origin, corner)
 	var perimeter := WorldGrid.rect_perimeter_edges(origin, corner)
 	var missing := 0
@@ -148,6 +160,59 @@ static func _run(world: Node) -> Array:
 	return steps
 
 
+## The gestures, which are the whole of the Android control scheme.
+##
+## Godot synthesises mouse events from the first finger, so a tap already
+## reaches the build tools; the only question the adapter has to answer is
+## whether a gesture means "move the camera" or "build". That is what is checked
+## here, because getting it backwards makes the game unplayable on a phone in a
+## way no desktop session would ever reveal.
+static func _run_touch(world: Node) -> Array:
+	var steps: Array = []
+	var camera := world.get_node_or_null("CameraRig") as CameraRig
+	var grid: WorldGrid = world.get("grid")
+	var builder: BuildController = world.get_node_or_null("Builder")
+	if camera == null or builder == null:
+		return [Step.new("Touch test", false, "the world is not ready")]
+
+	await _key(world, KEY_ESCAPE)
+	await _look_at(world, Vector2i(20, 20))
+
+	# 1. One finger, no tool: the map follows the finger.
+	var before := camera.position
+	await _finger_drag(world, 0, Vector2(700, 300), Vector2(500, 220))
+	var moved := camera.position.distance_to(before)
+	steps.append(Step.new("Touch — one finger drags the map",
+			moved > 40.0, "camera moved %.1f px" % moved))
+
+	# 2. Two fingers apart: zoom in, anchored between them.
+	var zoom_before := camera.get_target_zoom()
+	await _pinch(world, Vector2(560, 340), Vector2(720, 340), 90.0)
+	steps.append(Step.new("Touch — two fingers pinch to zoom",
+			camera.get_target_zoom() > zoom_before + 0.05,
+			"zoom %.2f -> %.2f" % [zoom_before, camera.get_target_zoom()]))
+
+	# 3. One finger *with a tool in hand* must build, not pan. Getting this
+	#    backwards is the difference between a game and a paint program.
+	await _key(world, KEY_2)
+	await _look_at(world, Vector2i(26, 26))
+	var origin := Vector2i(25, 25)
+	var corner := origin + Vector2i(2, 2)
+	if not _on_screen(world, origin) or not _on_screen(world, corner):
+		steps.append(Step.new("Touch — building", false, "the test area is off screen"))
+		return steps
+	var camera_at := camera.position
+	var edges_before := grid.used_edges().size()
+	await _finger_drag(world, 0, _screen_of(world, origin), _screen_of(world, corner))
+	steps.append(Step.new("Touch — with a tool in hand the same drag builds instead of panning",
+			grid.used_edges().size() > edges_before
+			and camera.position.distance_to(camera_at) < 2.0,
+			"%d edges built, camera moved %.1f px"
+			% [grid.used_edges().size() - edges_before, camera.position.distance_to(camera_at)]))
+	await _key(world, KEY_ESCAPE)
+	return steps
+
+
 # --- The synthetic hand -----------------------------------------------------
 
 ## Moves the camera and lets it settle. The rig eases towards its target, so a
@@ -160,12 +225,26 @@ static func _look_at(world: Node, cell: Vector2i) -> void:
 	await world.get_tree().create_timer(0.4).timeout
 
 
-## The window clamps the pointer, so a click aimed off screen silently lands
-## somewhere else — which is exactly how the first version of this test fooled
-## itself into passing. Every target is checked instead.
-static func _on_screen(world: Node, cell: Vector2i) -> bool:
+## Can a finger actually reach this cell?
+##
+## Two ways it cannot. The window clamps the pointer, so a click aimed off
+## screen lands somewhere else entirely — which is how the first version of this
+## test fooled itself into passing. And a panel on top of the map eats the click
+## before the world sees it, which is how it fooled itself again on a phone,
+## where the build bar is twice as tall.
+static func _reachable(world: Node, cell: Vector2i) -> bool:
 	var screen := _screen_of(world, cell)
-	return Rect2(Vector2.ZERO, world.get_viewport().get_visible_rect().size).has_point(screen)
+	if not Rect2(Vector2.ZERO, world.get_viewport().get_visible_rect().size).has_point(screen):
+		return false
+	for path in ["BuildUI/BuildBar", "BuildUI/CitizenPanel"]:
+		var panel := world.get_node_or_null(path) as Control
+		if panel != null and panel.visible and panel.get_global_rect().has_point(screen):
+			return false
+	return true
+
+
+static func _on_screen(world: Node, cell: Vector2i) -> bool:
+	return _reachable(world, cell)
 
 
 ## Where a cell is on screen right now. The canvas transform is the same one the
@@ -174,27 +253,38 @@ static func _screen_of(world: Node, cell: Vector2i) -> Vector2:
 	return world.get_viewport().get_canvas_transform() * IsoUtils.cell_to_world(cell)
 
 
+## Viewport coordinates are not window coordinates. With the `canvas_items`
+## stretch mode a 1600x740 window still renders a 1280x720 viewport, scaled and
+## letterboxed — so a point computed from the canvas transform has to be mapped
+## back out to the window before it can be handed to the input system. On a
+## desktop-sized window that transform is the identity, which is why this was
+## invisible until the first phone-shaped run put every click a cell to the left.
+static func _to_window(world: Node, viewport_point: Vector2) -> Vector2:
+	return world.get_viewport().get_screen_transform() * viewport_point
+
+
 static func _move_to(world: Node, screen: Vector2) -> void:
+	var window_point := _to_window(world, screen)
 	# Both, and in this order. warp_mouse moves the real cursor, which is what
 	# the window system reports; the motion event is what updates the viewport's
 	# own idea of where the pointer is, and that is what the world reads to
 	# decide which cell is hovered. With only one of the two, every position
 	# below would be a frame or a screen stale.
-	Input.warp_mouse(screen)
+	Input.warp_mouse(window_point)
 	var motion := InputEventMouseMotion.new()
-	motion.position = screen
-	motion.global_position = screen
+	motion.position = window_point
+	motion.global_position = window_point
 	Input.parse_input_event(motion)
 	await world.get_tree().process_frame
 	await world.get_tree().process_frame
 
 
-static func _button_event(screen: Vector2, pressed: bool) -> InputEventMouseButton:
+static func _button_event(world: Node, screen: Vector2, pressed: bool) -> InputEventMouseButton:
 	var event := InputEventMouseButton.new()
 	event.button_index = MOUSE_BUTTON_LEFT
 	event.pressed = pressed
-	event.position = screen
-	event.global_position = screen
+	event.position = _to_window(world, screen)
+	event.global_position = event.position
 	return event
 
 
@@ -211,30 +301,78 @@ static func _click_edge(world: Node, cell: Vector2i, direction: Vector2i) -> voi
 static func _click_world(world: Node, point: Vector2) -> void:
 	var screen: Vector2 = world.get_viewport().get_canvas_transform() * point
 	await _move_to(world, screen)
-	Input.parse_input_event(_button_event(screen, true))
+	Input.parse_input_event(_button_event(world, screen, true))
 	await world.get_tree().process_frame
-	Input.parse_input_event(_button_event(screen, false))
+	Input.parse_input_event(_button_event(world, screen, false))
 	await world.get_tree().process_frame
 
 
 static func _drag(world: Node, from: Vector2i, to: Vector2i) -> void:
 	var start := _screen_of(world, from)
 	await _move_to(world, start)
-	Input.parse_input_event(_button_event(start, true))
+	Input.parse_input_event(_button_event(world, start, true))
 	await world.get_tree().process_frame
 	var end := _screen_of(world, to)
 	await _move_to(world, end)
-	Input.parse_input_event(_button_event(end, false))
+	Input.parse_input_event(_button_event(world, end, false))
 	await world.get_tree().process_frame
 
 
 static func _click_control(world: Node, control: Control) -> void:
 	var screen := control.get_global_rect().get_center()
 	await _move_to(world, screen)
-	Input.parse_input_event(_button_event(screen, true))
+	Input.parse_input_event(_button_event(world, screen, true))
 	await world.get_tree().process_frame
-	Input.parse_input_event(_button_event(screen, false))
+	Input.parse_input_event(_button_event(world, screen, false))
 	await world.get_tree().process_frame
+
+
+## A finger pressing, sliding and lifting. The drag is broken into steps
+## because a gesture arrives as a stream of small deltas, and both panning and
+## pinching are written against `relative`.
+static func _finger_drag(world: Node, index: int, from: Vector2, to: Vector2,
+		steps: int = 8) -> void:
+	_touch_event(index, _to_window(world, from), true)
+	await world.get_tree().process_frame
+	var previous := from
+	for i in range(1, steps + 1):
+		var at := from.lerp(to, float(i) / float(steps))
+		var drag := InputEventScreenDrag.new()
+		drag.index = index
+		drag.position = _to_window(world, at)
+		drag.relative = at - previous
+		Input.parse_input_event(drag)
+		previous = at
+		await world.get_tree().process_frame
+	_touch_event(index, _to_window(world, to), false)
+	await world.get_tree().process_frame
+
+
+## Two fingers moving apart by `spread` pixels each.
+static func _pinch(world: Node, left: Vector2, right: Vector2, spread: float) -> void:
+	_touch_event(0, _to_window(world, left), true)
+	_touch_event(1, _to_window(world, right), true)
+	await world.get_tree().process_frame
+	for i in range(1, 7):
+		var step := spread * float(i) / 6.0
+		for entry in [[0, left + Vector2(-step, 0.0)], [1, right + Vector2(step, 0.0)]]:
+			var drag := InputEventScreenDrag.new()
+			drag.index = entry[0]
+			drag.position = _to_window(world, entry[1])
+			drag.relative = Vector2(spread / 6.0 * (-1.0 if entry[0] == 0 else 1.0), 0.0)
+			Input.parse_input_event(drag)
+		await world.get_tree().process_frame
+	_touch_event(0, _to_window(world, left + Vector2(-spread, 0.0)), false)
+	_touch_event(1, _to_window(world, right + Vector2(spread, 0.0)), false)
+	await world.get_tree().process_frame
+
+
+static func _touch_event(index: int, position: Vector2, pressed: bool) -> void:
+	var event := InputEventScreenTouch.new()
+	event.index = index
+	event.position = position
+	event.pressed = pressed
+	Input.parse_input_event(event)
 
 
 static func _key(world: Node, keycode: Key) -> void:

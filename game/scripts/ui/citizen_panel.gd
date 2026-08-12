@@ -26,6 +26,7 @@ var _timer: float = 0.0
 
 func _ready() -> void:
 	visible = false
+	UiTheme.apply(self)
 	_apply_mobile_layout()
 	EventBus.selection_changed.connect(_on_selection_changed)
 	EventBus.citizen_removed.connect(_on_citizen_removed)
@@ -51,6 +52,50 @@ func _apply_mobile_layout() -> void:
 	var margins := Platform.safe_area_margins()
 	offset_right -= float(margins.z)
 	offset_left = minf(offset_left + float(margins.z), -220.0)
+	_scale_for_touch()
+
+
+## Everything a phone needs that a desktop does not, in one place.
+##
+## Text: the panel was drawn at desktop size next to a HUD twice that big —
+## it looks like a bug and reads like fine print at arm's length.
+##
+## Height: the panel is anchored to the middle of the right edge and the build
+## bar is twice as tall on a phone, so the bottom of the panel — relationships,
+## the thing that makes residents people rather than meters — sat underneath it.
+##
+## The fix for the height is not to shrink the content but to let it scroll. The
+## contents are wrapped in a ScrollContainer at runtime, which stops the panel
+## from being sized by its own text, so the offsets below actually hold and the
+## panel can simply stop where the bar begins.
+func _scale_for_touch() -> void:
+	var scale := maxf(Platform.ui_scale() * 0.75, 1.0)
+	for label: Label in [_title, _subtitle, _activity, _relations_label]:
+		var base := label.get_theme_font_size(&"font_size")
+		label.add_theme_font_size_override(&"font_size", roundi(float(base) * scale))
+
+	var layout := get_child(0) as Control
+	if layout != null:
+		var scroll := ScrollContainer.new()
+		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		remove_child(layout)
+		add_child(scroll)
+		scroll.add_child(layout)
+		layout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+	var viewport := get_viewport_rect().size
+	offset_left = -minf(340.0 * scale, viewport.x * 0.45)
+	# Below the clock, above the build bar. Both are measured rather than
+	# assumed, because both change size with the screen.
+	var top := 96.0 * scale
+	var bottom := viewport.y - float(Platform.safe_area_margins().w) - 8.0
+	var bar := get_parent().get_node_or_null("BuildBar") as Control
+	if bar != null:
+		bottom = minf(bottom, bar.get_global_rect().position.y - 8.0)
+	# The panel is anchored to the middle of the right edge, so its offsets are
+	# measured from the centre of the screen.
+	offset_top = top - viewport.y * 0.5
+	offset_bottom = maxf(bottom - viewport.y * 0.5, offset_top + 240.0)
 
 
 func _build_bars() -> void:

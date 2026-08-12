@@ -16,8 +16,26 @@ const MIN_TOUCH_TARGET_DP := 48.0
 const BASE_DPI := 160.0
 
 
+## Development flag: `--as-phone` makes a desktop build answer every question
+## below the way a phone would.
+##
+## Not a hack around the checks — a way to *run* them. The mobile layout, the
+## thumb-sized buttons, the safe-area margins and the touch gestures are all
+## decided here, and none of that code path executes on a machine with a mouse.
+## With this flag it does, and a phone-shaped window can be looked at, dragged
+## and screenshotted without a phone.
+static var _pretend_phone: int = -1
+
+
+static func pretends_to_be_phone() -> bool:
+	if _pretend_phone < 0:
+		_pretend_phone = 1 if OS.get_cmdline_user_args().has("--as-phone") else 0
+	return _pretend_phone == 1
+
+
 static func is_mobile() -> bool:
-	return OS.has_feature("mobile") or OS.has_feature("android") or OS.has_feature("ios")
+	return (OS.has_feature("mobile") or OS.has_feature("android") or OS.has_feature("ios")
+			or pretends_to_be_phone())
 
 
 static func has_touch() -> bool:
@@ -30,6 +48,11 @@ static func has_touch() -> bool:
 static func ui_scale() -> float:
 	if not has_touch():
 		return 1.0
+	# A desktop monitor pretending to be a phone still reports a desktop dpi,
+	# and the interesting case is precisely the one a low dpi hides: at 2x the
+	# tool row is twice as wide and has to fit anyway.
+	if pretends_to_be_phone():
+		return 2.0
 	var dpi := float(DisplayServer.screen_get_dpi())
 	if dpi <= 0.0:
 		return 1.25

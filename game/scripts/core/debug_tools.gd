@@ -216,6 +216,13 @@ static func maybe_screenshot(node: Node) -> void:
 		var zoom := args.find("--zoom")
 		if zoom != -1 and zoom + 1 < args.size():
 			camera.set_zoom_level(float(args[zoom + 1]))
+	# `--select` opens the resident panel, which is otherwise only reachable by
+	# clicking — and its layout is one of the things worth looking at.
+	if args.has("--select"):
+		var registry := node.get_node_or_null("Citizens") as CitizenRegistry
+		for citizen: Citizen in (registry.all() if registry != null else []):
+			EventBus.selection_changed.emit(citizen)
+			break
 	# `--walls 1` taps E once before the shot. Injected as a real key event
 	# rather than by reaching into the renderer, so what the screenshot shows is
 	# what the player's keyboard would do.
