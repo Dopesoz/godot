@@ -32,6 +32,7 @@ func _ready() -> void:
 	DebugTools.maybe_build_showroom(self)
 	DebugTools.maybe_benchmark(self)
 	PointerTest.maybe_run(self)
+	LifeReport.maybe_run(self)
 	DebugTools.maybe_screenshot(self)
 
 

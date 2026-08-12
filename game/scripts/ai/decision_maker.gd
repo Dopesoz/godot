@@ -59,7 +59,7 @@ extends RefCounted
 ## Options scoring below this are not worth getting up for. Set high enough that
 ## residents stop topping up a need that is merely a little low — without it
 ## they fidget between the fridge and the sofa all day.
-const MIN_SCORE := 0.35
+const MIN_SCORE := 0.15
 
 ## An alternative must be this many times better before a citizen abandons what
 ## they are already doing. Without it they oscillate between two similar options.
@@ -79,7 +79,7 @@ const DURATION_CAP := 60.0
 ## Hard ceiling on routes computed for one decision. With the bound above this
 ## is rarely reached, but it guarantees that a citizen surrounded by a hundred
 ## identical options still thinks in constant time.
-const MAX_PATHS_PER_DECISION := 6
+const MAX_PATHS_PER_DECISION := 4
 
 
 ## Best option for this citizen, or an empty dictionary when nothing is worth
@@ -106,24 +106,35 @@ static func choose(citizen: Citizen, grid: WorldGrid, furniture: FurnitureRegist
 			var interaction: InteractionData = option["interaction"]
 			if not citizen.can_perform(interaction) or not citizen.may_use(item):
 				continue
-			var optimistic := score_option(citizen, interaction, 0.0, item)
+			# Grid distance is a lower bound on the real walk (no route is
+			# shorter than the straight count of steps), so charging it here
+			# still over-estimates the option — the bound stays admissible — but
+			# it is a far tighter over-estimate than pretending the object is
+			# underfoot. That tightness is what lets pass two stop early: with a
+			# travel-free bound almost nothing could be ruled out, and a hundred
+			# residents cost seventeen times more than they had to.
+			var steps := float(IsoUtils.cell_distance(here, item.origin))
+			# The bound has to survive the jitter that pass two adds, or a
+			# candidate that would have won on a lucky roll is pruned before it
+			# can be rolled for.
+			var optimistic := score_option(citizen, interaction, steps / walk_speed, item) \
+					* (1.0 + GameConstants.DECISION_JITTER)
 			if optimistic <= MIN_SCORE:
 				continue
 			candidates.append({
 				"item": item,
 				"interaction": interaction,
 				"optimistic": optimistic,
-				# Straight-line distance is a lower bound on the real path, so it
-				# is a safe way to try the nearest promising things first.
-				"guess": float(IsoUtils.cell_distance(here, item.origin)),
+				"guess": steps,
 			})
 	if candidates.is_empty():
 		return {}
 
 	# Best first, so the bound tightens as quickly as possible.
+	# The bound already accounts for distance, so the best bound is simply the
+	# most promising candidate.
 	candidates.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-		return float(a["optimistic"]) / (1.0 + float(a["guess"]) * 0.05) \
-				> float(b["optimistic"]) / (1.0 + float(b["guess"]) * 0.05))
+		return float(a["optimistic"]) > float(b["optimistic"]))
 
 	# Pass two: pathfind only while a candidate could still win. Pathfinding is
 	# by far the most expensive part of a decision, and in a furnished city most

@@ -112,9 +112,17 @@ const BOREDOM_MINUTES: float = 90.0
 ##   is repeated,
 const BOREDOM_PER_USE: float = 0.28
 ##   staleness fades away over this many minutes of not doing it,
-const BOREDOM_RECOVERY_MINUTES: float = 600.0
+const BOREDOM_RECOVERY_MINUTES: float = 360.0
 ##   and a completely stale action is worth this fraction of its normal value.
-const BOREDOM_FLOOR: float = 0.25
+##
+## The floor is the important number, and it started far too low. Boredom is
+## meant to *reorder* preferences — do the other thing tonight — but at a quarter
+## of value a repeated action also fell under the threshold for doing anything at
+## all, and a resident who had already used everything they owned simply stood
+## still. Measured over five days it was 45% of all waking time. Staleness now
+## costs a little under half the value, which is enough for a fresh option to
+## always win and never enough to make "nothing" the better choice.
+const BOREDOM_FLOOR: float = 0.55
 
 ## Relationship points gained per minute spent doing something together, before
 ## charisma and existing rapport are applied. Tuned so an evening's conversation

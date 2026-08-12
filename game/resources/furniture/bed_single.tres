@@ -15,6 +15,9 @@ need_effects = {
 3: 15.0
 }
 capacity = 1
+active_from_hour = 21.0
+active_to_hour = 9.0
+off_hours_multiplier = 0.5
 interrupt_resistance = 5.0
 priority = 1.0
 stands_on_furniture = true

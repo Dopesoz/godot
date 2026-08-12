@@ -556,9 +556,26 @@ static func _check_variety() -> Result:
 	var fresh := DecisionMaker.score_option(citizen, tv, 0.0)
 	citizen.boredom[tv.id] = 1.0
 	var stale := DecisionMaker.score_option(citizen, tv, 0.0)
-	if stale >= fresh * 0.5:
+	if stale >= fresh * 0.85:
 		return Result.new("Variety", false,
 				"a stale action scored %.2f against %.2f fresh" % [stale, fresh])
+
+	# The other half of the rule, and the one that was missing. Boredom is
+	# meant to reorder preferences, never to veto: a resident who is bored of
+	# the television must still watch it rather than stand in the middle of the
+	# room. Measured over five days, the veto version cost 45% of all waking
+	# time, so this is a regression test for a real, dull bug.
+	var bored := Citizen.new()
+	bored.data_id = &"adult"
+	for type: int in GameEnums.NeedType.values():
+		bored.needs[type] = 80.0
+	bored.needs[GameEnums.NeedType.ENTERTAINMENT] = 10.0
+	bored.boredom[tv.id] = 1.0
+	var last_resort := DecisionMaker.score_option(bored, tv, 0.0)
+	if last_resort <= DecisionMaker.MIN_SCORE:
+		return Result.new("Variety", false,
+				"bored of the only television, a resident would rather do nothing (%.2f vs %.2f)"
+				% [last_resort, DecisionMaker.MIN_SCORE])
 
 	# Doing something else lets the appetite come back.
 	citizen._age_boredom(GameConstants.BOREDOM_RECOVERY_MINUTES * 0.6)
@@ -578,7 +595,7 @@ static func _check_variety() -> Result:
 	if fan.affinity(tv) <= plain.affinity(tv):
 		return Result.new("Variety", false, "personal taste does not change how appealing an action is")
 	return Result.new("Variety", true,
-			"repetition loses %d%% of its value and recovers, and taste differs per resident"
+			"repetition loses %d%% of its value, still beats doing nothing when a need is urgent, recovers, and taste differs per resident"
 			% roundi((1.0 - stale / maxf(fresh, 0.001)) * 100.0))
 
 
