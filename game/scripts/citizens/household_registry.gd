@@ -71,9 +71,9 @@ func move_in(building: Building, size: int = 2, archetypes: Array = []) -> House
 		book.introduce_household(household.member_ids)
 
 	building.household_id = household.id
-	var plot_name := building.display_name
-	building.display_name = household.label()
-	EventBus.notify("%s moved into %s (%d residents)" % [household.label(), plot_name, household.size()])
+	var plot_name := building.label()
+	building.custom_name = household.label()
+	EventBus.notify(Loc.t("%s moved into %s (%d residents)") % [household.label(), plot_name, household.size()])
 	EventBus.household_changed.emit(household.id)
 	return household
 

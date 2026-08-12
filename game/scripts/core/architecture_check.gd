@@ -999,7 +999,11 @@ static func check_priorities() -> Result:
 				break
 		if citizen.state != GameEnums.CitizenState.EATING:
 			failure = "a starving resident chose %s over food" % citizen.state_name()
-		elif not citizen.current_reason.contains("hunger"):
+		# Compared against the translated word, not the English one: the reason
+		# shown to the player is in the player's language, and this check is
+		# about whether the reason names the need — not about which language it
+		# happens to be running in.
+		elif not citizen.current_reason.contains(Loc.t("hunger")):
 			failure = "the resident cannot explain why it is eating ('%s')" % citizen.current_reason
 		else:
 			# Now full and bored: the same world must produce a different choice.

@@ -91,12 +91,15 @@ func day_of_week() -> int:
 
 
 func day_name() -> String:
-	return GameConstants.DAY_NAMES[day_of_week()]
+	return Loc.t(GameConstants.DAY_NAMES[day_of_week()])
 
 
 ## "Mon 07:30" — for the HUD.
 func format_time() -> String:
-	return "%s %02d:%02d" % [day_name().substr(0, 3), hour, minute]
+	# The short name is its own translation rather than the first three letters:
+	# "Понедельник" cut to three characters is "Пон", and the same trick in other
+	# languages is worse.
+	return "%s %02d:%02d" % [Loc.t(GameConstants.DAY_NAMES[day_of_week()].substr(0, 3)), hour, minute]
 
 
 ## 0.0 at night, 1.0 at midday, smoothly interpolated across dawn and dusk.

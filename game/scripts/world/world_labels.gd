@@ -56,12 +56,12 @@ func _draw() -> void:
 		for building: Building in lots.buildings.values():
 			var anchor := IsoUtils.cell_to_world_f(building.centre(), building.floor_index) \
 					- Vector2(0.0, float(building.size.y) * GameConstants.TILE_HH + 14.0)
-			Labels.draw(self, _font, building.display_name, anchor, LOT_LABEL, 15, SHADOW)
+			Labels.draw(self, _font, building.label(), anchor, LOT_LABEL, 15, SHADOW)
 
 	if _tool != GameEnums.ToolMode.ASSIGN_ROOM:
 		return
 	for room: Room in _rooms:
-		var text := "%s  %d m²" % [room.type_name(), room.area()]
+		var text := "%s  %d %s" % [room.type_name(), room.area(), tr("m²")]
 		if not room.is_reachable():
 			text += "  (no door)"
 		Labels.draw(self, _font, text,

@@ -24,35 +24,67 @@ const MAX_NODES := 4000
 ## it lets the final step land on the object while every other rule — walls,
 ## doors, other furniture — still applies.
 static func find_path(grid: WorldGrid, from: Vector2i, to: Vector2i, floor_index: int = 0,
-		occupied_goal: bool = false) -> Array[Vector2i]:
+		occupied_goal: bool = false, node_budget: int = MAX_NODES) -> Array[Vector2i]:
 	if from == to:
 		return []
-	if not grid.in_bounds(to):
+	if grid == null or not grid.in_bounds(to):
 		return []
 	if not occupied_goal and not grid.is_walkable(to, floor_index):
 		return []
+	var targets: Array[Vector2i] = [to]
+	return _search(grid, from, {to: true}, targets, floor_index, occupied_goal, node_budget)
 
-	# A binary heap, in two parallel arrays: the cell and the f-score it was
-	# pushed with. Stale entries are left in place and skipped when popped —
-	# cheaper than finding and updating them.
+
+## Shortest path to whichever of `targets` is cheapest to reach. Used to walk to
+## "any free cell beside the stove", or to any cell of the bed itself.
+##
+## One search, not one per target. It used to run a full A* for every access
+## cell and keep the best, which is up to eight searches for one decision — and
+## when the object was unreachable, eight *exhaustive* searches. With a hundred
+## residents that was four million node expansions in four seconds of play. The
+## goal test simply accepts any of the targets, and the heuristic is the
+## distance to the nearest of them, which is still admissible.
+##
+## An empty result means either "already standing on a target" or "no route" —
+## callers check whether they are on one first.
+static func find_path_to_any(grid: WorldGrid, from: Vector2i, targets: Array[Vector2i],
+		floor_index: int = 0, occupied_goal: bool = false,
+		node_budget: int = MAX_NODES) -> Array[Vector2i]:
+	if grid == null or targets.is_empty():
+		return []
+	var goals := {}
+	for target in targets:
+		if target == from:
+			return []
+		if grid.in_bounds(target) and (occupied_goal or grid.is_walkable(target, floor_index)):
+			goals[target] = true
+	if goals.is_empty():
+		return []
+	return _search(grid, from, goals, targets, floor_index, occupied_goal, node_budget)
+
+
+## The one A*. `goals` is the set to stop at, `targets` the same cells as a list
+## for the heuristic.
+static func _search(grid: WorldGrid, from: Vector2i, goals: Dictionary,
+		targets: Array[Vector2i], floor_index: int, occupied_goal: bool,
+		node_budget: int) -> Array[Vector2i]:
 	var heap_cells: Array[Vector2i] = []
-	var heap_scores: PackedInt32Array = PackedInt32Array()
-	# cell -> cost so far, and cell -> where we came from.
+	var heap_scores := PackedInt32Array()
 	var cost := {from: 0}
 	var came_from := {}
 	var closed := {}
 	var expanded := 0
-	_heap_push(heap_cells, heap_scores, from, IsoUtils.cell_distance(from, to))
+	_heap_push(heap_cells, heap_scores, from, _heuristic(from, targets))
 
 	while not heap_cells.is_empty():
 		var current := _heap_pop(heap_cells, heap_scores)
 		if closed.has(current):
 			continue
 		closed[current] = true
-		if current == to:
-			return _rebuild(came_from, to)
+		if goals.has(current):
+			return _rebuild(came_from, current)
 		expanded += 1
-		if expanded > MAX_NODES:
+		if expanded > node_budget:
 			break
 		for direction in [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]:
 			var neighbor: Vector2i = current + direction
@@ -62,24 +94,26 @@ static func find_path(grid: WorldGrid, from: Vector2i, to: Vector2i, floor_index
 				continue
 			# The goal may be an object the citizen is about to sit on; anything
 			# else on the way has to be genuinely walkable.
-			if not (occupied_goal and neighbor == to) and not grid.is_walkable(neighbor, floor_index):
+			if not (occupied_goal and goals.has(neighbor)) and not grid.is_walkable(neighbor, floor_index):
 				continue
 			var next_cost: int = int(cost[current]) + 1
 			if cost.has(neighbor) and int(cost[neighbor]) <= next_cost:
 				continue
 			cost[neighbor] = next_cost
 			came_from[neighbor] = current
-			_heap_push(heap_cells, heap_scores, neighbor,
-					next_cost + IsoUtils.cell_distance(neighbor, to))
+			_heap_push(heap_cells, heap_scores, neighbor, next_cost + _heuristic(neighbor, targets))
 	return []
 
 
-## The open set used to be scanned linearly for the lowest f-score, with a note
-## saying that was fine on a 40x40 map and would need swapping when the city
-## grew. The city grew: on 64x64 a search that fails explores thousands of
-## nodes, each scan walks the whole open set, and one decision could cost a
-## third of a second. This is that swap — an ordinary binary heap, which turns
-## the cost per node from "length of the open set" into "its logarithm".
+## Distance to the nearest target. Never over-estimates, so A* still returns the
+## shortest route.
+static func _heuristic(cell: Vector2i, targets: Array[Vector2i]) -> int:
+	var best := 1 << 30
+	for target in targets:
+		best = mini(best, IsoUtils.cell_distance(cell, target))
+	return best
+
+
 static func _heap_push(cells: Array[Vector2i], scores: PackedInt32Array,
 		cell: Vector2i, score: int) -> void:
 	cells.append(cell)
@@ -133,22 +167,3 @@ static func _rebuild(came_from: Dictionary, to: Vector2i) -> Array[Vector2i]:
 	path.reverse()
 	path.remove_at(0)  # the cell we are already standing on
 	return path
-
-
-## Shortest path to whichever of `targets` is cheapest to reach. Used to walk to
-## "any free cell beside the stove", or to any cell of the bed itself.
-##
-## An empty result means either "already standing on a target" or "no route" —
-## callers check whether they are on one first.
-static func find_path_to_any(grid: WorldGrid, from: Vector2i, targets: Array[Vector2i], floor_index: int = 0,
-		occupied_goal: bool = false) -> Array[Vector2i]:
-	var best: Array[Vector2i] = []
-	for target in targets:
-		if target == from:
-			return []
-		var path := find_path(grid, from, target, floor_index, occupied_goal)
-		if path.is_empty():
-			continue
-		if best.is_empty() or path.size() < best.size():
-			best = path
-	return best

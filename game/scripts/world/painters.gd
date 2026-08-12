@@ -169,6 +169,30 @@ static func _furniture_block(canvas: CanvasItem, item: Furniture, template: Furn
 				IN_USE_GLOW if in_use else FURNITURE_OUTLINE, 2.0 if in_use else 1.0)
 
 
+# --- Roofs ------------------------------------------------------------------
+
+const ROOF := Color(0.58, 0.36, 0.30)
+const ROOF_EDGE := Color(0.42, 0.25, 0.21, 0.7)
+
+
+## One cell of roof, lying at wall height over a room.
+##
+## Only drawn in the "from outside" view, and the reason it exists is that
+## without it that view is not from outside at all: an isometric camera looks
+## down as well as sideways, so a house with full walls and no roof still shows
+## its own bedroom. A roof is what makes "outside" mean outside.
+static func draw_roof(canvas: CanvasItem, cell: Vector2i, floor_index: int = 0) -> void:
+	var polygon := IsoUtils.cell_polygon(cell, floor_index)
+	var lifted := PackedVector2Array()
+	for point in polygon:
+		lifted.append(point + Vector2(0.0, -GameConstants.WALL_HEIGHT))
+	canvas.draw_colored_polygon(lifted, ROOF)
+	# A hairline along the two far edges only: a full outline would draw a grid
+	# on the roof, and the tiles are supposed to read as one surface.
+	canvas.draw_line(lifted[0], lifted[1], ROOF_EDGE, 1.0)
+	canvas.draw_line(lifted[0], lifted[3], ROOF_EDGE, 1.0)
+
+
 # --- Cars -------------------------------------------------------------------
 
 ## Cars are drawn like furniture that happens to move: one cell of footprint,

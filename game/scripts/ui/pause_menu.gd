@@ -38,17 +38,17 @@ func _ready() -> void:
 	panel.add_child(_column)
 
 	var title := Label.new()
-	title.text = "Paused"
+	title.text = tr("Paused")
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override(&"font_size", roundi(24 * Platform.ui_scale()))
 	_column.add_child(title)
 
-	_add_button("Continue", _leave)
-	_add_button("Settings", _open_settings)
-	_add_button("Save town", func() -> void:
+	_add_button(tr("Continue"), _leave)
+	_add_button(tr("Settings"), _open_settings)
+	_add_button(tr("Save town"), func() -> void:
 		SaveManager.save_game(GameConstants.SAVE_SLOT_MAIN)
-		EventBus.notify("Town saved"))
-	_add_button("Main menu", func() -> void:
+		EventBus.notify(tr("Town saved")))
+	_add_button(tr("Main menu"), func() -> void:
 		GameClock.set_speed_index(1)
 		get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn"))
 

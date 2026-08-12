@@ -16,6 +16,12 @@ signal closed()
 var _music: HSlider
 var _sfx: HSlider
 var _mute: CheckButton
+var _language: Button
+var _title_label: Label
+var _hint_label: Label
+var _close_button: Button
+var _music_label: Label
+var _sfx_label: Label
 
 
 func _init() -> void:
@@ -24,39 +30,78 @@ func _init() -> void:
 	layout.add_theme_constant_override(&"separation", 10)
 	add_child(layout)
 
-	var title := Label.new()
-	title.text = "Settings"
+	_title_label = Label.new()
+	var title := _title_label
+	title.text = tr("Settings")
 	title.add_theme_font_size_override(&"font_size", roundi(20 * Platform.ui_scale()))
 	layout.add_child(title)
 
-	_music = _add_slider(layout, "Music", Settings.music_volume)
+	_music = _add_slider(layout, tr("Music"), Settings.music_volume)
 	_music.value_changed.connect(func(value: float) -> void: Settings.set_music_volume(value))
-	_sfx = _add_slider(layout, "Sound effects", Settings.sfx_volume)
+	_sfx = _add_slider(layout, tr("Sound effects"), Settings.sfx_volume)
 	_sfx.value_changed.connect(func(value: float) -> void: Settings.set_sfx_volume(value))
 
 	_mute = CheckButton.new()
-	_mute.text = "Mute everything"
+	_mute.text = tr("Mute everything")
 	_mute.button_pressed = Settings.muted
 	_mute.custom_minimum_size.y = ROW_HEIGHT * Platform.ui_scale()
 	_mute.toggled.connect(func(pressed: bool) -> void: AudioManager.set_muted(pressed))
 	layout.add_child(_mute)
 
-	var hint := Label.new()
-	hint.text = "M mutes, E switches walls, Space pauses"
+	_hint_label = Label.new()
+	var hint := _hint_label
+	hint.text = tr("M mutes, E switches walls, Space pauses")
 	hint.add_theme_color_override(&"font_color", Color(0.68, 0.72, 0.78))
 	layout.add_child(hint)
 
-	var close := Button.new()
-	close.text = "Close"
+	# One button rather than a dropdown: there are two languages, and a button
+	# that shows the *other* one is a control nobody has to open to understand.
+	_language = Button.new()
+	_language.custom_minimum_size.y = ROW_HEIGHT * Platform.ui_scale()
+	_language.focus_mode = Control.FOCUS_NONE
+	_language.pressed.connect(_toggle_language)
+	layout.add_child(_language)
+	_refresh_language()
+
+	_close_button = Button.new()
+	var close := _close_button
+	close.text = tr("Close")
 	close.custom_minimum_size.y = ROW_HEIGHT * Platform.ui_scale()
 	close.pressed.connect(func() -> void: closed.emit())
 	layout.add_child(close)
+
+
+func _toggle_language() -> void:
+	Settings.set_locale("en" if Settings.current_language() == "ru" else "ru")
+	_retranslate()
+
+
+func _refresh_language() -> void:
+	_language.text = "%s:  %s" % [tr("Language"), Settings.language_name()]
+
+
+## Godot sends NOTIFICATION_TRANSLATION_CHANGED to nodes, but only the built-in
+## text of built-in controls follows it. Everything set from code has to be set
+## again, which is what this does.
+func _retranslate() -> void:
+	_refresh_language()
+	for pair in [[_title_label, "Settings"], [_music_label, "Music"],
+			[_sfx_label, "Sound effects"], [_hint_label, "M mutes, E switches walls, Space pauses"],
+			[_close_button, "Close"]]:
+		if pair[0] != null:
+			pair[0].set("text", tr(pair[1]))
+	if _mute != null:
+		_mute.text = tr("Mute everything")
 
 
 func _add_slider(layout: VBoxContainer, label_text: String, value: float) -> HSlider:
 	var row := VBoxContainer.new()
 	var label := Label.new()
 	label.text = label_text
+	if _music_label == null:
+		_music_label = label
+	elif _sfx_label == null:
+		_sfx_label = label
 	row.add_child(label)
 	var slider := HSlider.new()
 	slider.min_value = 0.0

@@ -40,7 +40,7 @@ func remove_member(citizen_id: int) -> void:
 
 ## "The Meyers" reads better than "Household 3" everywhere it appears.
 func label() -> String:
-	return "The %ss" % family_name if not family_name.ends_with("s") else "The %s" % family_name
+	return Loc.t("The %ss") % family_name if not family_name.ends_with("s") else Loc.t("The %s") % family_name
 
 
 func save_data() -> Dictionary:

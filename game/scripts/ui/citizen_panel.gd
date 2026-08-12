@@ -179,22 +179,23 @@ func _refresh() -> void:
 	var template := _citizen.data()
 	var job := Database.get_job(template.job_id) if template != null and template.job_id != &"" else null
 	_title.text = _citizen.citizen_name
-	var occupation := job.display_name if job != null else "Unemployed"
-	var personality := String(CitizenData.Personality.keys()[template.personality]).capitalize() if template != null else "—"
+	var occupation := tr(job.display_name) if job != null else tr("Unemployed")
+	var personality := tr(String(CitizenData.Personality.keys()[template.personality]).capitalize()) if template != null else "—"
 	var block := _citizen.schedule_label()
 	if job != null:
 		occupation += "  %02d:00–%02d:00" % [int(job.start_hour), int(job.end_hour)]
 		if _citizen.is_on_shift():
-			occupation += "  (on shift)"
-	var home := "no fixed address"
+			occupation += "  (%s)" % tr("on shift")
+	var home := tr("no fixed address")
 	var world := get_tree().get_first_node_in_group(&"world")
 	if world != null and _citizen.household_id != -1:
 		var registry := world.get_node_or_null("Households") as HouseholdRegistry
 		var household := registry.get_household(_citizen.household_id) if registry != null else null
 		if household != null:
-			home = "%s, savings $%d" % [household.label(), household.savings]
-	_subtitle.text = "%s   •   %s   •   %s   •   %s   •   today $%d" % [
-		occupation, personality, block if block != "" else "no routine", home, _citizen.earned_today]
+			home = "%s, %s $%d" % [household.label(), tr("savings"), household.savings]
+	_subtitle.text = "%s   •   %s   •   %s   •   %s   •   %s $%d" % [
+		occupation, personality, tr(block) if block != "" else tr("no routine"), home,
+		tr("today"), _citizen.earned_today]
 	# What they are doing and, crucially, why they chose it.
 	_activity.text = _citizen.state_name()
 	if _citizen.current_reason != "":
@@ -209,7 +210,7 @@ func _refresh() -> void:
 		if not row.visible:
 			continue
 		(entry["bar"] as ProgressBar).value = skill.progress_to_next(xp)
-		(entry["level"] as Label).text = "lv %d" % skill.level_for_xp(xp)
+		(entry["level"] as Label).text = tr("lv %d") % skill.level_for_xp(xp)
 
 	_relations_label.text = _describe_relations()
 

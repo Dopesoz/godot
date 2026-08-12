@@ -59,28 +59,28 @@ func _refresh() -> void:
 	if template == null:
 		return
 
-	_title(template.display_name)
+	_title(tr(template.display_name))
 	if template.description != "":
-		_line(template.description, Color(0.72, 0.77, 0.84), true)
+		_line(tr(template.description), Color(0.72, 0.77, 0.84), true)
 
 	var facts := PackedStringArray()
 	facts.append("$%d" % template.price)
 	if template.upkeep_per_day > 0:
-		facts.append("$%d/day upkeep" % template.upkeep_per_day)
+		facts.append(tr("$%d/day upkeep") % template.upkeep_per_day)
 	if template.comfort > 0.0:
-		facts.append("comfort %d" % roundi(template.comfort))
+		facts.append(tr("comfort %d") % roundi(template.comfort))
 	if template.entertainment > 0.0:
-		facts.append("fun %d" % roundi(template.entertainment))
+		facts.append(tr("fun %d") % roundi(template.entertainment))
 	facts.append("%dx%d" % [template.size.x, template.size.y])
 	_line("  •  ".join(facts), Color(0.62, 0.68, 0.76))
 
 	if template.interactions.is_empty():
-		_line("Nothing to do with it — it is here to look at.", Color(0.62, 0.68, 0.76), true)
+		_line(tr("Nothing to do with it — it is here to look at."), Color(0.62, 0.68, 0.76), true)
 	for interaction: InteractionData in template.interactions:
 		_interaction_row(interaction)
 
 	if not _item.users.is_empty():
-		_line("In use right now", Color(1.0, 0.87, 0.55))
+		_line(tr("In use right now"), Color(1.0, 0.87, 0.55))
 
 
 ## One line per thing you can do with the object: what it gives, what it costs,
@@ -90,7 +90,7 @@ func _interaction_row(interaction: InteractionData) -> void:
 	var costs := PackedStringArray()
 	for need: int in interaction.need_effects:
 		var amount := float(interaction.need_effects[need])
-		var name: String = NEED_NAMES.get(need, "need")
+		var name: String = tr(NEED_NAMES.get(need, "need"))
 		if amount >= 0.0:
 			gains.append("+%d %s" % [roundi(amount), name])
 		else:
@@ -100,11 +100,11 @@ func _interaction_row(interaction: InteractionData) -> void:
 		parts.append(", ".join(gains))
 	if not costs.is_empty():
 		parts.append(", ".join(costs))
-	parts.append("%d min" % roundi(interaction.duration_minutes))
+	parts.append(tr("%d min") % roundi(interaction.duration_minutes))
 	if interaction.skill_id != &"":
 		var skill := Database.get_skill(interaction.skill_id)
-		parts.append("trains %s" % (skill.display_name if skill != null else String(interaction.skill_id)))
-	_line("%s — %s" % [interaction.display_name, "  ·  ".join(parts)], Color(0.85, 0.90, 0.96), true)
+		parts.append(tr("trains %s") % tr(skill.display_name if skill != null else String(interaction.skill_id)))
+	_line("%s — %s" % [tr(interaction.display_name), "  ·  ".join(parts)], Color(0.85, 0.90, 0.96), true)
 
 
 func _title(text: String) -> void:

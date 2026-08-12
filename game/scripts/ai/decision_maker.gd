@@ -81,6 +81,16 @@ const DURATION_CAP := 60.0
 ## identical options still thinks in constant time.
 const MAX_PATHS_PER_DECISION := 4
 
+## How far a resident will consider going for anything at all. Beyond this the
+## walk costs more than the doing is worth, which the score would say anyway —
+## this only says it without the arithmetic.
+const MAX_TRAVEL_CELLS := 26.0
+
+## Searching allowance for one goal. Within MAX_TRAVEL_CELLS a real route is
+## found in a few hundred nodes; anything spending more than this is looking for
+## a way into somewhere it cannot get to.
+const GOAL_NODE_BUDGET := 1400
+
 
 ## Best option for this citizen, or an empty dictionary when nothing is worth
 ## doing. Shape: {furniture, interaction, path, score, reason}.
@@ -106,6 +116,12 @@ static func choose(citizen: Citizen, grid: WorldGrid, furniture: FurnitureRegist
 			var interaction: InteractionData = option["interaction"]
 			if not citizen.can_perform(interaction) or not citizen.may_use(item):
 				continue
+			# Somebody is already in that bed. This used to be discovered only
+			# after walking there — a hundred residents all costed a route to
+			# the same few free objects, failed the claim, and did it again ten
+			# minutes later. Asking first is both cheaper and more sensible.
+			if not item.is_free_for(interaction):
+				continue
 			# Grid distance is a lower bound on the real walk (no route is
 			# shorter than the straight count of steps), so charging it here
 			# still over-estimates the option — the bound stays admissible — but
@@ -114,6 +130,13 @@ static func choose(citizen: Citizen, grid: WorldGrid, furniture: FurnitureRegist
 			# travel-free bound almost nothing could be ruled out, and a hundred
 			# residents cost seventeen times more than they had to.
 			var steps := float(IsoUtils.cell_distance(here, item.origin))
+			# Nothing across town is worth scoring. Travel time already sinks a
+			# distant option's score to nothing, but *computing* that score for
+			# every object in a growing city is the single most expensive thing
+			# a resident does — nine hundred of them per decision, per resident.
+			# One integer comparison first.
+			if steps > MAX_TRAVEL_CELLS:
+				continue
 			# The bound has to survive the jitter that pass two adds, or a
 			# candidate that would have won on a lucky roll is pruned before it
 			# can be rolled for.
@@ -160,8 +183,11 @@ static func choose(citizen: Citizen, grid: WorldGrid, furniture: FurnitureRegist
 			paths_tried += 1
 			# Sitting on a chair or lying in a bed means walking onto a cell the
 			# object itself occupies.
+			# A budget, because the expensive searches are the ones that find
+			# nothing: an unreachable object costs the full allowance every
+			# time it is considered, and it is considered often.
 			path = Pathfinder.find_path_to_any(grid, here, access, citizen.floor_index,
-					interaction.stands_on_furniture)
+					interaction.stands_on_furniture, GOAL_NODE_BUDGET)
 			if path.is_empty():
 				continue
 			travel_minutes = float(path.size()) / maxf(walk_speed, 0.1)
@@ -250,19 +276,19 @@ static func describe(citizen: Citizen, interaction: InteractionData) -> String:
 			best = weight
 			driving = need_type
 	if driving == -1:
-		return interaction.display_name
+		return Loc.t(interaction.display_name)
 	var text := "%s (%s %d)" % [
-		interaction.display_name,
-		String(GameEnums.NeedType.keys()[driving]).to_lower(),
+		Loc.t(interaction.display_name),
+		Loc.t(String(GameEnums.NeedType.keys()[driving]).to_lower()),
 		roundi(citizen.need(driving)),
 	]
 	if citizen.variety_multiplier(interaction) < 0.6:
-		text += " · reluctantly"
+		text += " · " + Loc.t("reluctantly")
 	elif citizen.affinity(interaction) > 1.2:
-		text += " · favourite"
+		text += " · " + Loc.t("favourite")
 	# When the routine is what tipped the choice, say so — otherwise "sleeping
 	# at 23:00 with energy 60" looks like a bug rather than a bedtime.
 	var routine := citizen.schedule()
 	if routine != null and routine.weight_for(driving, GameClock.hour_of_day()) > 1.5:
-		text += " · " + routine.label_at(GameClock.hour_of_day()).to_lower()
+		text += " · " + Loc.t(routine.label_at(GameClock.hour_of_day())).to_lower()
 	return text

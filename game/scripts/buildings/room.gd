@@ -66,5 +66,5 @@ func is_reachable() -> bool:
 func type_name() -> String:
 	var data := Database.get_room_type(room_type)
 	if data != null and data.display_name != "":
-		return data.display_name
-	return GameEnums.RoomType.keys()[room_type].capitalize()
+		return Loc.t(data.display_name)
+	return Loc.t(String(GameEnums.RoomType.keys()[room_type]).capitalize().replace("_", " "))

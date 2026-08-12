@@ -26,6 +26,11 @@ class Car:
 	var direction: Vector2i
 	var target: Vector2i
 	var color_index: int
+	## Where this car is going, and the route it is taking to get there. A car
+	## with a destination turns because the road bends, not because a coin came
+	## up heads — which is the difference between traffic and a screensaver.
+	var destination: Vector2i = Vector2i(-1, -1)
+	var route: Array[Vector2i] = []
 
 	## True when the car is heading towards the bottom of the screen, which is
 	## the half of the sprites that show a windscreen rather than a boot.
@@ -97,30 +102,66 @@ func _is_road(cell: Vector2i) -> bool:
 func _spawn() -> Car:
 	for attempt in 12:
 		var cell: Vector2i = _roads[randi() % _roads.size()]
-		var exits := _exits(cell, Vector2i.ZERO)
-		if exits.is_empty():
-			continue
 		var car := Car.new()
 		car.position = Vector2(cell)
-		car.direction = exits[randi() % exits.size()]
-		car.target = cell + car.direction
+		car.target = cell
 		car.color_index = randi()
+		if not _choose_destination(car):
+			continue
 		return car
 	return null
 
 
-## Where a car standing on `cell` could go next, never straight back the way it
-## came unless there is nowhere else — a dead end is a legitimate reason to turn
-## around.
-func _exits(cell: Vector2i, from: Vector2i) -> Array[Vector2i]:
-	var options: Array[Vector2i] = []
-	var back := -from
-	for direction in [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]:
-		if _road_set.has(cell + direction) and direction != back:
-			options.append(direction)
-	if options.is_empty() and _road_set.has(cell + back):
-		options.append(back)
-	return options
+## Picks somewhere to drive to and works out the route there. Roads are a graph
+## the pathfinder already understands — the same A* the residents walk with,
+## asked to stay on asphalt.
+func _choose_destination(car: Car) -> bool:
+	if _roads.is_empty():
+		return false
+	var from := Vector2i(roundi(car.position.x), roundi(car.position.y))
+	for attempt in 8:
+		var destination: Vector2i = _roads[randi() % _roads.size()]
+		if destination == from or IsoUtils.cell_distance(from, destination) < 8:
+			continue
+		var route := _route(from, destination)
+		if route.is_empty():
+			continue
+		car.destination = destination
+		car.route = route
+		car.target = route[0]
+		car.direction = car.target - from
+		return true
+	return false
+
+
+## Breadth-first over road cells. A* would need a heuristic that knows about
+## roads; the road network is small and this runs once per car per journey.
+func _route(from: Vector2i, to: Vector2i) -> Array[Vector2i]:
+	if from == to:
+		return []
+	var came_from := {from: from}
+	var queue: Array[Vector2i] = [from]
+	var head := 0
+	while head < queue.size():
+		var current: Vector2i = queue[head]
+		head += 1
+		if current == to:
+			break
+		for direction in [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]:
+			var next: Vector2i = current + direction
+			if not _road_set.has(next) or came_from.has(next):
+				continue
+			came_from[next] = current
+			queue.append(next)
+	if not came_from.has(to):
+		return []
+	var path: Array[Vector2i] = []
+	var cursor := to
+	while cursor != from:
+		path.append(cursor)
+		cursor = came_from[cursor]
+	path.reverse()
+	return path
 
 
 func _process(delta: float) -> void:
@@ -138,7 +179,7 @@ func _advance(car: Car, budget: float) -> void:
 	var remaining := budget
 	# A loop rather than a single step, because at sixteen times speed a car
 	# covers more than one cell per frame and would otherwise crawl.
-	for step in 4:
+	for step in 6:
 		var to := Vector2(car.target)
 		var offset := to - car.position
 		var distance := offset.length()
@@ -147,11 +188,13 @@ func _advance(car: Car, budget: float) -> void:
 			return
 		car.position = to
 		remaining -= distance
-		var exits := _exits(car.target, car.direction)
-		if exits.is_empty():
-			return
-		# Straight on if it can, so cars do not jitter at every junction.
-		var choice: Vector2i = car.direction if exits.has(car.direction) and randf() < 0.75 \
-				else exits[randi() % exits.size()]
-		car.direction = choice
-		car.target = car.target + choice
+		if not car.route.is_empty():
+			car.route.remove_at(0)
+		if car.route.is_empty():
+			# Arrived. Somewhere else to be, then.
+			if not _choose_destination(car):
+				return
+			continue
+		var next: Vector2i = car.route[0]
+		car.direction = next - car.target
+		car.target = next

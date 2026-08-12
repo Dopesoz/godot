@@ -112,14 +112,14 @@ func _random_name(template: CitizenData) -> String:
 		taken[other.citizen_name.split(" ")[0]] = true
 	var pool: Array = Array(template.first_names)
 	pool.shuffle()
-	var first: String = pool[0]
+	var first: String = Loc.t(pool[0])
 	for candidate: String in pool:
-		if not taken.has(candidate):
-			first = candidate
+		if not taken.has(Loc.t(candidate)):
+			first = Loc.t(candidate)
 			break
 	if template.last_names.is_empty():
 		return first
-	var last: String = template.last_names[randi() % template.last_names.size()]
+	var last: String = Loc.t(template.last_names[randi() % template.last_names.size()])
 	return "%s %s" % [first, last]
 
 

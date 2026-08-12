@@ -23,16 +23,25 @@ extends Node2D
 ## The other two modes exist because "how does my house look from outside" and
 ## "let me see the whole floor plan" are both fair questions.
 enum WallMode {
-	CUTAWAY, ## Walls in front of a room are cut down; walls behind stay full.
-	FULL,    ## Every wall at full height — the outside view.
-	LOW,     ## Every wall cut down — the floor-plan view.
+	CUTAWAY, ## Through the wall: the ones in front of a room are cut to a stub.
+	FULL,    ## From outside: every wall at full height, interiors hidden.
+	HIDDEN,  ## No walls at all: the floor plan, with only what stands on it.
 }
 
 const WALL_MODE_NAMES := {
-	WallMode.CUTAWAY: "Walls: cutaway",
-	WallMode.FULL: "Walls: full",
-	WallMode.LOW: "Walls: down",
+	WallMode.CUTAWAY: "VIEW_CUTAWAY",
+	WallMode.FULL: "VIEW_OUTSIDE",
+	WallMode.HIDDEN: "VIEW_NO_WALLS",
 }
+
+## Order within one depth: a wall is behind the furniture standing against it,
+## and both are behind whoever is walking past.
+const RANK_EDGE := 0
+const RANK_FURNITURE := 1
+const RANK_CAR := 2
+const RANK_CITIZEN := 3
+## Above everything else in its own cell: a roof is the top of the building.
+const RANK_ROOF := 4
 
 var _wall_mode: WallMode = WallMode.CUTAWAY
 
@@ -76,10 +85,31 @@ func _ready() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not event.is_action_pressed(InputActions.WALL_MODE):
 		return
-	_wall_mode = ((_wall_mode + 1) % WallMode.size()) as WallMode
+	cycle_wall_mode()
+
+
+## The three ways to look at a building, in the order a player asks for them:
+## through the wall (the default, and the point of the game), from outside, and
+## with the walls gone entirely. Public because a phone has no E key — the HUD
+## calls this from a button.
+func cycle_wall_mode() -> void:
+	set_wall_mode(((_wall_mode + 1) % WallMode.size()) as WallMode)
+
+
+func set_wall_mode(mode: WallMode) -> void:
+	_wall_mode = mode
 	_static_dirty = true
 	queue_redraw()
-	EventBus.notify(WALL_MODE_NAMES[_wall_mode])
+	EventBus.view_mode_changed.emit(int(_wall_mode), -1)
+	EventBus.notify(tr(WALL_MODE_NAMES[_wall_mode]))
+
+
+func wall_mode() -> int:
+	return int(_wall_mode)
+
+
+func wall_mode_name() -> String:
+	return tr(WALL_MODE_NAMES[_wall_mode])
 
 
 func _on_selection_changed(selected: Variant) -> void:
@@ -121,6 +151,8 @@ func _draw() -> void:
 			entries.append({
 				"depth": citizen.position.x + citizen.position.y + 0.25,
 				"kind": "citizen",
+				"rank": RANK_CITIZEN,
+				"order": citizen.id,
 				"ref": citizen,
 			})
 	if _traffic != null:
@@ -128,19 +160,37 @@ func _draw() -> void:
 			entries.append({
 				"depth": car.position.x + car.position.y + 0.2,
 				"kind": "car",
+				"rank": RANK_CAR,
+				"order": car.color_index,
 				"ref": car,
 			})
+	# Ties are broken by a fixed rank and then by id, and that matters more than
+	# it sounds: a wall and the furniture in front of it often land on exactly
+	# the same depth, Godot's sort is not stable, and the array is rebuilt every
+	# frame. Without a tiebreaker their order flips from frame to frame and the
+	# wall appears to flicker in and out of existence.
 	entries.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-		return float(a["depth"]) < float(b["depth"]))
+		var da := float(a["depth"])
+		var db := float(b["depth"])
+		if not is_equal_approx(da, db):
+			return da < db
+		var ra := int(a["rank"])
+		var rb := int(b["rank"])
+		if ra != rb:
+			return ra < rb
+		return int(a["order"]) < int(b["order"]))
 
 	for entry: Dictionary in entries:
 		match entry["kind"]:
 			"edge":
-				Painters.draw_edge(self, entry["ref"], int(entry["type"]), 0, bool(entry["cut"]))
+				if _wall_mode != WallMode.HIDDEN:
+					Painters.draw_edge(self, entry["ref"], int(entry["type"]), 0, bool(entry["cut"]))
 			"furniture":
 				Painters.draw_furniture(self, entry["ref"])
 			"car":
 				Painters.draw_car(self, entry["ref"])
+			"roof":
+				Painters.draw_roof(self, entry["ref"])
 			"citizen":
 				var citizen: Citizen = entry["ref"]
 				var selected := citizen.id == _selected_id
@@ -162,7 +212,7 @@ func _is_cut_away(edge: Vector3i) -> bool:
 	match _wall_mode:
 		WallMode.FULL:
 			return false
-		WallMode.LOW:
+		WallMode.HIDDEN:
 			return true
 	var behind := Vector2i(edge.x, edge.y)
 	if edge.z == GameEnums.EdgeAxis.HORIZONTAL:
@@ -192,6 +242,8 @@ func _rebuild_static() -> void:
 		_static_entries.append({
 			"depth": float(edge.x + edge.y) + (0.0 if edge.z == GameEnums.EdgeAxis.HORIZONTAL else 0.5),
 			"kind": "edge",
+			"rank": RANK_EDGE,
+			"order": edge.x * 100000 + edge.y * 10 + edge.z,
 			"ref": edge,
 			"type": _grid.get_edge(edge),
 			"cut": _is_cut_away(edge),
@@ -202,5 +254,25 @@ func _rebuild_static() -> void:
 			_static_entries.append({
 				"depth": centre.x + centre.y,
 				"kind": "furniture",
+				"rank": RANK_FURNITURE,
+				"order": item.id,
 				"ref": item,
+			})
+
+	# Roofs, in the view that claims to be from outside — and the reason that
+	# view needs them: an isometric camera looks down as well as sideways, so a
+	# house with full walls and no roof still shows its own bedroom.
+	if _wall_mode != WallMode.FULL:
+		return
+	for y in _grid.size.y:
+		for x in _grid.size.x:
+			var cell := Vector2i(x, y)
+			if _grid.room_of(cell) == -1:
+				continue
+			_static_entries.append({
+				"depth": float(cell.x + cell.y) + 0.8,
+				"kind": "roof",
+				"rank": RANK_ROOF,
+				"order": cell.x * 1000 + cell.y,
+				"ref": cell,
 			})

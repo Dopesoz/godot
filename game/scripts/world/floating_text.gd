@@ -76,7 +76,7 @@ func _on_interaction_finished(citizen_id: int, _furniture_id: int, action: Strin
 	var citizen := _citizen(citizen_id)
 	if citizen == null:
 		return
-	add(action, citizen.position, Color(0.85, 0.92, 1.0), 13)
+	add(tr(action), citizen.position, Color(0.85, 0.92, 1.0), 13)
 
 
 ## Only the milestone is worth showing; the number moves every minute they are

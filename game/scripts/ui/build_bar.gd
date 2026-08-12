@@ -57,6 +57,7 @@ func _ready() -> void:
 	var world := get_tree().get_first_node_in_group(&"world")
 	_builder = world.get_node("Builder") as BuildController if world != null else null
 
+	_rotate_button.text = tr("Rotate (R)")
 	_build_tool_buttons()
 	_fill_floor_picker()
 	_fill_room_picker()
@@ -125,7 +126,7 @@ func _build_tool_buttons() -> void:
 	size.x = minf(size.x, _widest_button())
 	for entry in TOOLS:
 		var button := Button.new()
-		button.text = entry[3] if touch else "%s\n%s" % [entry[1], OS.get_keycode_string(entry[0])]
+		button.text = tr(entry[3]) if touch else "%s\n%s" % [tr(entry[1]), OS.get_keycode_string(entry[0])]
 		button.custom_minimum_size = size
 		button.clip_text = true
 		button.toggle_mode = true
@@ -138,7 +139,7 @@ func _build_tool_buttons() -> void:
 func _fill_floor_picker() -> void:
 	_floor_picker.clear()
 	for material in Database.all_floors():
-		_floor_picker.add_item("%s  $%d" % [material.display_name, material.price_per_tile])
+		_floor_picker.add_item("%s  $%d" % [tr(material.display_name), material.price_per_tile])
 		_floor_picker.set_item_metadata(_floor_picker.item_count - 1, material.id)
 	if _floor_picker.item_count > 0:
 		_floor_picker.select(0)
@@ -148,7 +149,7 @@ func _fill_floor_picker() -> void:
 func _fill_room_picker() -> void:
 	_room_picker.clear()
 	for room_type: int in ROOM_TYPES:
-		_room_picker.add_item(String(GameEnums.RoomType.keys()[room_type]).capitalize())
+		_room_picker.add_item(tr(String(GameEnums.RoomType.keys()[room_type]).capitalize()))
 		_room_picker.set_item_metadata(_room_picker.item_count - 1, room_type)
 	_room_picker.select(0)
 	_on_room_selected(0)
@@ -162,9 +163,9 @@ func _fill_furniture_picker() -> void:
 		var entries := Database.furniture_in_category(category)
 		if entries.is_empty():
 			continue
-		_furniture_picker.add_separator(String(FurnitureData.Category.keys()[category]).capitalize())
+		_furniture_picker.add_separator(tr(String(FurnitureData.Category.keys()[category]).capitalize()))
 		for template in entries:
-			_furniture_picker.add_item("%s  $%d" % [template.display_name, template.price])
+			_furniture_picker.add_item("%s  $%d" % [tr(template.display_name), template.price])
 			_furniture_picker.set_item_metadata(_furniture_picker.item_count - 1, template.id)
 	# Skip the leading separator when selecting the default entry.
 	for index in _furniture_picker.item_count:
@@ -179,7 +180,7 @@ func _fill_plot_picker() -> void:
 	for id: StringName in Database.buildings.keys():
 		var template: BuildingData = Database.buildings[id]
 		_plot_picker.add_item("%s  %dx%d  $%d" % [
-				template.display_name, template.size.x, template.size.y, template.price])
+				tr(template.display_name), template.size.x, template.size.y, template.price])
 		_plot_picker.set_item_metadata(_plot_picker.item_count - 1, template.id)
 	if _plot_picker.item_count > 0:
 		_plot_picker.select(0)
@@ -282,7 +283,7 @@ func _on_rooms_rebuilt(_building_id: int, rooms: Array) -> void:
 	for room: Room in rooms:
 		if not room.is_reachable():
 			sealed += 1
-	var text := "%d room(s)" % rooms.size()
+	var text := tr("%d room(s)") % rooms.size()
 	if sealed > 0:
 		text += " — %d without a door" % sealed
 	_message.text = text

@@ -52,7 +52,7 @@ func place(data_id: StringName, origin: Vector2i, floor_index: int = 0) -> Build
 	building.origin = origin
 	building.size = template.size
 	building.floor_index = floor_index
-	building.display_name = "%s %d" % [template.display_name, building.id]
+	building.display_name = template.display_name
 	_register(building)
 	EventBus.building_placed.emit(building)
 	return building

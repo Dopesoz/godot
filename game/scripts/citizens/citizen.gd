@@ -360,7 +360,7 @@ func lowest_need() -> int:
 
 
 func state_name() -> String:
-	return String(GameEnums.CitizenState.keys()[state]).capitalize()
+	return Loc.t(String(GameEnums.CitizenState.keys()[state]).capitalize().replace("_", " "))
 
 
 # --- Simulation -------------------------------------------------------------
@@ -410,6 +410,12 @@ func _skill_decay_multiplier(need_type: int) -> float:
 	return multiplier
 
 
+## How far a resident will wander when they have nothing to do, and how much
+## searching that walk is allowed to cost.
+const STROLL_RADIUS := 9
+const STROLL_NODE_BUDGET := 700
+
+
 func _tick_idle() -> void:
 	if _retry_in > 0.0:
 		return
@@ -427,12 +433,65 @@ func _choose_goal() -> Dictionary:
 	return DecisionMaker.choose(self, _grid, _furniture)
 
 
-## A few steps to a nearby free cell, so residents with nothing urgent to do
-## still move around instead of standing like furniture.
+## Nothing worth doing right now — so go somewhere rather than shuffle on the
+## spot.
+##
+## The old version stepped to a random neighbouring cell, which is what "idle"
+## looked like: a person twitching in a doorway. A resident with nowhere to be
+## still has somewhere to go — out to the street, through the park, back home —
+## and walking a real route there reads as a person with a reason, costs one
+## path, and has the side effect of taking them past other people.
 func _begin_wander() -> void:
 	if _grid == null:
 		return
 	var here := cell()
+	var destination := _stroll_destination(here)
+	if destination != here:
+		# A short budget on purpose: a walk that needs a long search is not a
+		# walk worth taking, and the fallback below is free.
+		var route := Pathfinder.find_path(_grid, here, destination, floor_index, false,
+				STROLL_NODE_BUDGET)
+		if not route.is_empty():
+			path = route
+			target_furniture_id = -1
+			target_interaction = null
+			current_reason = "REASON_WALK"
+			current_score = 0.0
+			_set_state(GameEnums.CitizenState.WALKING)
+			return
+	_step_aside(here)
+
+
+## Somewhere plausible to head for: the pavement and the road are what a town is
+## walked on, so cells with a floor are preferred over open grass, and home is
+## always a candidate for someone who is out.
+func _stroll_destination(here: Vector2i) -> Vector2i:
+	var best := here
+	var best_score := -1.0
+	for attempt in 10:
+		var offset := Vector2i(randi_range(-STROLL_RADIUS, STROLL_RADIUS),
+				randi_range(-STROLL_RADIUS, STROLL_RADIUS))
+		var candidate := here + offset
+		if not _grid.in_bounds(candidate) or not _grid.is_walkable(candidate, floor_index):
+			continue
+		var data := _grid.get_cell(candidate, floor_index)
+		# Only somewhere built: a pavement, a road, a room. Open grass is not a
+		# destination, it is the space between them — and refusing it also keeps
+		# a resident in the middle of a field from searching half the map.
+		if data == null or data.floor_id == &"":
+			continue
+		var score := float(IsoUtils.cell_distance(here, candidate))
+		if home_building_id != -1 and data.building_id == home_building_id:
+			score *= 1.5
+		if score > best_score:
+			best_score = score
+			best = candidate
+	return best
+
+
+## The fallback when there is nowhere to walk to: one step, so a crowded room
+## still shifts about instead of freezing.
+func _step_aside(here: Vector2i) -> void:
 	var candidates: Array[Vector2i] = []
 	for offset in IsoUtils.neighbors(here):
 		if _grid.can_walk_between(here, offset, floor_index):
@@ -444,7 +503,7 @@ func _begin_wander() -> void:
 	path = route
 	target_furniture_id = -1
 	target_interaction = null
-	current_reason = "Wandering"
+	current_reason = "REASON_WALK"
 	current_score = 0.0
 	_set_state(GameEnums.CitizenState.WALKING)
 

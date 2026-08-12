@@ -35,6 +35,10 @@ CityEvents="*res://scripts/events/city_events.gd"
 Settings="*res://scripts/core/settings.gd"
 AudioManager="*res://scripts/core/audio_manager.gd"
 
+[internationalization]
+
+locale/translations=PackedStringArray("res://assets/i18n/strings.en.translation", "res://assets/i18n/strings.ru.translation")
+
 [rendering]
 
 renderer/rendering_method="gl_compatibility"

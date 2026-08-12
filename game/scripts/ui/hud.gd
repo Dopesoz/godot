@@ -13,6 +13,7 @@ extends CanvasLayer
 var _world: WorldController
 var _camera: CameraRig
 var _pause_menu: PauseMenu
+var _view_button: Button
 
 
 func _ready() -> void:
@@ -22,6 +23,8 @@ func _ready() -> void:
 	# runs before the world's own @onready assignments. Looked up by node
 	# instead, which is valid at this point.
 	_camera = _world.get_node_or_null("CameraRig") as CameraRig if _world != null else null
+	# The key still works, so the button has to follow the keyboard.
+	EventBus.view_mode_changed.connect(func(_mode: int, _id: int) -> void: _refresh_view_button())
 	EventBus.city_event_started.connect(_on_city_event)
 	EventBus.city_event_ended.connect(_on_city_event)
 	EventBus.money_changed.connect(_on_money_changed)
@@ -51,6 +54,36 @@ func _build_menu_button() -> void:
 	button.offset_bottom = button.offset_top + button.custom_minimum_size.y
 	button.pressed.connect(_open_pause_menu)
 	add_child(button)
+
+	# The view switch belongs on screen for the same reason: a phone has no E
+	# key, and "why can I not see inside this house" is the first question a
+	# player asks. It shows which of the three views is on.
+	_view_button = Button.new()
+	_view_button.custom_minimum_size = Vector2(148, 48) * Platform.ui_scale()
+	_view_button.focus_mode = Control.FOCUS_NONE
+	_view_button.add_theme_font_size_override(&"font_size", roundi(14 * Platform.ui_scale()))
+	_view_button.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_view_button.offset_left = -(_view_button.custom_minimum_size.x + 12.0 + float(margins.z))
+	_view_button.offset_top = button.offset_bottom + 8.0
+	_view_button.offset_right = -(12.0 + float(margins.z))
+	_view_button.offset_bottom = _view_button.offset_top + _view_button.custom_minimum_size.y
+	_view_button.pressed.connect(_cycle_view)
+	add_child(_view_button)
+	_refresh_view_button()
+
+
+func _cycle_view() -> void:
+	var renderer := _world.get_node_or_null("Entities") if _world != null else null
+	if renderer != null and renderer.has_method("cycle_wall_mode"):
+		renderer.call("cycle_wall_mode")
+	_refresh_view_button()
+
+
+func _refresh_view_button() -> void:
+	var renderer := _world.get_node_or_null("Entities") if _world != null else null
+	if renderer == null or not renderer.has_method("wall_mode_name"):
+		return
+	_view_button.text = String(renderer.call("wall_mode_name"))
 
 
 func _open_pause_menu() -> void:
@@ -121,22 +154,22 @@ func _controls_hint() -> String:
 	# clock around. So a phone is told about fingers and a desktop about keys,
 	# instead of both being told about both.
 	if Platform.has_touch():
-		return "one finger — pan    two fingers — zoom    tap a resident to follow them"
-	return "WASD — move    wheel — zoom    E — walls    G — grid    Space — pause    +/− — speed    F3 — debug    M — music"
+		return tr("one finger — pan    two fingers — zoom    tap a resident to follow them")
+	return tr("WASD — move    wheel — zoom    E — walls    G — grid    Space — pause    +/− — speed    F3 — debug    M — music")
 
 
 func _on_money_changed(amount: int, _delta: int) -> void:
 	# The balance alone hides whether the city is sustainable; the daily net is
 	# the number that actually matters.
 	var net := Economy.daily_income() - Economy.daily_upkeep()
-	var suffix := "  (%s%d/day)" % ["+" if net >= 0 else "", net]
+	var suffix := "  (%s%d%s)" % ["+" if net >= 0 else "", net, tr("/day")]
 	_money_label.text = "$ %s%s" % [_thousands(amount), suffix]
 
 
 func _on_minute_passed(_hour: int, _minute: int) -> void:
 	var speed := GameClock.get_speed()
-	var suffix := "  ‖ paused" if speed <= 0.0 else "  x%d" % int(speed)
-	var phase := "night" if GameClock.is_night() else "day"
+	var suffix := "  ‖ %s" % tr("paused") if speed <= 0.0 else "  x%d" % int(speed)
+	var phase := tr("night") if GameClock.is_night() else tr("day")
 	_clock_label.text = "%s  %s%s" % [GameClock.format_time(), phase, suffix]
 
 

@@ -14,7 +14,16 @@ extends RefCounted
 var id: int = -1
 var data_id: StringName = &""
 ## Player-facing name: "Meyer House", "Corner Shop".
+## The English template name ("Small House"), kept as written so it can be
+## translated at the moment it is shown, plus the number that tells two of them
+## apart. Storing the finished string would freeze it into whatever language the
+## town was founded in.
 var display_name: String = ""
+
+## Set when a household moves in: a house is "The Adlers" rather than
+## "Small House 3". A name a player would recognise wins over a generated one,
+## and a surname needs no translation.
+var custom_name: String = ""
 ## Top-left cell and size in cells.
 var origin: Vector2i = Vector2i.ZERO
 var size: Vector2i = Vector2i.ONE
@@ -62,11 +71,21 @@ func max_residents() -> int:
 	return template.max_residents if template != null else 0
 
 
+## What to show the player: the template's name in their language, numbered.
+func label() -> String:
+	if custom_name != "":
+		return custom_name
+	var data := Database.get_building(data_id)
+	var base := Loc.t(data.display_name) if data != null else Loc.t(display_name)
+	return "%s %d" % [base, id]
+
+
 func save_data() -> Dictionary:
 	return {
 		"id": id,
 		"data_id": String(data_id),
 		"name": display_name,
+		"custom_name": custom_name,
 		"x": origin.x,
 		"y": origin.y,
 		"w": size.x,
@@ -81,6 +100,7 @@ static func from_save(entry: Dictionary) -> Building:
 	building.id = int(entry.get("id", -1))
 	building.data_id = StringName(entry.get("data_id", ""))
 	building.display_name = String(entry.get("name", ""))
+	building.custom_name = String(entry.get("custom_name", ""))
 	building.origin = Vector2i(int(entry.get("x", 0)), int(entry.get("y", 0)))
 	building.size = Vector2i(int(entry.get("w", 1)), int(entry.get("h", 1)))
 	building.floor_index = int(entry.get("floor", 0))
