@@ -8,6 +8,11 @@ extends Node2D
 ## which cell the pointer is over. It draws nothing itself — the child layers do
 ## that, driven by signals.
 
+## Set by the main menu before it changes scene: "the town to open is the saved
+## one, not a new one". A static because it has to survive the scene change that
+## creates this node.
+static var load_on_start: bool = false
+
 var grid: WorldGrid
 
 ## Cell under the pointer, or `Vector2i(-1, -1)` when the pointer is off-map.
@@ -32,7 +37,10 @@ func _ready() -> void:
 	# this game is watching people live, and nobody lives on an empty field.
 	# `--empty` is for the build tools' own sake, and for tests.
 	var args := OS.get_cmdline_user_args()
-	if not args.has("--empty") and not args.has("--showroom"):
+	if load_on_start:
+		load_on_start = false
+		SaveManager.load_game(GameConstants.SAVE_SLOT_MAIN)
+	elif not args.has("--empty") and not args.has("--showroom"):
 		StarterCity.build(self)
 	DebugTools.maybe_build_demo(self)
 	DebugTools.maybe_build_showroom(self)

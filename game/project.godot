@@ -32,6 +32,7 @@ SimScheduler="*res://scripts/sim/sim_scheduler.gd"
 Economy="*res://scripts/economy/economy.gd"
 SaveManager="*res://scripts/core/save_manager.gd"
 CityEvents="*res://scripts/events/city_events.gd"
+Settings="*res://scripts/core/settings.gd"
 AudioManager="*res://scripts/core/audio_manager.gd"
 
 [rendering]

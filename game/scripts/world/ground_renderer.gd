@@ -49,7 +49,13 @@ func _draw() -> void:
 			var cell := Vector2i(x, y)
 			var polygon := IsoUtils.cell_polygon(cell)
 			var material := _material_at(cell)
-			var texture: Texture2D = Art.floor_texture(material.id) if material != null else Art.grass(cell)
+			var texture: Texture2D
+			if material == null:
+				texture = Art.grass(cell)
+			elif material.is_road:
+				texture = Art.road_texture(_road_kind(cell))
+			else:
+				texture = Art.floor_texture(material.id)
 			if texture != null:
 				# The polygon is the tile. Neighbouring cells share their edge
 				# vertices exactly, so there is nothing to seam — see the Tile
@@ -61,6 +67,25 @@ func _draw() -> void:
 				# individual cells readable.
 				if material == null:
 					draw_polyline(polygon + PackedVector2Array([polygon[0]]), EDGE_COLOR, 1.0)
+
+
+## A road tile is chosen by what its neighbours are, so a junction looks like a
+## junction and a straight stretch has its dashes pointing the right way.
+func _road_kind(cell: Vector2i) -> String:
+	var along_x := _is_road(cell + Vector2i(1, 0)) or _is_road(cell + Vector2i(-1, 0))
+	var along_y := _is_road(cell + Vector2i(0, 1)) or _is_road(cell + Vector2i(0, -1))
+	if along_x and along_y:
+		return "junction"
+	if along_x:
+		return "x"
+	if along_y:
+		return "y"
+	return "plain"
+
+
+func _is_road(cell: Vector2i) -> bool:
+	var material := _material_at(cell)
+	return material != null and material.is_road
 
 
 func _material_at(cell: Vector2i) -> FloorData:

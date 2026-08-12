@@ -150,7 +150,15 @@ static func _run(world: Node) -> Array:
 				panel != null and panel.visible,
 				"panel visible: %s" % (panel != null and panel.visible)))
 
-	# 7. Escape leaves the tool, so the player is never stuck in build mode.
+	# 7. Tapping an object asks what it is. The panel is the only place the
+	#    game explains itself, so "does a tap open it" is worth a check.
+	var object_panel := world.get_node_or_null("BuildUI/ObjectPanel") as Control
+	await _click_cell(world, origin + Vector2i(1, 1))
+	steps.append(Step.new("Click — tapping an object opens its description",
+			object_panel != null and object_panel.visible,
+			"panel visible: %s" % (object_panel != null and object_panel.visible)))
+
+	# 8. Escape leaves the tool, so the player is never stuck in build mode.
 	await _key(world, KEY_2)
 	await _key(world, KEY_ESCAPE)
 	steps.append(Step.new("Escape — leaves build mode",

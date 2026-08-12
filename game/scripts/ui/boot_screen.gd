@@ -6,11 +6,11 @@ extends Control
 ## the clock and the simulation scheduler so it is obvious at a glance that the
 ## services are running rather than merely instantiated.
 ##
-## Once every check passes it hands over to the world scene. A failed check
-## keeps the report on screen instead — booting into a broken world would hide
-## the real cause behind whatever breaks next.
+## Once every check passes it hands over to the main menu. A failed check keeps
+## the report on screen instead — booting into a broken world would hide the
+## real cause behind whatever breaks next.
 
-const WORLD_SCENE := "res://scenes/world/world.tscn"
+const MENU_SCENE := "res://scenes/ui/main_menu.tscn"
 const HANDOVER_DELAY := 1.5
 
 @onready var _report: RichTextLabel = %Report
@@ -52,10 +52,10 @@ func _ready() -> void:
 		return
 
 	if _all_passed():
-		_status.text += "  —  entering the world…"
+		_status.text += "  —  ready"
 		await get_tree().create_timer(HANDOVER_DELAY).timeout
 		SimScheduler.unregister(_probe)
-		get_tree().change_scene_to_file(WORLD_SCENE)
+		get_tree().change_scene_to_file(MENU_SCENE)
 
 
 func _all_passed() -> bool:

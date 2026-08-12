@@ -12,6 +12,7 @@ extends CanvasLayer
 
 var _world: WorldController
 var _camera: CameraRig
+var _pause_menu: PauseMenu
 
 
 func _ready() -> void:
@@ -30,6 +31,39 @@ func _ready() -> void:
 	_debug_label.visible = OS.is_debug_build()
 	_hint_label.text = _controls_hint()
 	_scale_text()
+	_build_menu_button()
+
+
+## A phone has no Escape key, so the way back to the settings has to be on
+## screen. The same button pauses, because the two things a player wants when
+## they stop looking at the town are "hold on" and "turn that down".
+func _build_menu_button() -> void:
+	var button := Button.new()
+	button.text = "☰"
+	button.custom_minimum_size = Vector2(48, 48) * Platform.ui_scale()
+	button.focus_mode = Control.FOCUS_NONE
+	button.add_theme_font_size_override(&"font_size", roundi(22 * Platform.ui_scale()))
+	button.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	var margins := Platform.safe_area_margins()
+	button.offset_left = -(button.custom_minimum_size.x + 12.0 + float(margins.z))
+	button.offset_top = 10.0 + float(margins.y)
+	button.offset_right = -(12.0 + float(margins.z))
+	button.offset_bottom = button.offset_top + button.custom_minimum_size.y
+	button.pressed.connect(_open_pause_menu)
+	add_child(button)
+
+
+func _open_pause_menu() -> void:
+	if _pause_menu != null:
+		return
+	var was_paused := GameClock.is_paused()
+	if not was_paused:
+		GameClock.toggle_pause()
+	_pause_menu = PauseMenu.new(was_paused)
+	_pause_menu.closed.connect(func() -> void:
+		_pause_menu.queue_free()
+		_pause_menu = null)
+	add_child(_pause_menu)
 
 
 ## The clock and the money are the two numbers a player actually reads, and on a

@@ -441,12 +441,20 @@ func _room_under_pointer() -> Room:
 	return _registry().room_at(_world.hovered_cell)
 
 
+## A tap with no tool in hand asks "what is this?" — of a person if there is one
+## standing there, and otherwise of the object. Both answers go out on the same
+## signal; the panels decide between themselves which one is being shown.
 func _select_under_pointer() -> void:
 	if not _world.has_hover():
 		return
 	var registry := _citizens()
 	var citizen := registry.citizen_at(_world.hovered_cell) if registry != null else null
-	EventBus.selection_changed.emit(citizen)
+	if citizen != null:
+		EventBus.selection_changed.emit(citizen)
+		return
+	var furniture := _furniture()
+	var item := furniture.furniture_at(_world.hovered_cell) if furniture != null else null
+	EventBus.selection_changed.emit(item)
 
 
 func _registry() -> BuildingRegistry:

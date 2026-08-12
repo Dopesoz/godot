@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="FloorData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/floor_data.gd" id="1_floor"]
+
+[resource]
+script = ExtResource("1_floor")
+id = &"pavement"
+display_name = "Pavement"
+description = "Slabs for walking on, along the road and through the park."
+placeholder_color = Color(0.62, 0.62, 0.6, 1)
+price_per_tile = 8
+comfort = 1.0

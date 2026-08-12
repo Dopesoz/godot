@@ -684,8 +684,19 @@ static func _check_art() -> Result:
 						% [type, axis, texture.get_size(), expected_wall])
 
 	for material: FloorData in Database.all_floors():
-		if Art.floor_texture(material.id) == null:
+		if material.is_road:
+			# A road has one tile per shape of junction, picked from the
+			# neighbours, so there is no tile under the material's own name.
+			for kind in ["x", "y", "junction", "plain"]:
+				if Art.road_texture(kind) == null:
+					return Result.new("Art", false, "no road tile for '%s'" % kind)
+		elif Art.floor_texture(material.id) == null:
 			return Result.new("Art", false, "no ground tile for '%s'" % material.id)
+	for index in Art.CAR_COLORS:
+		for coming in [true, false]:
+			for along_x in [true, false]:
+				if Art.car_texture(index, coming, along_x) == null:
+					return Result.new("Art", false, "car %d is missing a view" % index)
 	for index in Art.GRASS_VARIANTS:
 		if Art.grass(Vector2i(index, 0)) == null:
 			return Result.new("Art", false, "grass variant %d is missing" % index)

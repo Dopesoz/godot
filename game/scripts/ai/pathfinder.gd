@@ -32,14 +32,23 @@ static func find_path(grid: WorldGrid, from: Vector2i, to: Vector2i, floor_index
 	if not occupied_goal and not grid.is_walkable(to, floor_index):
 		return []
 
-	var open: Array[Vector2i] = [from]
+	# A binary heap, in two parallel arrays: the cell and the f-score it was
+	# pushed with. Stale entries are left in place and skipped when popped —
+	# cheaper than finding and updating them.
+	var heap_cells: Array[Vector2i] = []
+	var heap_scores: PackedInt32Array = PackedInt32Array()
 	# cell -> cost so far, and cell -> where we came from.
 	var cost := {from: 0}
 	var came_from := {}
+	var closed := {}
 	var expanded := 0
+	_heap_push(heap_cells, heap_scores, from, IsoUtils.cell_distance(from, to))
 
-	while not open.is_empty():
-		var current := _pop_best(open, cost, to)
+	while not heap_cells.is_empty():
+		var current := _heap_pop(heap_cells, heap_scores)
+		if closed.has(current):
+			continue
+		closed[current] = true
 		if current == to:
 			return _rebuild(came_from, to)
 		expanded += 1
@@ -60,25 +69,59 @@ static func find_path(grid: WorldGrid, from: Vector2i, to: Vector2i, floor_index
 				continue
 			cost[neighbor] = next_cost
 			came_from[neighbor] = current
-			open.append(neighbor)
+			_heap_push(heap_cells, heap_scores, neighbor,
+					next_cost + IsoUtils.cell_distance(neighbor, to))
 	return []
 
 
-## Linear scan for the lowest f-score. With a 40x40 map the open set stays small
-## enough that a real priority queue would cost more in allocation than it saves;
-## this is the swap to make when the city grows.
-static func _pop_best(open: Array[Vector2i], cost: Dictionary, goal: Vector2i) -> Vector2i:
-	var best_index := 0
-	var best_score := 1 << 30
-	for i in open.size():
-		var cell := open[i]
-		var score: int = int(cost[cell]) + IsoUtils.cell_distance(cell, goal)
-		if score < best_score:
-			best_score = score
-			best_index = i
-	var best := open[best_index]
-	open.remove_at(best_index)
-	return best
+## The open set used to be scanned linearly for the lowest f-score, with a note
+## saying that was fine on a 40x40 map and would need swapping when the city
+## grew. The city grew: on 64x64 a search that fails explores thousands of
+## nodes, each scan walks the whole open set, and one decision could cost a
+## third of a second. This is that swap — an ordinary binary heap, which turns
+## the cost per node from "length of the open set" into "its logarithm".
+static func _heap_push(cells: Array[Vector2i], scores: PackedInt32Array,
+		cell: Vector2i, score: int) -> void:
+	cells.append(cell)
+	scores.append(score)
+	var index := cells.size() - 1
+	while index > 0:
+		var parent := (index - 1) / 2
+		if scores[parent] <= scores[index]:
+			break
+		_heap_swap(cells, scores, parent, index)
+		index = parent
+
+
+static func _heap_pop(cells: Array[Vector2i], scores: PackedInt32Array) -> Vector2i:
+	var top := cells[0]
+	var last := cells.size() - 1
+	_heap_swap(cells, scores, 0, last)
+	cells.remove_at(last)
+	scores.remove_at(last)
+	var index := 0
+	while true:
+		var left := index * 2 + 1
+		var right := left + 1
+		var smallest := index
+		if left < cells.size() and scores[left] < scores[smallest]:
+			smallest = left
+		if right < cells.size() and scores[right] < scores[smallest]:
+			smallest = right
+		if smallest == index:
+			break
+		_heap_swap(cells, scores, index, smallest)
+		index = smallest
+	return top
+
+
+static func _heap_swap(cells: Array[Vector2i], scores: PackedInt32Array, a: int, b: int) -> void:
+	var cell := cells[a]
+	cells[a] = cells[b]
+	cells[b] = cell
+	var score := scores[a]
+	scores[a] = scores[b]
+	scores[b] = score
 
 
 static func _rebuild(came_from: Dictionary, to: Vector2i) -> Array[Vector2i]:

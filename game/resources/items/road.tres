@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="FloorData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/floor_data.gd" id="1_floor"]
+
+[resource]
+script = ExtResource("1_floor")
+id = &"road"
+display_name = "Road"
+description = "Asphalt. Cars drive on it, people walk across it."
+placeholder_color = Color(0.27, 0.28, 0.3, 1)
+price_per_tile = 14
+is_road = true
+comfort = 0.0

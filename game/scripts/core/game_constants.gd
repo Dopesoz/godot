@@ -27,7 +27,7 @@ const WALL_HEIGHT: int = 48
 
 ## Playfield size in cells. Phase 1 uses a small map; the grid itself has no
 ## hard limit, so this can grow later without touching the code.
-const MAP_SIZE: Vector2i = Vector2i(40, 40)
+const MAP_SIZE: Vector2i = Vector2i(64, 64)
 
 ## Number of buildable floors. 0 is ground level.
 const MAX_FLOORS: int = 1
@@ -160,6 +160,7 @@ const PRICE_FLOOR: int = 10
 # --- Persistence ------------------------------------------------------------
 
 const SAVE_DIR: String = "user://saves"
+const SAVE_SLOT_MAIN: String = "slot1"
 const SAVE_EXTENSION: String = ".json"
 ## Bumped whenever the save layout changes in a non-additive way.
 const SAVE_FORMAT_VERSION: int = 1

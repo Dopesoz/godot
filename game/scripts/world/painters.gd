@@ -169,6 +169,25 @@ static func _furniture_block(canvas: CanvasItem, item: Furniture, template: Furn
 				IN_USE_GLOW if in_use else FURNITURE_OUTLINE, 2.0 if in_use else 1.0)
 
 
+# --- Cars -------------------------------------------------------------------
+
+## Cars are drawn like furniture that happens to move: one cell of footprint,
+## bottom edge pinned to the cell they are on, so they sit on the road the same
+## way a sofa sits on a floor.
+static func draw_car(canvas: CanvasItem, car: Traffic.Car) -> void:
+	var texture := Art.car_texture(car.color_index, car.coming(), car.along_x())
+	var cell := Vector2i(floori(car.position.x), floori(car.position.y))
+	if texture == null:
+		canvas.draw_colored_polygon(Art.footprint_polygon(cell, Vector2i.ONE, 0, -0.2),
+				Color(0.8, 0.3, 0.3))
+		return
+	var rect := Art.furniture_rect(cell, Vector2i.ONE, texture)
+	# The fractional part of the position is the car's progress between cells.
+	var drift := car.position - Vector2(cell)
+	rect.position += IsoUtils.cell_to_world_f(drift) - IsoUtils.cell_to_world_f(Vector2.ZERO)
+	canvas.draw_texture_rect(texture, rect, false)
+
+
 # --- Citizens ---------------------------------------------------------------
 
 const BODY_HEIGHT := 20.0

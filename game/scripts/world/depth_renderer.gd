@@ -39,6 +39,7 @@ var _wall_mode: WallMode = WallMode.CUTAWAY
 var _grid: WorldGrid
 var _furniture: FurnitureRegistry
 var _citizens: CitizenRegistry
+var _traffic: Traffic
 var _font: Font
 
 ## Cached {depth, kind, ref} entries for the things that rarely change.
@@ -53,6 +54,7 @@ func _ready() -> void:
 	# that from shimmering as the camera moves.
 	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	_furniture = get_parent().get_node_or_null("Furniture") as FurnitureRegistry
+	_traffic = get_parent().get_node_or_null("Traffic") as Traffic
 	_citizens = get_parent().get_node_or_null("Citizens") as CitizenRegistry
 
 	EventBus.world_ready.connect(_on_world_ready)
@@ -101,7 +103,8 @@ func _process(_delta: float) -> void:
 	# Redraw only when something can actually have moved.
 	# Animation continues while paused — a pulsing "in use" outline and a
 	# selection ring should not freeze just because time did.
-	if (_citizens != null and _citizens.count() > 0) or _furniture_in_use():
+	if (_citizens != null and _citizens.count() > 0) or _furniture_in_use() \
+			or (_traffic != null and not _traffic.cars.is_empty()):
 		queue_redraw()
 
 
@@ -120,6 +123,13 @@ func _draw() -> void:
 				"kind": "citizen",
 				"ref": citizen,
 			})
+	if _traffic != null:
+		for car: Traffic.Car in _traffic.cars:
+			entries.append({
+				"depth": car.position.x + car.position.y + 0.2,
+				"kind": "car",
+				"ref": car,
+			})
 	entries.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		return float(a["depth"]) < float(b["depth"]))
 
@@ -129,6 +139,8 @@ func _draw() -> void:
 				Painters.draw_edge(self, entry["ref"], int(entry["type"]), 0, bool(entry["cut"]))
 			"furniture":
 				Painters.draw_furniture(self, entry["ref"])
+			"car":
+				Painters.draw_car(self, entry["ref"])
 			"citizen":
 				var citizen: Citizen = entry["ref"]
 				var selected := citizen.id == _selected_id

@@ -14,6 +14,8 @@ const MUSIC := {
 }
 
 ## Linear volume, 0..1. Music sits under everything else by design.
+## Defaults live in Settings now, because the player owns them. These remain as
+## the volume the fade aims for when nothing has been chosen yet.
 const MUSIC_VOLUME := 0.55
 const SFX_VOLUME := 0.5
 ## Voices for overlapping effects. Six is enough for a busy city and cheap
@@ -42,10 +44,12 @@ func _ready() -> void:
 	_sfx_bank = Sfx.bank()
 	for i in SFX_VOICES:
 		var voice := AudioStreamPlayer.new()
-		voice.volume_db = linear_to_db(SFX_VOLUME)
+		voice.volume_db = linear_to_db(Settings.sfx_volume)
 		add_child(voice)
 		_sfx_players.append(voice)
 	_connect_sounds()
+	Settings.changed.connect(apply_volumes)
+	apply_volumes()
 
 
 ## Music that is still playing when the tree shuts down leaves its stream and
@@ -135,14 +139,23 @@ func set_muted(value: bool) -> void:
 	if muted == value:
 		return
 	muted = value
-	for voice in _sfx_players:
-		voice.volume_db = linear_to_db(0.0001 if muted else SFX_VOLUME)
-	_fade_to(_target_volume(), 0.4)
-	EventBus.notify("Music %s" % ("muted" if muted else "on"))
+	Settings.set_muted(value)
+	apply_volumes()
+	EventBus.notify("Sound %s" % ("off" if muted else "on"))
 
 
 func toggle_mute() -> void:
 	set_muted(not muted)
+
+
+## Pushes whatever the player chose in the settings into the mixer. Called on
+## start and whenever a slider moves, so there is one path from preference to
+## sound and no volume stored in two places.
+func apply_volumes() -> void:
+	muted = Settings.muted
+	for voice in _sfx_players:
+		voice.volume_db = linear_to_db(maxf(0.0 if muted else Settings.sfx_volume, 0.0001))
+	_fade_to(_target_volume(), 0.25)
 
 
 func is_playing() -> bool:
@@ -150,7 +163,7 @@ func is_playing() -> bool:
 
 
 func _target_volume() -> float:
-	return 0.0 if muted else MUSIC_VOLUME
+	return 0.0 if muted else Settings.music_volume
 
 
 ## Fades in decibels via a tween, because a linear ramp on the raw dB value is

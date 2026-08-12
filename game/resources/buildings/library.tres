@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="BuildingData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/building_data.gd" id="1_bld"]
+
+[resource]
+script = ExtResource("1_bld")
+id = &"library"
+display_name = "Library"
+building_type = 3
+size = Vector2i(9, 7)
+price = 1900
+max_residents = 0

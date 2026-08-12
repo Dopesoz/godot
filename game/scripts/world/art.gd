@@ -25,6 +25,10 @@ const SPRITE_SCALE := 2.0
 const FLOOR_DIR := "res://assets/sprites/floors/"
 const WALL_DIR := "res://assets/sprites/walls/"
 const FURNITURE_DIR := "res://assets/sprites/furniture/"
+const VEHICLE_DIR := "res://assets/sprites/vehicles/"
+
+## How many car liveries there are. Cars pick one by id and keep it.
+const CAR_COLORS := 6
 
 ## Where the glass sits inside a window sprite, as fractions of the wall quad.
 ## Kept in step with PANE_X / PANE_Z in tools/make_sprites.py: the night glow is
@@ -47,6 +51,20 @@ const GRASS_VARIANTS := 3
 static func grass(cell: Vector2i) -> Texture2D:
 	var pick := absi(cell.x * 73856093 ^ cell.y * 19349663) % GRASS_VARIANTS
 	return _texture(FLOOR_DIR + "ground_grass_%d.svg" % pick)
+
+
+## Which asphalt tile a road cell gets: the markings have to run along the
+## street, and only the neighbours know which way that is. `kind` is one of
+## "x", "y", "junction", "plain".
+static func road_texture(kind: String) -> Texture2D:
+	return _texture(FLOOR_DIR + "road_" + kind + ".svg")
+
+
+## A car, seen coming towards the camera or going away from it, on either grid
+## axis. Four sprites out of two drawings: mirroring screen x swaps the axes.
+static func car_texture(color_index: int, coming: bool, along_x: bool) -> Texture2D:
+	var stem := "car_%s_%d" % ["front" if coming else "back", absi(color_index) % CAR_COLORS]
+	return _texture(VEHICLE_DIR + stem + ("" if along_x else "_r") + ".svg")
 
 
 static func floor_texture(id: StringName) -> Texture2D:

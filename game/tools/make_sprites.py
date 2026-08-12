@@ -101,6 +101,85 @@ def floor_grass(index: int) -> Tile:
     return t
 
 
+def road_tile(kind: str) -> Tile:
+    """Asphalt. The markings are baked per direction rather than drawn at
+    runtime: a dashed line has to run *along* the street, and which way that is
+    depends on the neighbours, so the ground renderer picks the tile."""
+    t = Tile("road_" + kind)
+    base = "#3f4247"
+    t.rect(0, 0, 1, 1, base)
+    for i in range(7):
+        for j in range(7):
+            if (i * 3 + j * 5) % 4 == 0:
+                t.rect(i / 7.0 + 0.02, j / 7.0 + 0.03, 0.06, 0.05, lighten(base, 0.05))
+    if kind in ("x", "junction"):
+        t.rect(0.02, 0.47, 0.30, 0.055, "#d8d2b8")
+        t.rect(0.68, 0.47, 0.30, 0.055, "#d8d2b8")
+    if kind in ("y", "junction"):
+        t.rect(0.47, 0.02, 0.055, 0.30, "#d8d2b8")
+        t.rect(0.47, 0.68, 0.055, 0.30, "#d8d2b8")
+    if kind == "x":
+        for edge in (0.0, 0.96):
+            t.rect(0, edge, 1, 0.04, darken(base, 0.25))
+    if kind == "y":
+        for edge in (0.0, 0.96):
+            t.rect(edge, 0, 0.04, 1, darken(base, 0.25))
+    return t
+
+
+def pavement_tile() -> Tile:
+    t = Tile("pavement")
+    base = "#9a9992"
+    t.rect(0, 0, 1, 1, darken(base, 0.18))
+    for i in range(3):
+        for j in range(3):
+            t.rect(i / 3.0 + 0.02, j / 3.0 + 0.02, 0.30, 0.30,
+                   base if (i + j) % 2 == 0 else lighten(base, 0.05))
+    return t
+
+
+# --- vehicles ---------------------------------------------------------------
+#
+# Two designs, mirrored by the generator into four: a car coming towards the
+# camera and one going away, each of which mirrors into the other grid axis.
+# Cars are scenery — they never interact with anyone — so this is as much car as
+# the game needs.
+
+CAR_COLORS = ["#b8484a", "#3f6fa8", "#c9a13f", "#4f8a5b", "#8e5aa0", "#c9c4bc"]
+
+
+def car(index: int, facing: str) -> Sprite:
+    body = CAR_COLORS[index]
+    s = Sprite(1, 1, 0.55, "car_%s_%d" % (facing, index))
+    s.shadow(inset=0.12, opacity=0.20)
+    # Along +x, hugging the middle of the lane.
+    s.box(0.06, 0.28, 0.02, 0.88, 0.44, 0.22, body)
+    s.box(0.24, 0.30, 0.24, 0.52, 0.40, 0.20, lighten(body, 0.06))
+    glass = "#2c3a46"
+    if facing == "front":
+        s.poly([(0.76, 0.30, 0.24), (0.76, 0.70, 0.24), (0.76, 0.70, 0.42), (0.76, 0.30, 0.42)], glass)
+        s.disc(0.98, 0.36, 0.14, 0.05, "#ffe9b0", squash=1.0)
+        s.disc(0.98, 0.62, 0.14, 0.05, "#ffe9b0", squash=1.0)
+    else:
+        s.poly([(0.24, 0.30, 0.24), (0.24, 0.70, 0.24), (0.24, 0.70, 0.42), (0.24, 0.30, 0.42)], glass)
+        s.disc(0.06, 0.36, 0.14, 0.05, "#c0413a", squash=1.0)
+        s.disc(0.06, 0.62, 0.14, 0.05, "#c0413a", squash=1.0)
+    for wx in (0.20, 0.74):
+        s.box(wx, 0.24, 0.0, 0.14, 0.06, 0.10, "#22242a")
+        s.box(wx, 0.70, 0.0, 0.14, 0.06, 0.10, "#22242a")
+    return s
+
+
+def tree() -> Sprite:
+    s = Sprite(1, 1, 1.5, "tree")
+    s.shadow(inset=0.22, opacity=0.18)
+    s.cylinder(0.5, 0.5, 0.0, 0.10, 0.62, "#6b5236")
+    for cz, cr, tone in [(0.55, 0.40, "#3f7a44"), (0.85, 0.33, "#4a8c4e"), (1.12, 0.22, "#57a05a")]:
+        s.disc(0.5, 0.5, cz, cr, darken(tone, 0.18), squash=1.0)
+        s.disc(0.5, 0.46, cz + 0.06, cr * 0.86, tone, squash=1.0)
+    return s
+
+
 # --- walls ------------------------------------------------------------------
 #
 # A wall lives on a cell edge, so its sprite is exactly the quad the edge
@@ -439,7 +518,7 @@ def tv() -> Sprite:
 FURNITURE = [
     bed_single, bookshelf, chair, coffee_machine, computer, desk, dining_bench,
     easel, fridge, guitar, kitchen_counter, lamp, shower, sofa, stove,
-    table_dining, treadmill, tv,
+    table_dining, treadmill, tree, tv,
 ]
 
 
@@ -451,7 +530,8 @@ def write(path: str, content: str) -> None:
 
 def main() -> None:
     count = 0
-    tiles = [floor_wood(), floor_tile(), floor_carpet()]
+    tiles = [floor_wood(), floor_tile(), floor_carpet(), pavement_tile()]
+    tiles += [road_tile(kind) for kind in ("x", "y", "junction", "plain")]
     tiles += [floor_grass(i) for i in range(len(GRASS_VARIANTS))]
     for tile in tiles:
         write(os.path.join(OUT, "floors", tile.name + ".svg"), tile.to_svg())
@@ -470,6 +550,13 @@ def main() -> None:
         write(os.path.join(OUT, "walls", name + "_h.svg"), lit.to_svg())
         write(os.path.join(OUT, "walls", name + "_v.svg"), shaded.mirrored_svg())
         count += 2
+
+    for index in range(len(CAR_COLORS)):
+        for facing in ("front", "back"):
+            sprite = car(index, facing)
+            write(os.path.join(OUT, "vehicles", sprite.name + ".svg"), sprite.to_svg())
+            write(os.path.join(OUT, "vehicles", sprite.name + "_r.svg"), sprite.mirrored_svg())
+            count += 2
 
     for maker in FURNITURE:
         sprite = maker()
