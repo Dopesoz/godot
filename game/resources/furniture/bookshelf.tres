@@ -1,0 +1,39 @@
+[gd_resource type="Resource" script_class="FurnitureData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/furniture_data.gd" id="1_furn"]
+[ext_resource type="Script" path="res://scripts/data/interaction_data.gd" id="2_int"]
+
+[sub_resource type="Resource" id="Resource_read"]
+script = ExtResource("2_int")
+id = &"read"
+display_name = "Read"
+state = 5
+duration_minutes = 50.0
+need_effects = {
+4: 32.0,
+3: 8.0
+}
+capacity = 1
+priority = 1.0
+stands_on_furniture = false
+skill_id = &"logic"
+xp_rate = 1.0
+required_skill_level = 0
+payout_per_skill_level = 0
+
+[resource]
+script = ExtResource("1_furn")
+id = &"bookshelf"
+display_name = "Bookshelf"
+description = "Reading is slow entertainment that quietly trains logic."
+placeholder_color = Color(0.55, 0.42, 0.30, 1)
+category = 5
+price = 240
+upkeep_per_day = 2
+size = Vector2i(1, 1)
+comfort = 2.0
+entertainment = 8.0
+blocks_movement = true
+requires_wall = false
+interactions = Array[Resource]([SubResource("Resource_read")])
+allowed_room_types = Array[int]([1, 2, 6])

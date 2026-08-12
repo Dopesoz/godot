@@ -1,0 +1,38 @@
+[gd_resource type="Resource" script_class="CitizenData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/citizen_data.gd" id="1_citizen"]
+
+[resource]
+script = ExtResource("1_citizen")
+id = &"neat"
+display_name = "Neat"
+description = "Cannot relax in a dirty flat. Showers first, enjoys life second."
+placeholder_color = Color(0.72, 0.85, 0.88, 1)
+gender = 2
+age = 32
+personality = 1
+job_id = &"worker"
+initial_needs = {
+0: 70.0,
+1: 80.0,
+2: 60.0,
+3: 70.0,
+4: 60.0,
+5: 65.0
+}
+need_decay_multipliers = {
+2: 1.8,
+3: 1.2,
+4: 0.8
+}
+interaction_affinity = {
+&"cook_feast": 1.35,
+&"prep_meal": 1.2,
+&"watch_tv": 0.8
+}
+starting_skills = {
+&"cooking": 260.0
+}
+walk_speed = 1.7
+first_names = PackedStringArray("Anna", "Boris", "Clara", "Daniel", "Elena", "Felix", "Greta", "Hugo", "Irina", "Jonas", "Kira", "Lena", "Mark", "Nina", "Oscar", "Pavel", "Rita", "Sofia", "Timur", "Vera")
+last_names = PackedStringArray("Adler", "Beck", "Cross", "Dorn", "Egan", "Fisher", "Gould", "Hart", "Ivers", "Kane", "Lund", "Meyer", "Novak", "Ortiz", "Pike", "Quill", "Rossi", "Stein", "Toth", "Vogel")

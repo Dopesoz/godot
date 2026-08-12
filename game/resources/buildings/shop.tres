@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="BuildingData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/building_data.gd" id="1_bd"]
+
+[resource]
+script = ExtResource("1_bd")
+id = &"shop"
+display_name = "Shop"
+description = "Commercial plot. Somewhere for shopkeepers to work."
+placeholder_color = Color(0.60, 0.78, 0.72, 1)
+building_type = 1
+size = Vector2i(8, 6)
+price = 1800
+upkeep_per_day = 45
+max_residents = 0
+suggested_room_types = Array[int]([11])
+provides_job_ids = Array[StringName]([&"worker"])

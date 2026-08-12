@@ -1,0 +1,297 @@
+keys,en,ru
+$%d/day upkeep,$%d/day upkeep,$%d/день содержание
+%d min,%d min,%d мин
+%d room(s),%d room(s),комнат: %d
+%s moved into %s (%d residents),%s moved into %s (%d residents),%s заселились в %s (жильцов: %d)
+(no door),(no door),(нет двери)
+/day,/day,/день
+A bigger residential plot: room for a large family.,A bigger residential plot: room for a large family.,Участок побольше: хватит на большую семью.
+A place to sit down.,A place to sit down.,"Место, чтобы присесть."
+A place to work from home. Pays whatever the job pays.,A place to work from home. Pays whatever the job pays.,"Место для работы из дома. Платят столько же, сколько на работе."
+A plot for one household. Build the rooms yourself.,A plot for one household. Build the rooms yourself.,Участок на одну семью. Комнаты строишь сам.
+"A quick snack, no cooking required.","A quick snack, no cooking required.","Быстрый перекус, готовить не надо."
+"A town: four families, a shop, a cafe, an office, a gym, a library and a park","A town: four families, a shop, a cafe, an office, a gym, a library and a park","Городок: четыре семьи, магазин, кафе, офис, спортзал, библиотека и парк"
+"A tree. Nobody can do anything with it, which is the point: a street with trees looks lived in.","A tree. Nobody can do anything with it, which is the point: a street with trees looks lived in.",Дерево. С ним ничего нельзя сделать — в этом и смысл: улица с деревьями выглядит обжитой.
+A working-age resident with no particular quirks.,A working-age resident with no particular quirks.,Взрослый житель без особых причуд.
+Adler,Adler,Адлер
+Adult,Adult,Взрослый
+Afternoon,Afternoon,После обеда
+Anna,Anna,Анна
+Apartment Block,Apartment Block,Многоквартирный дом
+Appliance,Appliance,Техника
+"Asphalt. Cars drive on it, people walk across it.","Asphalt. Cars drive on it, people walk across it.",Асфальт. По нему ездят машины и переходят люди.
+Bathroom,Bathroom,Ванная
+Beck,Beck,Бек
+Bedroom,Bedroom,Спальня
+Bench,Bench,Скамья
+Better cooks make bigger meals in less time.,Better cooks make bigger meals in less time.,"Кто лучше готовит, тот делает больше еды и быстрее."
+Bookshelf,Bookshelf,Книжный шкаф
+Boris,Boris,Борис
+"Build a street, then look inside it","Build a street, then look inside it",Построй улицу и загляни внутрь
+Cafe,Cafe,Кафе
+"Cannot relax in a dirty flat. Showers first, enjoys life second.","Cannot relax in a dirty flat. Showers first, enjoys life second.","Не может расслабиться в грязной квартире. Сначала душ, потом всё остальное."
+Carpet,Carpet,Ковролин
+Chair,Chair,Стул
+Charisma,Charisma,Харизма
+Chat,Chat,Болтать
+Children room,Children room,Детская
+City Grant,City Grant,Городской грант
+Clara,Clara,Клара
+Close,Close,Закрыть
+Coffee,Coffee,Кофе
+Coffee Machine,Coffee Machine,Кофемашина
+"Cold, easy to clean. Made for kitchens and bathrooms.","Cold, easy to clean. Made for kitchens and bathrooms.","Холодная, легко мыть. Для кухни и ванной."
+Comfort,Comfort,Комфорт
+Comfortable seating for up to three.,Comfortable seating for up to three.,Удобно сидеть втроём.
+Commercial plot with desks. Office workers commute here.,Commercial plot with desks. Office workers commute here.,Коммерческий участок со столами. Сюда ходят офисные работники.
+Commercial plot. Somewhere for shopkeepers to work.,Commercial plot. Somewhere for shopkeepers to work.,Коммерческий участок. Место работы для продавцов.
+Company is more rewarding when you are good at it.,Company is more rewarding when you are good at it.,"Общение приятнее, когда умеешь общаться."
+Computer,Computer,Компьютер
+Continue,Continue,Продолжить
+Cook,Cook,Готовить
+Cook a feast,Cook a feast,Приготовить пир
+Cooking,Cooking,Готовка
+Cooking takes longer but fills you up properly.,Cooking takes longer but fills you up properly.,"Готовка дольше, зато сытно по-настоящему."
+"Costs energy and hygiene now, makes energy last longer forever after.","Costs energy and hygiene now, makes energy last longer forever after.","Сейчас тратит силы и чистоту, зато потом энергии хватает надолго."
+Cross,Cross,Кросс
+Daniel,Daniel,Даниил
+Daytime,Daytime,День
+Decor,Decor,Декор
+Decorative for now; it will light the room at night.,Decorative for now; it will light the room at night.,Пока просто украшение; ночью будет светить.
+Del,Del,Снос
+Delete,Delete,Снести
+Desk,Desk,Письменный стол
+"Desk job in a commercial building. Fixed hours, steady salary.","Desk job in a commercial building. Fixed hours, steady salary.","Работа за столом в коммерческом здании. Твёрдый график, стабильная зарплата."
+Dining Table,Dining Table,Обеденный стол
+Dining room,Dining room,Столовая
+Dinner,Dinner,Ужин
+Door,Door,Дверь
+Dorn,Dorn,Дорн
+Easel,Easel,Мольберт
+Eat,Eat,Есть
+Eating,Eating,Ест
+Egan,Egan,Иган
+Electronics,Electronics,Электроника
+Elena,Elena,Елена
+Energy,Energy,Энергия
+Entertainment,Entertainment,Развлечение
+Evening,Evening,Вечер
+Exercise,Exercise,Тренироваться
+Felix,Felix,Феликс
+Fisher,Fisher,Фишер
+Fitness,Fitness,Спорт
+Five minutes for a burst of energy. Not a substitute for sleep.,Five minutes for a burst of energy. Not a substitute for sleep.,Пять минут ради бодрости. Сон не заменяет.
+Floor,Floor,Пол
+Floor Lamp,Floor Lamp,Торшер
+Flu Going Round,Flu Going Round,Эпидемия гриппа
+Fri,Fri,Пт
+Friday,Friday,Пятница
+Fridge,Fridge,Холодильник
+Furniture,Furniture,Мебель
+Garage,Garage,Гараж
+"General labour. Long hours, modest pay, no qualifications required.","General labour. Long hours, modest pay, no qualifications required.","Простая работа. Долгие смены, скромная оплата, без требований."
+Get Food,Get Food,Взять еду
+Going home,Going home,Идёт домой
+Gould,Gould,Гулд
+Greta,Greta,Грета
+Guitar,Guitar,Гитара
+Gym,Gym,Спортзал
+Half the street is sniffling. Energy drains and nobody feels sociable.,Half the street is sniffling. Energy drains and nobody feels sociable.,"Полулицы сопливит. Силы тают, общаться никому не хочется."
+Hallway,Hallway,Прихожая
+Hart,Hart,Харт
+Heatwave,Heatwave,Жара
+Hugo,Hugo,Гуго
+Hunger,Hunger,Голод
+Hygiene,Hygiene,Чистота
+Idle,Idle,Без дела
+In use right now,In use right now,Сейчас занято
+Irina,Irina,Ирина
+Item,Item,Вещь
+Ivers,Ivers,Иверс
+Jonas,Jonas,Йонас
+Kane,Kane,Кейн
+Kira,Kira,Кира
+Kitchen,Kitchen,Кухня
+Kitchen Counter,Kitchen Counter,Кухонная тумба
+Language,Language,Язык
+Lazy,Lazy,Ленивый
+Lena,Lena,Лена
+Library,Library,Библиотека
+Lighting,Lighting,Свет
+Living room,Living room,Гостиная
+Logic,Logic,Логика
+Lunch,Lunch,Обед
+Lund,Lund,Лунд
+"M mutes, E switches walls, Space pauses","M mutes, E switches walls, Space pauses","M — звук, E — стены, пробел — пауза"
+Main menu,Main menu,Главное меню
+Make a sandwich,Make a sandwich,Сделать бутерброд
+Mark,Mark,Марк
+Meyer,Meyer,Майер
+Mon,Mon,Пн
+Monday,Monday,Понедельник
+Morning,Morning,Утро
+Move,Move,Жильцы
+Move in,Move in,Заселить
+Music,Music,Музыка
+Music in the street tonight — nobody wants to be indoors alone.,Music in the street tonight — nobody wants to be indoors alone.,Вечером на улице музыка — сидеть дома одному никому не хочется.
+Mute everything,Mute everything,Выключить звук
+My City: Inside,My City: Inside,Мой город: изнутри
+Neat,Neat,Аккуратный
+Needs company. Will cross the flat for someone to talk to.,Needs company. Will cross the flat for someone to talk to.,Нужна компания. Пройдёт через всю квартиру ради разговора.
+New town,New town,Новый город
+Night,Night,Ночь
+Nina,Nina,Нина
+Nothing much on. A good day to rest and see people.,Nothing much on. A good day to rest and see people.,"Дел немного. Хороший день, чтобы отдохнуть и повидаться."
+Nothing to do with it — it is here to look at.,Nothing to do with it — it is here to look at.,Пользоваться нечем — стоит для вида.
+Novak,Novak,Новак
+Office,Office,Офис
+Office Worker,Office Worker,Офисный работник
+Ordinary day,Ordinary day,Обычный день
+Ortiz,Ortiz,Ортис
+Oscar,Oscar,Оскар
+Paint,Paint,Рисовать
+Painting,Painting,Живопись
+"Painting is slow, trains a skill, and finished work sells.","Painting is slow, trains a skill, and finished work sells.","Живопись медленная, качает навык, а готовое продаётся."
+Park,Park,Парк
+Paused,Paused,Пауза
+Pavel,Pavel,Павел
+Pavement,Pavement,Тротуар
+Perform,Perform,Выступать
+Pick,Pick,Выбор
+Pike,Pike,Пайк
+"Pipes, wiring, the usual. It has to be paid.","Pipes, wiring, the usual. It has to be paid.","Трубы, проводка, обычное дело. Платить придётся."
+Play,Play,Играть
+Play music,Play music,Играть музыку
+Playing badly is a chore; playing well is a joy.,Playing badly is a chore; playing well is a joy.,"Играть плохо — мучение, играть хорошо — радость."
+Plot,Plot,Участок
+Plumbing,Plumbing,Сантехника
+Prep space. A skilled cook can put together a proper dinner here.,Prep space. A skilled cook can put together a proper dinner here.,Место для готовки. Умелый повар соберёт здесь настоящий ужин.
+Quiet Weekend,Quiet Weekend,Тихие выходные
+Quill,Quill,Квилл
+Quit,Quit,Выход
+REASON_WALK,REASON_WALK,Гуляет
+Read,Read,Читать
+Reading is slow entertainment that quietly trains logic.,Reading is slow entertainment that quietly trains logic.,"Чтение — медленное развлечение, которое тихо качает логику."
+Relax,Relax,Отдыхать
+Relaxing,Relaxing,Отдыхает
+Repair Bill,Repair Bill,Счёт за ремонт
+Rita,Rita,Рита
+Road,Road,Дорога
+Room,Room,Комната
+Rossi,Rossi,Росси
+Rotate (R),Rotate (R),Повернуть (R)
+Sat,Sat,Сб
+Saturday,Saturday,Суббота
+Save town,Save town,Сохранить город
+Seating,Seating,Сидения
+Select,Select,Выбор
+Settings,Settings,Настройки
+Shop,Shop,Магазин
+Shower,Shower,Душ
+Showering,Showering,Моется
+Single Bed,Single Bed,Односпальная кровать
+Sit,Sit,Сидеть
+"Slabs for walking on, along the road and through the park.","Slabs for walking on, along the road and through the park.",Плитка для пешеходов — вдоль дороги и через парк.
+Sleep,Sleep,Спать
+Sleep restores energy. One person at a time.,Sleep restores energy. One person at a time.,Сон восстанавливает энергию. По одному человеку.
+Sleeping,Sleeping,Кровати
+"Sleeps at night, eats at the usual hours, relaxes in the evening.","Sleeps at night, eats at the usual hours, relaxes in the evening.","Спит ночью, ест в обычные часы, вечером отдыхает."
+"Slow to learn, and the results can be sold.","Slow to learn, and the results can be sold.","Учится медленно, зато результат можно продать."
+Small House,Small House,Дом
+Sociable,Sociable,Общительный
+Social,Social,Общение
+Socializing,Socializing,Общается
+Sofa,Sofa,Диван
+Sofia,Sofia,София
+Soft and quiet. The most comfortable option for bedrooms.,Soft and quiet. The most comfortable option for bedrooms.,Мягко и тихо. Самый уютный вариант для спальни.
+Somewhere to sit together. Company is worth more with charisma.,Somewhere to sit together. Company is worth more with charisma.,"Место, чтобы посидеть вместе. С харизмой компания ценнее."
+Sound effects,Sound effects,Звуки
+Sound off,Sound off,Звук выключен
+Sound on,Sound on,Звук включён
+Stein,Stein,Штейн
+Storage,Storage,Хранение
+Stove,Stove,Плита
+Street Festival,Street Festival,Уличный фестиваль
+Sun,Sun,Вс
+Sunday,Sunday,Воскресенье
+Surface,Surface,Столы
+TV,TV,Телевизор
+"Terrible at first, wonderful later. Skill changes how much it gives.","Terrible at first, wonderful later. Skill changes how much it gives.","Сначала ужасно, потом прекрасно. Навык меняет отдачу."
+The %s,The %s,%s
+The %ss,The %ss,%sы
+The cheapest entertainment in the house.,The cheapest entertainment in the house.,Самое дешёвое развлечение в доме.
+"The council paid out. Money in the budget, briefly.","The council paid out. Money in the budget, briefly.",Совет выплатил грант. Деньги в бюджете — ненадолго.
+Thinking work. Employers pay for it.,Thinking work. Employers pay for it.,Умственная работа. За неё платят.
+Thu,Thu,Чт
+Thursday,Thursday,Четверг
+Tile,Tile,Плитка
+Timur,Timur,Тимур
+"Tires quickly, walks slowly, and would rather sit than cook.","Tires quickly, walks slowly, and would rather sit than cook.","Быстро устаёт, ходит медленно и охотнее посидит, чем приготовит."
+Too hot to think. Everyone is washing twice a day.,Too hot to think. Everyone is washing twice a day.,"Слишком жарко, чтобы думать. Все моются дважды в день."
+Toth,Toth,Тот
+Town saved,Town saved,Город сохранён
+Training makes energy last longer through the day.,Training makes energy last longer through the day.,Тренировки растягивают запас сил на день.
+Treadmill,Treadmill,Беговая дорожка
+Tree,Tree,Дерево
+Tue,Tue,Вт
+Tuesday,Tuesday,Вторник
+"Twenty minutes, and hygiene is solved.","Twenty minutes, and hygiene is solved.",Двадцать минут — и вопрос чистоты закрыт.
+Undefined,Undefined,Без назначения
+Unemployed,Unemployed,Без работы
+VIEW_CUTAWAY,VIEW_CUTAWAY,Вид: сквозь стены
+VIEW_NO_WALLS,VIEW_NO_WALLS,Вид: без стен
+VIEW_OUTSIDE,VIEW_OUTSIDE,Вид: снаружи
+Vera,Vera,Вера
+Vogel,Vogel,Фогель
+WASD — move    wheel — zoom    E — walls    G — grid    Space — pause    +/− — speed    F3 — debug    M — music,WASD — move    wheel — zoom    E — walls    G — grid    Space — pause    +/− — speed    F3 — debug    M — music,"WASD — движение, колесо — зум, E — стены, G — сетка, пробел — пауза, +/− — скорость, F3 — отладка, M — музыка"
+Walking,Walking,Идёт
+Wall,Wall,Стена
+Walls,Walls,Стены
+Warm parquet. Cheap and suits most living spaces.,Warm parquet. Cheap and suits most living spaces.,Тёплый паркет. Дёшево и подходит почти везде.
+Watch TV,Watch TV,Смотреть ТВ
+Wed,Wed,Ср
+Wednesday,Wednesday,Среда
+"Where meals are eaten, together if possible.","Where meals are eaten, together if possible.","Здесь едят, по возможности вместе."
+Win,Win,Окно
+Window,Window,Окно
+Wood,Wood,Паркет
+Work,Work,Работа
+"Work during the day, entertainment in the evening — the AI picks by itself.","Work during the day, entertainment in the evening — the AI picks by itself.","Днём работа, вечером развлечения — ИИ выбирает сам."
+Worker,Worker,Рабочий
+Working,Working,Работает
+acquainted,acquainted,знакомые
+afternoon,afternoon,после обеда
+close friends,close friends,близкие друзья
+comfort,comfort,комфорт
+comfort %d,comfort %d,комфорт %d
+company,company,общение
+cool,cool,прохладно
+day,day,день
+daytime,daytime,день
+dinner,dinner,ужин
+energy,energy,энергия
+evening,evening,вечер
+favourite,favourite,любимое
+friendly,friendly,приятели
+friends,friends,друзья
+fun,fun,развлечение
+fun %d,fun %d,развлечение %d
+hostile,hostile,враждуют
+hunger,hunger,голод
+hygiene,hygiene,чистота
+lunch,lunch,обед
+lv %d,lv %d,ур. %d
+morning,morning,утро
+m²,m²,м²
+night,night,ночь
+no fixed address,no fixed address,без адреса
+no routine,no routine,без распорядка
+on shift,on shift,на смене
+one finger — pan    two fingers — zoom    tap a resident to follow them,one finger — pan    two fingers — zoom    tap a resident to follow them,"один палец — карта, два — зум, тап по жителю — следить за ним"
+paused,paused,пауза
+reluctantly,reluctantly,нехотя
+savings,savings,накопления
+strangers,strangers,незнакомы
+today,today,сегодня
+trains %s,trains %s,качает: %s
+work,work,работа

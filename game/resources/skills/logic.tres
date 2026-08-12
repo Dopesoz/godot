@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="SkillData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/skill_data.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+id = &"logic"
+display_name = "Logic"
+description = "Thinking work. Employers pay for it."
+placeholder_color = Color(0.52, 0.68, 0.95, 1)
+icon_color = Color(0.52, 0.68, 0.95, 1)
+minutes_per_level = 260.0
+max_level = 5
+effect_bonus_per_level = 0.08
+speed_bonus_per_level = 0.04
+wage_bonus_per_level = 0.09
+slows_need = -1
+slows_need_per_level = 0.0

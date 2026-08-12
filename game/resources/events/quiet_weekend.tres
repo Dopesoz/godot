@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="EventData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/event_data.gd" id="1_ev"]
+
+[resource]
+script = ExtResource("1_ev")
+id = &"quiet_weekend"
+display_name = "Quiet Weekend"
+description = "Nothing much on. A good day to rest and see people."
+placeholder_color = Color(0.62, 0.80, 0.95, 1)
+banner_color = Color(0.62, 0.80, 0.95, 1)
+weight = 2.0
+duration_hours = 24.0
+need_weights = {
+3: 1.5,
+5: 1.4
+}
+decay_multipliers = {
+1: 0.75
+}
+money_on_start = 0
+money_per_resident = 0
+min_residents = 0
+earliest_hour = 0.0
+latest_hour = 24.0

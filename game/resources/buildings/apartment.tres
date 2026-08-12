@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="BuildingData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/building_data.gd" id="1_bd"]
+
+[resource]
+script = ExtResource("1_bd")
+id = &"apartment"
+display_name = "Apartment Block"
+description = "A bigger residential plot: room for a large family."
+placeholder_color = Color(0.70, 0.66, 0.62, 1)
+building_type = 0
+size = Vector2i(11, 9)
+price = 2600
+upkeep_per_day = 60
+max_residents = 6
+suggested_room_types = Array[int]([1, 2, 3, 4, 5])
+provides_job_ids = Array[StringName]([])

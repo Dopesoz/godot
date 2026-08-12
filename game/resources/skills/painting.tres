@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="SkillData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/skill_data.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+id = &"painting"
+display_name = "Painting"
+description = "Slow to learn, and the results can be sold."
+placeholder_color = Color(0.45, 0.80, 0.62, 1)
+icon_color = Color(0.45, 0.80, 0.62, 1)
+minutes_per_level = 240.0
+max_level = 5
+effect_bonus_per_level = 0.15
+speed_bonus_per_level = 0.05
+wage_bonus_per_level = 0.0
+slows_need = -1
+slows_need_per_level = 0.0

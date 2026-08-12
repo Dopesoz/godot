@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="JobData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/job_data.gd" id="1_job"]
+
+[resource]
+script = ExtResource("1_job")
+id = &"worker"
+display_name = "Worker"
+description = "General labour. Long hours, modest pay, no qualifications required."
+placeholder_color = Color(0.74, 0.6, 0.35, 1)
+salary_per_day = 120
+start_hour = 8.0
+end_hour = 17.0
+workplace_building_type = 2
+workplace_room_type = 0
+skill_id = &"fitness"
+slots_per_workplace = 8

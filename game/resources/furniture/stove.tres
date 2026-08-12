@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="FurnitureData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/furniture_data.gd" id="1_furn"]
+[ext_resource type="Script" path="res://scripts/data/interaction_data.gd" id="2_int"]
+
+[sub_resource type="Resource" id="Resource_cook"]
+script = ExtResource("2_int")
+id = &"cook"
+display_name = "Cook"
+state = 2
+duration_minutes = 40.0
+need_effects = {
+0: 75.0
+}
+capacity = 1
+priority = 1.5
+stands_on_furniture = false
+skill_id = &"cooking"
+xp_rate = 1.0
+
+[resource]
+script = ExtResource("1_furn")
+id = &"stove"
+display_name = "Stove"
+description = "Cooking takes longer but fills you up properly."
+placeholder_color = Color(0.42, 0.42, 0.46, 1)
+category = 3
+price = 450
+size = Vector2i(1, 1)
+comfort = 0.0
+entertainment = 0.0
+blocks_movement = true
+requires_wall = false
+interactions = Array[Resource]([SubResource("Resource_cook")])
+allowed_room_types = Array[int]([3])

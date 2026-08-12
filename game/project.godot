@@ -1,0 +1,46 @@
+; Engine configuration file.
+; My City: Inside — city builder + life simulation.
+;
+; NOTE: Input actions are NOT declared here. They are registered at runtime by
+; scripts/input/input_actions.gd so that desktop and touch profiles can be
+; swapped without editing the project file (see Phase 12 — Android).
+
+config_version=5
+
+[application]
+
+config/name="My City: Inside"
+config/description="City builder + life simulation. Build a city, then step inside any building and watch its residents live."
+run/main_scene="res://scenes/boot/boot.tscn"
+config/icon="res://assets/icons/app_icon.svg"
+config/features=PackedStringArray("4.4", "GL Compatibility")
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation=1
+
+[autoload]
+
+EventBus="*res://scripts/core/event_bus.gd"
+Database="*res://scripts/core/database.gd"
+GameClock="*res://scripts/time/game_clock.gd"
+SimScheduler="*res://scripts/sim/sim_scheduler.gd"
+Economy="*res://scripts/economy/economy.gd"
+SaveManager="*res://scripts/core/save_manager.gd"
+CityEvents="*res://scripts/events/city_events.gd"
+Settings="*res://scripts/core/settings.gd"
+AudioManager="*res://scripts/core/audio_manager.gd"
+
+[internationalization]
+
+locale/translations=PackedStringArray("res://assets/i18n/strings.en.translation", "res://assets/i18n/strings.ru.translation")
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true
+textures/canvas_textures/default_texture_filter=0

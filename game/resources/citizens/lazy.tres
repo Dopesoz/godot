@@ -1,0 +1,39 @@
+[gd_resource type="Resource" script_class="CitizenData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/citizen_data.gd" id="1_citizen"]
+
+[resource]
+script = ExtResource("1_citizen")
+id = &"lazy"
+display_name = "Lazy"
+description = "Tires quickly, walks slowly, and would rather sit than cook."
+placeholder_color = Color(0.85, 0.78, 0.60, 1)
+gender = 2
+age = 32
+personality = 2
+job_id = &"worker"
+initial_needs = {
+0: 65.0,
+1: 60.0,
+2: 75.0,
+3: 65.0,
+4: 55.0,
+5: 60.0
+}
+need_decay_multipliers = {
+1: 1.6,
+3: 1.4,
+2: 0.7
+}
+interaction_affinity = {
+&"watch_tv": 1.4,
+&"coffee": 1.3,
+&"exercise": 0.5,
+&"cook_feast": 0.6
+}
+starting_skills = {
+&"logic": 140.0
+}
+walk_speed = 1.25
+first_names = PackedStringArray("Anna", "Boris", "Clara", "Daniel", "Elena", "Felix", "Greta", "Hugo", "Irina", "Jonas", "Kira", "Lena", "Mark", "Nina", "Oscar", "Pavel", "Rita", "Sofia", "Timur", "Vera")
+last_names = PackedStringArray("Adler", "Beck", "Cross", "Dorn", "Egan", "Fisher", "Gould", "Hart", "Ivers", "Kane", "Lund", "Meyer", "Novak", "Ortiz", "Pike", "Quill", "Rossi", "Stein", "Toth", "Vogel")

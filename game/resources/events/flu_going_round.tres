@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="EventData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/event_data.gd" id="1_ev"]
+
+[resource]
+script = ExtResource("1_ev")
+id = &"flu_going_round"
+display_name = "Flu Going Round"
+description = "Half the street is sniffling. Energy drains and nobody feels sociable."
+placeholder_color = Color(0.62, 0.78, 0.62, 1)
+banner_color = Color(0.62, 0.78, 0.62, 1)
+weight = 1.2
+duration_hours = 48.0
+need_weights = {
+1: 1.5,
+5: 0.6
+}
+decay_multipliers = {
+1: 1.5,
+2: 1.2
+}
+money_on_start = 0
+money_per_resident = 0
+min_residents = 0
+earliest_hour = 0.0
+latest_hour = 24.0

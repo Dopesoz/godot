@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="FurnitureData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/furniture_data.gd" id="1_furn"]
+[ext_resource type="Script" path="res://scripts/data/interaction_data.gd" id="2_int"]
+
+[sub_resource type="Resource" id="Resource_relax"]
+script = ExtResource("2_int")
+id = &"relax"
+display_name = "Relax"
+state = 5
+duration_minutes = 60.0
+need_effects = {
+1: 10.0,
+3: 30.0,
+4: 10.0
+}
+capacity = 3
+social_weight = 0.4
+priority = 1.0
+stands_on_furniture = true
+
+[resource]
+script = ExtResource("1_furn")
+id = &"sofa"
+display_name = "Sofa"
+description = "Comfortable seating for up to three."
+placeholder_color = Color(0.45, 0.55, 0.42, 1)
+category = 0
+price = 300
+size = Vector2i(2, 1)
+comfort = 25.0
+entertainment = 5.0
+blocks_movement = true
+requires_wall = false
+interactions = Array[Resource]([SubResource("Resource_relax")])
+allowed_room_types = Array[int]([1])

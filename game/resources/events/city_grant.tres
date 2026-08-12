@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="EventData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/event_data.gd" id="1_ev"]
+
+[resource]
+script = ExtResource("1_ev")
+id = &"city_grant"
+display_name = "City Grant"
+description = "The council paid out. Money in the budget, briefly."
+placeholder_color = Color(0.75, 0.92, 0.60, 1)
+banner_color = Color(0.75, 0.92, 0.60, 1)
+weight = 1.0
+duration_hours = 1.0
+money_on_start = 600
+money_per_resident = 120
+min_residents = 1
+earliest_hour = 8.0
+latest_hour = 18.0

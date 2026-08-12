@@ -1,0 +1,12 @@
+# Godot editor cache and imported assets
+.godot/
+
+# Export output and per-machine export config
+# export_presets.cfg is ignored by Godot's default template because it can hold
+# a keystore path and password. Ours holds neither — release signing reads
+# GODOT_ANDROID_KEYSTORE_RELEASE_* from the environment — and keeping the preset
+# in the repository is what makes "build the APK" one command for anyone.
+build/
+android/build/
+*.apk
+*.aab
