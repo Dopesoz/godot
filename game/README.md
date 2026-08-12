@@ -207,8 +207,43 @@ godot --headless --path game -- --demo --bench 200
 
 ## Сборка под Android
 
-В контейнере разработки APK не собирается — нужны SDK и шаблоны экспорта.
-На своей машине:
+APK собирается из командной строки, без редактора. Что нужно один раз:
+
+```bash
+# 1. Шаблоны экспорта Godot 4.4 -> ~/.local/share/godot/export_templates/4.4.stable/
+curl -L -o t.tpz https://github.com/godotengine/godot/releases/download/4.4-stable/Godot_v4.4-stable_export_templates.tpz
+mkdir -p ~/.local/share/godot/export_templates/4.4.stable && unzip -j t.tpz -d ~/.local/share/godot/export_templates/4.4.stable
+
+# 2. Android SDK: только build-tools (apksigner, zipalign) и platform-tools
+sdkmanager "build-tools;34.0.0" "platform-tools" "platforms;android-34"
+
+# 3. Отладочный keystore
+keytool -keyalg RSA -genkeypair -alias androiddebugkey -keypass android \
+        -keystore ~/debug.keystore -storepass android \
+        -dname "CN=Android Debug,O=Android,C=US" -validity 9999 -deststoretype pkcs12
+
+# 4. Пути — в настройки редактора (~/.config/godot/editor_settings-4.4.tres):
+#    export/android/android_sdk_path, java_sdk_path, debug_keystore(+user, pass)
+```
+
+Дальше — одна команда, пресет `Android` уже лежит в `export_presets.cfg`:
+
+```bash
+godot --headless --path game --export-debug "Android" build/mycity-inside.apk
+```
+
+Получается подписанный debug-APK, `arm64-v8a` + `armeabi-v7a`, minSdk 21, ~59 МБ.
+Установка: `adb install -r build/mycity-inside.apk` или просто скопировать файл на
+телефон и открыть.
+
+Два условия, без которых экспорт молча падает с пустым сообщением об ошибке:
+рендер должен быть **GL Compatibility** (уже стоит) и в проекте должен быть
+включён `rendering/textures/vram_compression/import_etc2_astc` (тоже уже стоит).
+
+Иконка приложения пока стандартная годотовская — `launcher_icons/*` в пресете
+ждут PNG 192×192 и 432×432.
+
+Через редактор (если удобнее мышкой):
 
 1. Editor → Manage Export Templates → скачать шаблоны для своей версии Godot.
 2. Editor Settings → Export → Android: указать путь к Android SDK и JDK 17,
