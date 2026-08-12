@@ -158,3 +158,48 @@ func test_project_is_configured_for_mobile() -> void:
 		"без ETC2/ASTC текстуры на Android займут лишнюю память")
 	check_eq(int(ProjectSettings.get_setting("rendering/textures/canvas_textures/default_texture_filter", -1)), 0,
 		"пиксель-арт требует фильтрации «ближайший сосед»")
+
+
+func test_icons_come_from_the_logo() -> void:
+	# Иконка магазина и логотип — одна и та же эмблема. Если иконку когда-нибудь
+	# соберут заново из процедурной графики, карточка Google Play разойдётся
+	# с заставкой игры, и заметить это на глаз почти невозможно.
+	var icon: Texture2D = load("res://icons/store_512.png")
+	check(icon != null, "иконка магазина не загрузилась")
+	check_eq(icon.get_width(), 512, "иконка магазина должна быть 512x512")
+
+	var foreground: Texture2D = load("res://icons/adaptive_foreground_432.png")
+	check(foreground != null, "нет переднего плана адаптивной иконки")
+	check_eq(foreground.get_width(), 432)
+
+	# У переднего плана обязаны быть прозрачные углы: иначе система нарисует
+	# квадрат вместо круга или капли.
+	var image: Image = foreground.get_image()
+	check(
+		image.get_pixel(2, 2).a < 0.1,
+		"углы адаптивной иконки должны быть прозрачными"
+	)
+	check(
+		image.get_pixel(image.get_width() / 2, image.get_height() / 2).a > 0.9,
+		"центр адаптивной иконки должен быть непрозрачным"
+	)
+
+
+func test_boot_splash_shows_the_logo() -> void:
+	check(
+		bool(ProjectSettings.get_setting("application/boot_splash/show_image", false)),
+		"заставка должна показываться: сборка звука и карты занимает секунды"
+	)
+	check_eq(
+		String(ProjectSettings.get_setting("application/boot_splash/image", "")),
+		TitleScreen.LOGO_PATH,
+		"на заставке должен быть логотип игры"
+	)
+
+
+func test_game_starts_from_the_title_screen() -> void:
+	check_eq(
+		String(ProjectSettings.get_setting("application/run/main_scene", "")),
+		"res://scenes/title.tscn",
+		"игра должна открываться заглавным экраном"
+	)

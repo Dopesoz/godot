@@ -120,12 +120,17 @@ func _ready() -> void:
 		start_new_game(int(Time.get_unix_time_from_system()))
 	)
 
-	if SaveSystem.has_save():
+	# Заглавный экран говорит, чего хочет игрок: продолжить или начать заново.
+	# Прямой запуск сцены игры (тесты, отладка) ведёт себя как раньше.
+	var fresh: bool = GameLaunch.take_fresh_start()
+	if not fresh and SaveSystem.has_save():
 		start_new_game(int(Time.get_unix_time_from_system()))
 		if not save_system.load_game():
 			Log.warn("Сохранение не загрузилось, начинаем новую игру")
 			start_new_game(int(Time.get_unix_time_from_system()))
 	else:
+		if fresh:
+			SaveSystem.delete_save()
 		start_new_game(int(Time.get_unix_time_from_system()))
 
 	touch.tapped.connect(build_controller.on_tap)

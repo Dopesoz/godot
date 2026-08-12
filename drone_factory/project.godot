@@ -10,10 +10,12 @@ config_version=5
 config/name="Drone Factory"
 config/description="Мобильная игра про автоматизацию производства: буры, печи, электричество и дроны."
 config/version="0.1.0"
-run/main_scene="res://scenes/main.tscn"
+run/main_scene="res://scenes/title.tscn"
 config/features=PackedStringArray("4.4", "GL Compatibility")
 config/icon="res://icon.svg"
-boot_splash/show_image=false
+boot_splash/show_image=true
+boot_splash/image="res://assets/logo.png"
+boot_splash/fullsize=false
 boot_splash/bg_color=Color(0.05, 0.06, 0.09, 1)
 
 [autoload]
