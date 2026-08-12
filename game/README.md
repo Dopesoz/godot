@@ -232,7 +232,19 @@ keytool -keyalg RSA -genkeypair -alias androiddebugkey -keypass android \
 godot --headless --path game --export-debug "Android" build/mycity-inside.apk
 ```
 
-Получается подписанный debug-APK, `arm64-v8a` + `armeabi-v7a`, minSdk 21, ~59 МБ.
+Получается подписанный debug-APK для `arm64-v8a`, minSdk 21, ~59 МБ.
+Release вдвое меньше (~29 МБ) и не тянет отладочные символы:
+
+```bash
+export GODOT_ANDROID_KEYSTORE_RELEASE_PATH=~/release.keystore
+export GODOT_ANDROID_KEYSTORE_RELEASE_USER=mycity
+export GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD=...
+godot --headless --path game --export-release "Android" build/mycity-inside.apk
+```
+
+Ключ и пароль берутся из переменных окружения, а не из пресета, — в репозитории
+им не место. `armeabi-v7a` в пресете выключен: он нужен только очень старым
+телефонам и удваивает размер.
 Установка: `adb install -r build/mycity-inside.apk` или просто скопировать файл на
 телефон и открыть.
 
