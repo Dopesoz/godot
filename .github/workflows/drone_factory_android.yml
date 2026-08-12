@@ -52,8 +52,28 @@ jobs:
           unzip -q templates.tpz
           mv templates ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
 
+      # Импорт обязателен и обязательно дважды.
+      #
+      # В свежем клоне нет .godot, а значит нет и кеша глобальных классов:
+      # запуск тестов напрямую падал с «Could not find type TestCase», потому
+      # что class_name регистрируются только при импорте. Одного прохода мало —
+      # классы, объявленные в только что импортированных файлах, попадают
+      # в кеш лишь на следующем.
+      - name: Импортировать ресурсы
+        run: |
+          godot --headless --path "${PROJECT_DIR}" --import || true
+          godot --headless --path "${PROJECT_DIR}" --import
+
       - name: Прогнать тесты
-        run: godot --headless --path "${PROJECT_DIR}" --script res://tests/test_runner.gd
+        run: |
+          set -o pipefail
+          godot --headless --path "${PROJECT_DIR}" --script res://tests/test_runner.gd | tee test.log
+          # Ошибка выполнения внутри теста не меняет код возврата раннера,
+          # но означает, что проверка молча не выполнилась.
+          if grep -q "SCRIPT ERROR" test.log; then
+            echo "::error::SCRIPT ERROR внутри тестов"
+            exit 1
+          fi
 
       - name: Создать отладочный ключ подписи
         run: |
